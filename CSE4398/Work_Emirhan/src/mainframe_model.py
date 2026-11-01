@@ -19,8 +19,11 @@ Akis:
   5. Storage (IBM DS8900F): veri hacmi, IOPS ve topolojiye bagli kopya
      sayisindan boyutlandirma ve maliyet; I/O gecikmesi (D_io) storage
      yolundan (zHyperLink, zHPF/FICON, senkron Metro Mirror) hesaplanir.
-  6. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir.
-  7. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
+  6. Maliyet: yazilim yigini (z/OS + CICS TS + Db2) IBM AWLC kumulatif
+     kademeli fiyatla, faturalanan (sub-capacity) MSU uzerinden; zIIP payi
+     MSU'ya sayilmaz, zIIP motorlari donanima eklenir.
+  7. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir.
+  8. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
      Base + On/Off CoD, Tailored Fit Pricing (base + corridor + CoD). Gecici
      kapasite SC28-7025 sinirlarina tabidir (%100 kurali, drawer, alt-kapasite).
 
@@ -52,7 +55,11 @@ KAYNAK ETIKETLERI:
   [REDP-5554]= IBM Storage DS8900F Product Guide R9.3.2 (storage, BOLUM 6)
   [ITCANDOR], [TT-2019], [ITJUNGLE-22], [VENDORBENCH] = DS8900F IOPS / fiyat kaynaklari (BOLUM 6)
   [PRICE]    = Mainframe fiyat rehberleri (donanim ~$0.5M-10M+; bakim %10-15/yil)
-  [LIC]      = MSU lisanslama: ~$25-55 / MSU / ay
+  [AWLC]     = IBM AWLC kademe sinirlari (zNALC ZSL03508, CMG 2020), kumulatif fiyat
+  [IBM-2004] = IBM WLC sunumu (vm.ibm.com 2005-Z24): Db2 kademe fiyatlari ve
+               ornek fatura (z/OS, CICS, Db2) -> egri + urun katsayilari
+  [LONGPELA] = Longpela: L7 MSU fiyati L6'dan ~%20 dusuk (L4+ dusus varsayimi)
+  [ZIIP]     = z16 zIIP kurallari (SG24-8950): MSU disi, tam hiz, zIIP:CP <= 2:1
   [PWR]      = Enerji: 20-40 kW/frame
   [ASSUME]   = Kalibre edilmemis varsayim
 ================================================================================
@@ -148,6 +155,17 @@ RNI_MULTIPLIER = {
     "high":    0.70,   # agir islem -> daha az TPS       [ASSUME]
 }
 
+# [ZIIP] zIIP (z Integrated Information Processor): Db2 DRDA istekleri, Java,
+# XML ve bazi Db2 sistem gorevleri (prefetch, log, utility) zIIP'te calisir.
+# zIIP kapasitesi MSU'ya sayilmaz -> MLC faturasina girmez; donanimi GP'den
+# ucuzdur; alt-kapasite (4xx/5xx/6xx) modellerde bile tam hizda calisir.
+# Uygunluk is yukune baglidir: yerel CICS-COBOL-Db2 OLTP'de dusuk (~%0-10),
+# DRDA/Java agirlikli OLTP'de %40'a cikabilir. Varsayilan muhafazakar.
+ZIIP_OFFLOAD_FRACTION = 0.10   # CPU isinin zIIP'e kayan payi [ASSUME, aralik 0-0.40]
+ZIIP_ENGINE_PCI = 2253.0       # tek tam-hiz motor = 3931-701 PCI [LSPR]
+ZIIP_PER_CP_LIMIT = 2          # z16: zIIP sayisi <= 2 x GP CP [ZIIP]
+ZIIP_HW_PRICE_FACTOR = 0.25    # zIIP motor fiyati / esdeger GP fiyati [ASSUME]
+
 # ------------------------------------------------------------------------------
 # BOLUM 4 — LATENCY MODELI (per-CP M/M/1 kuyrugu + sabit I/O gecikmesi)
 # ------------------------------------------------------------------------------
@@ -228,8 +246,12 @@ def io_delay_seconds(rni="average", topology=None):
 
 
 def raw_tier_tps(tier, rni="average"):
-    """Kademenin %100 utilization'daki ham TPS kapasitesi."""
-    return tier.pci * TPS_PER_PCI * RNI_MULTIPLIER[rni]
+    """Kademenin %100 utilization'daki ham TPS kapasitesi.
+
+    zIIP'e kayan is (ZIIP_OFFLOAD_FRACTION) genel amacli CP'yi tuketmez; bu
+    yuzden ayni GP kademesi 1/(1-f) kat daha fazla transaction tasir. zIIP
+    motorlarinin donanim maliyeti monthly_cost icinde ayrica eklenir."""
+    return tier.pci * TPS_PER_PCI * RNI_MULTIPLIER[rni] / (1.0 - ZIIP_OFFLOAD_FRACTION)
 
 
 def avg_service_time_seconds(tier, rni="average"):
@@ -424,8 +446,36 @@ def find_feasible_topologies(availability_target):
 # ------------------------------------------------------------------------------
 # BOLUM 5 — MALIYET PARAMETRELERI
 # ------------------------------------------------------------------------------
-# [LIC] Yazilim lisansi: ~$25-55 / MSU / ay. Orta deger aliyoruz.
-SOFTWARE_COST_PER_MSU_MONTH = 40.0     # USD/MSU/ay  [LIC, orta deger]
+# [AWLC] Yazilim yigini: z/OS + CICS TS + Db2 (MQ kapsam disi). IBM Advanced
+# Workload License Charges kademeli aylik ucrettir: MSU arttikca marjinal
+# MSU fiyati duser. Kademe sinirlari resmidir (IBM AWLC: Base 1-3, L0 4-45,
+# L1 46-175, L2 176-315, L3 316-575, L4 576-875, L5 876-1315, L6 1316-1975,
+# L7 1976+). Guncel liste fiyati kamuya acik degil; bu yuzden:
+#   1) kademe dusus egrisi IBM'in yayimlanmis Db2 liste fiyatindan [IBM-2004]:
+#      Base $3,960 (ilk 3 MSU dahil), L0 $208, L1 $88, L2 $66, L3 $50 /MSU/ay;
+#      L4+ icin kademe basina x0.80 [ASSUME; Longpela: "L7, L6'dan %20 ucuz"],
+#   2) urun katsayilari IBM'in ornek faturasina kalibre [IBM-2004],
+#   3) mutlak seviye SW_PRICE_LEVEL_FACTOR ile (1.0 = 2004 nominal liste),
+#      duyarlilik analizinde 0.5-1.5 araliginda taranir.
+AWLC_BASE_CHARGE = 3960.0              # USD/ay, ilk 3 MSU dahil [IBM-2004]
+AWLC_LEVELS = [                        # (kademe ust siniri MSU, marjinal USD/MSU/ay)
+    (3,     0.0),                      # Base (sabit ucrete dahil)
+    (45,    208.0),                    # L0  [IBM-2004]
+    (175,   88.0),                     # L1  [IBM-2004]
+    (315,   66.0),                     # L2  [IBM-2004]
+    (575,   50.0),                     # L3  [IBM-2004]
+    (875,   40.0),                     # L4  [ASSUME x0.80]
+    (1315,  32.0),                     # L5  [ASSUME x0.80]
+    (1975,  25.6),                     # L6  [ASSUME x0.80]
+    (float("inf"), 20.48),             # L7  [ASSUME x0.80, LONGPELA]
+]
+# IBM ornek faturasi (aylik, sub-capacity): urun -> (USD/ay, faturalanan MSU)
+SW_PRODUCT_ANCHORS = {
+    "z/OS":    (75459.0, 265),         # [IBM-2004]
+    "CICS TS": (32978.0, 210),         # [IBM-2004] CICS ayri LPAR'da 210 MSU
+    "Db2":     (31876.0, 265),         # [IBM-2004]
+}
+SW_PRICE_LEVEL_FACTOR = 1.0            # 2004 nominal = 1.0 [ASSUME, aralik 0.5-1.5]
 
 # [PRICE] Donanim: kapasiteyle olcekleniyor. Liste fiyati yok; MIPS basina
 # kaba bir donanim fiyati turetiyoruz. Aralik ~$0.5M (giris) - $10M+ (tam).
@@ -664,11 +714,66 @@ def consumed_msu(tier, load_tps, rni="average"):
     return min(load_tps / raw, 1.0) * tier.msu
 
 
+def ziip_engines(tier):
+    """Kademenin GP tam-kapasitesine eslik eden zIIP motor sayisi.
+    GP'de calisan is (1-f), zIIP'te calisan f oraninda ise zIIP PCI ihtiyaci
+    = GP PCI x f/(1-f). Motor sayisi yukari yuvarlanir, 2:1 sinirina kirpilir."""
+    f = ZIIP_OFFLOAD_FRACTION
+    if f <= 0:
+        return 0
+    need = tier.pci * f / (1.0 - f) / ZIIP_ENGINE_PCI
+    return min(math.ceil(need - 1e-9), ZIIP_PER_CP_LIMIT * tier.cps)
+
+
+def ziip_hw_purchase(tier):
+    """zIIP motorlarinin satin alma bedeli (USD)."""
+    return (ziip_engines(tier) * ZIIP_ENGINE_PCI * HARDWARE_COST_PER_MIPS
+            * ZIIP_HW_PRICE_FACTOR)
+
+
+# ------------------------------------------------------------------------------
+# Yazilim yigini: AWLC kademeli MLC (z/OS + CICS TS + Db2)
+# ------------------------------------------------------------------------------
+def _awlc_reference_curve(msu):
+    """Referans urunun (Db2, IBM 2004 liste fiyati) aylik bedeli, kumulatif
+    kademeli: her MSU kendi kademesinin marjinal fiyatiyla ucretlenir."""
+    if msu <= 0:
+        return 0.0
+    cost = AWLC_BASE_CHARGE
+    lower = AWLC_LEVELS[0][0]           # ilk 3 MSU sabit ucrete dahil
+    for upper, rate in AWLC_LEVELS[1:]:
+        if msu <= lower:
+            break
+        cost += (min(msu, upper) - lower) * rate
+        lower = upper
+    return cost
+
+
+def _calibrate_products():
+    """Urun olcek katsayilarini IBM'in 2004 ornek faturasina kalibre eder:
+    katsayi = urunun ornek aylik bedeli / referans egrinin ayni MSU'daki degeri."""
+    return {name: bill / _awlc_reference_curve(msu)
+            for name, (bill, msu) in SW_PRODUCT_ANCHORS.items()}
+
+
+SW_PRODUCT_FACTORS = _calibrate_products()   # z/OS ~2.5, CICS ~1.25, Db2 ~1.06
+
+
+def software_monthly_cost(msu, breakdown=False):
+    """Faturalanan MSU icin yazilim yiginin AYLIK MLC bedeli (GDPS premium haric).
+    Her urun ayri kademelenir (IBM AWLC'de kademe urun basinadir)."""
+    curve = _awlc_reference_curve(msu) * SW_PRICE_LEVEL_FACTOR
+    parts = {name: curve * k for name, k in SW_PRODUCT_FACTORS.items()}
+    total = sum(parts.values())
+    return (total, parts) if breakdown else total
+
+
 def monthly_cost(tier, topology, billed_msu=None):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
-      - software:     billed_msu x USD/MSU x software_premium (GDPS gibi)
+      - software:     software_monthly_cost(billed_msu) x software_premium
+                      (AWLC kademeli z/OS + CICS TS + Db2; GDPS premium)
                       billed_msu verilmezse kademenin tam kurulu MSU'su
                       (full-capacity fiyatlama) kullanilir. Sub-capacity
                       fiyatlamada billed_msu = aylik R4HA tepesinde tuketilen
@@ -681,9 +786,9 @@ def monthly_cost(tier, topology, billed_msu=None):
     """
     msu = tier.msu if billed_msu is None else billed_msu
     # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
-    software = msu * SOFTWARE_COST_PER_MSU_MONTH * topology.software_premium
-    # Donanim amortismani - frame carpani  [PRICE/ASSUME]
-    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS
+    software = software_monthly_cost(msu) * topology.software_premium
+    # Donanim amortismani - frame carpani  [PRICE/ASSUME]; zIIP motorlari dahil
+    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS + ziip_hw_purchase(tier)
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
     # Bakim  [PRICE]
     maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL / 12
@@ -802,9 +907,10 @@ def solve(tps, availability=0.999, rni="average",
         print(f"     utilization: {util:.1%}  (x{topo.n_frames} frame)")
         print(f"     AYLIK maliyet: ${cost['total']:,.0f}")
         print(f"       yazilim:  ${cost['software']:,.0f}  "
-              f"(premium x{topo.software_premium})")
+              f"(z/OS + CICS TS + Db2, AWLC kademeli; premium x{topo.software_premium})")
         print(f"       donanim:  ${cost['hardware_amort']:,.0f}  "
-              f"({topo.n_frames} frame)")
+              f"({topo.n_frames} frame; {ziip_engines(tier)} zIIP, "
+              f"f={ZIIP_OFFLOAD_FRACTION:.2f})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
         print(f"       enerji:   ${cost['energy']:,.0f}")
         sp = cost["storage_plan"]
@@ -1030,8 +1136,9 @@ def hw_monthly_cost_per_pci():
 
 
 def consumed_pci(load_tps, rni="average"):
-    """Bir yukun tukettigi kapasite, PCI cinsinden (%100 utilization esdegeri)."""
-    return load_tps / (TPS_PER_PCI * RNI_MULTIPLIER[rni])
+    """Bir yukun tukettigi GENEL AMACLI (GP) kapasite, PCI cinsinden
+    (%100 utilization esdegeri). zIIP'e kayan pay dusulur."""
+    return load_tps * (1.0 - ZIIP_OFFLOAD_FRACTION) / (TPS_PER_PCI * RNI_MULTIPLIER[rni])
 
 
 def simulate_yearly(profile, tier, topology, rni="average",

@@ -270,3 +270,34 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - **Aksiyon (0):** `STORAGE_IOPS_CEILING = 0,70` [ASSUME] eklendi; dizi sayısı tepe IOPS'un %70'ine göre hesaplanıyor.
 - **Sebep:** Değerlendirme #4, madde 2.1: compute'ta %90 operasyonel tavan varken storage üretici tepe IOPS'unun %100'üyle boyutlanıyordu.
 - **Etki:** DS8910F → DS8950F geçişi 90K yerine ~60K TPS'te. Yıllık modda (50K ort.) steady_oltp 1× DS8950F'e, retail_bursty 2× DS8950F'e geçti; toplamlar +$11K / +$28K. Strateji sıralaması değişmedi. Testler 10/10. v3 Bölüm 8.1.3, 8.1.5, 8.4, 8.7, 9.7, 9.8 güncellendi.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Yazılım yığını (AWLC kademeli MLC) ve zIIP — Plan adımı 1
+
+### 1. Veri toplama
+- **Aksiyon:** IBM AWLC/MLC fiyatlaması için kaynak tarandı: IBM'in yayımladığı Db2 kademe fiyatları ve örnek sub-capacity faturası (2004), zNALC belgesi ve CMG 2020 (güncel kademe sınırları, kümülatif fiyatlama), Longpela (L7/L6 oranı), value-4it (150 MSU ≈ £1M/yıl), z17 Technology Update indirimleri (TU11), zIIP kuralları.
+- **Bulgu:** Modeldeki $40/MSU/ay tek fiyatı hem yapı olarak (AWLC doğrusal değil, kümülatif kademeli) hem seviye olarak yanlıştı: IBM örneğinde yalnızca z/OS 265 MSU'da $75.459/ay (~$285/MSU). Kaynak (atonementlicensing.com) metodolojisizdi.
+- **Sebep:** Plan adımı 1; Değerlendirme #4'ün eşit derinlik bulgusu (CICS ve Db2 eksikti).
+
+### 2. Modele ekleme
+- **Aksiyon:**
+  - `software_monthly_cost(msu)`: Db2 referans eğrisi (Base $3.960, L0 $208, L1 $88, L2 $66, L3 $50; L4+ ×0,80/kademe [ASSUME]) × ürün katsayıları (IBM örneğine kodda kalibre: z/OS ×2,509, CICS TS ×1,247, Db2 ×1,060) × SW_PRICE_LEVEL_FACTOR (1,0 = 2004 nominal [ASSUME]).
+  - zIIP: ZIIP_OFFLOAD_FRACTION = 0,10 [ASSUME, muhafazakâr]. GP kademesi 1/(1−f) kat TPS taşıyor, CoD/corridor'da tüketilen PCI (1−f) ile ölçekleniyor; zIIP motor sayısı ⌈PCI·f/(1−f)/2.253⌉ (2:1 sınırlı), bedeli GP fiyatının 0,25'i [ASSUME] olarak donanıma ekleniyor.
+  - `SOFTWARE_COST_PER_MSU_MONTH` kaldırıldı. TFP-SW gelir-nötr kalibrasyonu değişmeden çalışıyor.
+  - `src/tools/software_sensitivity.py` eklendi; yeni test `test_awlc_software_stack_and_ziip` (11/11 geçiyor).
+- **Sebep:** Kademe sınırları ve düşüş eğrisi resmî kaynaktan, mutlak seviye kalibre + taranan parametre; böylece güncel fiyatın gizli olması sonucu tek bir sayıya bağlamıyor.
+
+### 3. Etkileri
+- **Maliyet/TPS eğrisi büküldü:** $44,95 (1K TPS) → $5,89 (50K) → $2,28 (1M). Önceden 25K üstünde düzdü (~$1,35–1,44). Değerlendirme #1'in "düz eğri, zayıf crossover hipotezi" tehdidine kaynaklı bir mekanizmayla cevap.
+- **50K TPS statik:** $75.655 → $294.278/ay; yazılım payı %37 → %84. Kademe seçimi 3931-436 → 3931-432 (zIIP ve düşük MSU avantajı).
+- **Yıllık (50K ort.):** steady C $4,576M, retail **B** $6,618M (C ile fark %0,4), batch C $5,690M. Stratejiler arası fark %10–24'ten %2,5–10'a indi; yazılım %76–86. TFP_SW_DISCOUNT'un %5'i C'yi her presette öne geçiriyor: strateji kararını donanım değil TFP-SW yazılım fiyatı belirliyor.
+- **Storage payı:** 20 TB'da %9,4 → %2,5; veri hacmi ekseni ~500 TB'ta belirginleşiyor (%35).
+- **Duyarlılık:** mutlak seviye 0,5–1,5 → 50K TPS'te $3,42–8,35/TPS (şekil aynı, crossover yeri kayar); L4+ düşüş oranı 500K TPS'te $/TPS'i 2 kat oynatıyor (2,06–4,12) → yüksek hacimde en kritik yazılım varsayımı.
+- **Dokümantasyon:** v3 §7.1 yeniden yazıldı (savunma, veri, formül, doğrulama, zIIP, duyarlılık); §1.2, 1.4, 2.2, 7.2, 7.5, 7.6, 8.1.3, 8.7, 9.7, 9.8, 10, 11.5, 12.1, 12.3 güncellendi.
+
+### 4. Açık noktalar
+- L4+ kademe fiyatları ve güncel mutlak seviye için gerçek AWLC tablosu veya teklif.
+- zIIP payının REDP-5320 profiliyle daraltılması (benchmark zIIP kullanmıyor).
+- Donanım fiyatı ($200/PCI) artık yazılıma göre en kaba kalem; personel eklenmeden yazılım payı olduğundan yüksek görünüyor.
+- TFP gelir-nötr kalibrasyonunda kademe MSU/PCI oranı farkından kaynaklanan ~%1'lik artefakt.

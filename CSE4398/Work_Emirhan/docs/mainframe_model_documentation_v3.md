@@ -1,6 +1,6 @@
 # Mainframe (Scale-Up) Modelinin Detaylı Dokümantasyonu — v3
 
-*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, storage (DS8900F), yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
+*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, yazılım yığını (AWLC: z/OS, CICS TS, Db2) ve zIIP, storage (DS8900F), yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
 
 Bu doküman mainframe modelinin **güncel halini** anlatır: hangi veri hangi kaynaktan alındı, nasıl işlendi, modele nasıl girdi. Değişikliklerin tarihçesi ve gerekçeleri `PROJECT_LOG.md` dosyasındadır. Önceki sürüm (`mainframe_model_documentation_v2.md`) tarihsel kayıt olarak değiştirilmeden tutulur.
 
@@ -19,7 +19,9 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 - İşlem karmaşıklığı (RNI) çarpanı
 - Per-CP M/M/1 kuyruğu + sabit I/O gecikmesiyle latency feasibility (Bölüm 5)
 - IBM Z Resiliency 4-model availability çerçevesi (M1–M4) (Bölüm 6)
-- Kademe başına resmî MSU ile sub-capacity yazılım faturası, donanım amortismanı, bakım, enerji (Bölüm 7)
+- Kademe başına resmî MSU ile sub-capacity yazılım faturası: z/OS + CICS TS + Db2, AWLC kademeli kümülatif fiyat (Bölüm 7.1)
+- zIIP: MSU dışı kapasite payı ve zIIP motor donanımı (Bölüm 7.1.5)
+- Donanım amortismanı, bakım, enerji (Bölüm 7)
 - Storage katmanı: IBM DS8900F boyutlandırması (veri hacmi, IOPS, topolojiye bağlı kopya sayısı), maliyeti ve I/O gecikmesi; zHyperLink, zHPF/FICON, Metro/Global Mirror, Safeguarded Copy (Bölüm 8)
 - Yıllık simülasyon: 8.760 saatlik profil ve üç donanım edinim/fiyatlama stratejisi: Permanent, Base + On/Off CoD ve Tailored Fit Pricing (base + capacity corridor + CoD); On/Off CoD'nin resmî sınırları (Bölüm 9)
 
@@ -31,7 +33,7 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 
 ### 1.4. Henüz Modele Eklenmemiş Bileşenler
 
-CICS TS ve Db2 for z/OS lisansları, GDPS'in ayrı kalem olarak modellenmesi, operasyon personeli, zIIP, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
+GDPS'in ayrı kalem olarak modellenmesi, operasyon personeli, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
 
 ## 2. Modelin Girdi ve Çıktıları
 
@@ -55,7 +57,7 @@ Projenin 8 girdisinden rpo_seconds ve rto_minutes henüz modele bağlı değil (
 Statik mod (tek nokta sorgu):
 - Seçilen z16 kademesi (örn. 3931-436) ve topoloji (M1/M2/M3/M4)
 - Tam-hız CP eşdeğeri, utilization, dinamik utilization tavanı, tahmini percentile latency
-- Aylık maliyet dökümü: yazılım + donanım + bakım + enerji
+- Aylık maliyet dökümü: yazılım (z/OS + CICS TS + Db2) + donanım (zIIP dahil) + bakım + enerji + storage
 
 Yıllık mod (workload simülasyonu):
 - Seçilen strateji (Permanent, Base + On/Off CoD veya Tailored Fit Pricing) ve diğer iki stratejinin en iyi sonuçları
@@ -262,17 +264,91 @@ Planlı indirim uygulandıktan sonra topolojilerin gerçek son-kullanıcı avail
 
 Aylık maliyet dört kalemden oluşur ve her kalemin veri güvenilirliği farklıdır.
 
-### 7.1. Yazılım Lisansı (z/OS, sub-capacity)
+### 7.1. Yazılım Yığını (z/OS + CICS TS + Db2, AWLC kademeli)
 
-z/OS, MSU bazlı aylık lisanslama (MLC) ile faturalanır. Bağımsız lisanslama kaynakları, tipik kurumsal bir mainframe (600–2.500 MSU) için aylık $15.000–80.000 lisans maliyeti raporluyor. Bu, MSU başına aylık yaklaşık $25–55'e denk geliyor; model orta değeri kullanır:
+#### 7.1.1. Katmanın savunması
 
-SOFTWARE_COST_PER_MSU_MONTH = $40 / MSU / ay [LIC]
+Bir OLTP iş yükü mainframe'de yalnızca işletim sistemiyle çalışmaz: transaction yöneticisi (CICS TS) ve veritabanı (Db2 for z/OS) da MSU bazlı aylık lisansla (MLC) faturalanır. Clustered tarafta da aynı üç katmanın karşılığı (işletim sistemi, uygulama sunucusu/transaction katmanı, veritabanı) bulunacağından, karşılaştırmanın eşit derinlikte olması için üç ürünün de modellenmesi gerekir. MQ, proje kararıyla iki tarafta da kapsam dışıdır.
 
-Fatura sub-capacity kuralıyla kesilir. Faturalanan MSU, o ayın R4HA tepesinde tüketilen MSU'dur ve kurulu kapasiteyi aşamaz:
+Önceki sürüm tek bir $40/MSU/ay fiyatı kullanıyordu. Bu değer, metodolojisi açıklanmamış bir lisans danışmanlığı sitesinden geliyordu ve iki sorunu vardı:
 
+1. **Yapı hatası:** IBM AWLC fiyatı doğrusal değildir. Fatura kümülatif kademelidir: her MSU, düştüğü kademenin marjinal fiyatıyla ücretlenir ve marjinal fiyat MSU arttıkça düşer [IBM-ZNALC]. Doğrusal fiyat, mainframe'in en belirgin ölçek ekonomisini modelden siler. Değerlendirme #1'deki "maliyet/TPS neredeyse düz" tehdidinin ana sebebi buydu.
+2. **Seviye hatası:** IBM'in kendi yayımladığı örnek fatura, 265 MSU'luk bir sistemde yalnızca z/OS için aylık $75.459 gösteriyor [IBM-2004]. Bu MSU başına ~$285 eder; $40, bunun yalnızca z/OS için bile ~7'de biridir.
+
+#### 7.1.2. Veri ve kaynaklar
+
+- **Kademe sınırları (resmî, güncel):** Base 1–3 MSU, L0 4–45, L1 46–175, L2 176–315, L3 316–575, L4 576–875, L5 876–1.315, L6 1.316–1.975, L7 1.976+ [CMG-2020], [IBM-ZNALC]. Kademe her ürün için ayrı uygulanır.
+- **Kademe düşüş eğrisi:** IBM'in yayımladığı Db2 liste fiyatı (aylık): Base $3.960 (ilk 3 MSU dahil), L0 $208/MSU, L1 $88, L2 $66, L3 $50 [IBM-2004].
+- **L4 ve üstü:** Kamuya açık fiyat bulunamadı. Longpela'nın "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi [LONGPELA] esas alınarak kademe başına ×0,80 geometrik düşüş varsayıldı: L4 $40, L5 $32, L6 $25,6, L7 $20,48 [ASSUME].
+- **Ürün katsayıları:** IBM'in aynı belgedeki örnek faturası (aylık, sub-capacity): z/OS $75.459 (265 MSU), CICS TS $32.978 (210 MSU, ayrı LPAR), Db2 $31.876 (265 MSU) [IBM-2004]. Katsayı = ürünün örnek bedeli / referans eğrinin aynı MSU'daki değeri. Sonuç: z/OS ×2,509, CICS TS ×1,247, Db2 ×1,060. Kalibrasyon kodda hesaplanır (`_calibrate_products`), elle girilmez.
+- **Mutlak seviye:** SW_PRICE_LEVEL_FACTOR = 1,0, 2004 nominal liste fiyatı demektir [ASSUME]. Güncel seviye iki yöne çekilir: IBM'in yeni donanım nesillerinde verdiği Technology Update indirimleri (z17 TU11: kademe bandına göre %12–42) aşağı, 20 yıllık enflasyon ve IBM'in periyodik fiyat artışları yukarı. Bu yüzden 0,5–1,5 aralığı duyarlılık analizinde taranır (Bölüm 7.1.6).
+
+#### 7.1.3. Formül
+
+Referans eğri (Db2, 2004 USD):
+
+```
+C_ref(m) = 3.960 + Σ_k  (min(m, üst_k) − alt_k)⁺ × fiyat_k     (k = L0…L7)
+```
+
+Yazılım yığını:
+
+```
+yazılım(m) = C_ref(m) × SW_PRICE_LEVEL_FACTOR × (k_z/OS + k_CICS + k_Db2) × topology.software_premium
+```
+
+m, faturalanan MSU'dur (sub-capacity, R4HA tepesi):
+
+```
 faturalanan_MSU = min(R4HA_yük / ham_TPS, 1) × kademe.MSU
+```
 
-Kademe MSU'su, kademe başına **resmî IBM değeridir** [LSPR / EXHIBIT]. Statik modda yük sabit olduğundan R4HA = TPS. Aylık yazılım maliyeti = faturalanan_MSU × $40 × topology.software_premium. GDPS primi M3 için ×1,15, M4 için ×1,30 [ASSUME]. ICF specialty engine olduğundan ek frame yazılım lisansını artırmaz [CFCC].
+GDPS primi M3 için ×1,15, M4 için ×1,30 [ASSUME]; ICF ek frame'i lisansı artırmaz [CFCC]. Yıllık moddaki TFP-SW gelir-nötr kalibrasyonu bu fonksiyonla aynen çalışır: efektif MSU-saat fiyatı, Permanent stratejinin kademeli R4HA faturasından türetilir.
+
+#### 7.1.4. Doğrulama
+
+| MSU | Aylık yığın | $/MSU/ay | z/OS | CICS TS | Db2 |
+|---|---|---|---|---|---|
+| 35 | $51.124 | 1.461 | $26.635 | $13.238 | $11.251 |
+| 150 | $105.639 | 704 | $55.036 | $27.354 | $23.249 |
+| 265 | $144.840 | 547 | $75.459 | $37.505 | $31.876 |
+| 785 | $263.790 | 336 | $137.430 | $68.305 | $58.054 |
+| 1.524 | $374.699 | 246 | $195.212 | $97.024 | $82.463 |
+| 3.059 | $537.212 | 176 | $279.879 | $139.105 | $118.229 |
+| 7.513 | $976.498 | 130 | $508.739 | $252.853 | $214.906 |
+
+- 265 MSU satırı IBM örneğini yeniden üretir (z/OS ve Db2 birebir; CICS 265 MSU'ya ölçeklendiği için örnektekinden yüksek).
+- Bağımsız kontrol: value-4it, ~150 MSU'luk bir sistem için yıllık ~£1M yazılım maliyeti raporluyor [VALUE4IT]. Model 150 MSU'da yıllık ~$1,27M (~£1,0M) veriyor. Kaynak ürün listesini açıklamadığı için bu yalnızca büyüklük mertebesi teyididir.
+
+#### 7.1.5. zIIP (specialty engine)
+
+zIIP, Db2 DRDA istekleri, Java, XML ve bazı Db2 sistem görevlerini (prefetch, log yazımı, utility) genel amaçlı CP'den alan bir specialty engine'dir. zIIP kapasitesi MSU'ya sayılmaz, yani MLC faturasına girmez. Donanımı GP'den ucuzdur ve alt-kapasite (4xx/5xx/6xx) modellerde bile tam hızda çalışır. z16'da zIIP sayısı en fazla 2 × GP CP olabilir.
+
+Modelde:
+
+- ZIIP_OFFLOAD_FRACTION = f = 0,10 [ASSUME]. Uygunluk iş yüküne bağlıdır: yerel CICS-COBOL-Db2 OLTP'de düşüktür (~%0–10), DRDA/Java ağırlıklı OLTP'de %40'a çıkabilir. Varsayılan bilinçli olarak muhafazakâr tutuldu, çünkü yüksek bir değer mainframe lehine bir yanlılık yaratır. 0–0,40 aralığı taranır.
+- Kapasite: GP kademesi 1/(1 − f) kat daha fazla transaction taşır (`raw_tier_tps`). Aynı TPS için daha küçük GP kademesi ve daha az faturalanan MSU gerekir. CoD/corridor hesabındaki tüketilen PCI de (1 − f) ile ölçeklenir.
+- Donanım: zIIP sayısı = ⌈kademe.PCI × f/(1 − f) / 2.253⌉, en fazla 2 × CP. 2.253, tek tam-hız motorun (3931-701) PCI'sidir. zIIP bedeli = n × 2.253 × HARDWARE_COST_PER_MIPS × ZIIP_HW_PRICE_FACTOR (0,25 [ASSUME]). Bedel donanıma eklenir, amortisman ve bakım ona göre işler.
+- Basitleştirme: zIIP'te çalışan payın latency'ye etkisi ayrıca modellenmez; per-CP servis süresi GP'deki işe göre hesaplanır.
+- Kapsam notu: köprü benchmark'ı (REDP-5320, CICS/COBOL) zIIP kullanmaz. f, iş yükü profiline özgü bir ek parametredir ve REDP-5320 profil adımında (yol haritası) daraltılmalıdır.
+
+#### 7.1.6. Duyarlılık
+
+`python src/tools/software_sensitivity.py` (50K TPS, %99,9, 20 TB):
+
+| Parametre | Değer → aylık toplam ($/TPS/ay) |
+|---|---|
+| Eski doğrusal $40/MSU | $75.655 (1,51), yazılım payı %37 |
+| SW_PRICE_LEVEL_FACTOR | 0,5 → $171.071 (3,42) · 1,0 → $294.278 (5,89) · 1,5 → $417.486 (8,35) |
+| ZIIP_OFFLOAD_FRACTION | 0 → $309.923 (6,20, 3931-436) · 0,10 → $294.278 (5,89, 432) · 0,25 → $266.188 (5,32, 426) · 0,40 → $236.028 (4,72, 505) |
+| L4+ düşüş oranı, 50K TPS | ×1,0 → $300.048 · ×0,8 → $294.278 · ×0,7 → $291.393 |
+| L4+ düşüş oranı, 500K TPS | ×1,0 → $2.062.344 (4,12) · ×0,8 → $1.268.333 (2,54) · ×0,7 → $1.027.767 (2,06) |
+
+Yorum:
+
+- Yazılım artık en büyük kalemdir: 50K TPS'te toplamın %84'ü, 1M TPS'te %68'i. Bu yön, mainframe TCO literatüründe yazılımın en büyük kalem olarak raporlanmasıyla tutarlıdır. Ancak oran, donanım fiyatı ve personel henüz kaba ya da eksik olduğu için olduğundan yüksek görünmektedir.
+- Mutlak seviye toplamı yaklaşık ±%40 oynatır, ama maliyet/TPS eğrisinin **şeklini** değiştirmez. Crossover noktasının **yeri** bu parametreye duyarlıdır; varlığı ise değildir.
+- L4+ düşüş oranı 50K TPS'te önemsizdir (785 MSU, yalnızca L4'e dokunur), ama 500K TPS'te (7.513 MSU) $/TPS'i 2,06–4,12 aralığında, yani 2 kat oynatır. Yüksek hacimli crossover analizinde en kritik yazılım varsayımı budur. Tezde böyle raporlanmalı ve gerçek bir AWLC fiyat tablosuyla daraltılmalıdır.
 
 ### 7.2. Donanım Amortismanı
 
@@ -280,7 +356,9 @@ Mainframe donanım fiyatları açık liste olarak yayınlanmaz. Birden çok bağ
 
 HARDWARE_COST_PER_MIPS = \$200 / MIPS — \[PRICE → ASSUME\]
 
-aylık donanım = kademe.PCI × \$200 / (5 yıl × 12 ay)
+aylık donanım = (kademe.PCI × \$200 + zIIP bedeli) / (5 yıl × 12 ay)
+
+zIIP bedeli Bölüm 7.1.5'te tanımlıdır.
 
 Doğrusal kestirim kabadır; gerçekte hacim indirimi ve kurulum maliyeti gibi etkenlerle eğri bükülür, ama yayınlanmış veri olmadığı için bu yapılan en savunulabilir basitleştirmedir. Frame sayısı (n_frames) cost multiplier olarak çarpan görür.
 
@@ -306,24 +384,29 @@ Frame sayısıyla çarpılır. Elektrik fiyatı ABD ticari ortalaması; coğrafy
 
 ### 7.5. Toplam Aylık Maliyet
 
-total = faturalanan_MSU × $40 × software_premium + (hardware_amort + maintenance + energy) × n_frames
+total = yazılım(faturalanan_MSU) × software_premium + (hardware_amort + maintenance + energy) × n_frames + storage
 
 Yazılım kalemi kapasite-MSU bazlı olduğu için frame sayısıyla çarpılmaz; donanım, bakım ve enerji çarpılır [CFCC].
 
 ### 7.6. Maliyet / TPS Eğrisi (mevcut varsayımlarla)
 
-Statik mod, availability 0.999, average RNI:
+Statik mod, availability 0,999 (M1), average RNI, 20 TB veri, f = 0,10:
 
-| TPS | Kademe | Aylık toplam | $/TPS/ay |
-|---|---|---|---|
-| 2.000 | 3931-401 | $5.404 | 2,70 |
-| 10.000 | 3931-601 | $16.962 | 1,70 |
-| 50.000 | 3931-436 | $71.995 | 1,44 |
-| 200.000 | 3931-627 | $275.587 | 1,38 |
-| 800.000 | 3931-788 | $1.082.520 | 1,35 |
-| 1.200.000 | 3931-7E7 | $1.623.183 | 1,35 |
+| TPS | Kademe | Faturalanan MSU kademesi | Aylık toplam | Yazılım payı | $/TPS/ay |
+|---|---|---|---|---|---|
+| 1.000 | 3931-401 | 35 | $44.951 | %67 | 44,95 |
+| 5.000 | 3931-403 | 100 | $89.964 | %81 | 17,99 |
+| 10.000 | 3931-405 | 158 | $121.728 | %84 | 12,17 |
+| 20.000 | 3931-503 | 324 | $176.867 | %85 | 8,84 |
+| 50.000 | 3931-432 | 785 | $294.278 | %84 | 5,89 |
+| 100.000 | 3931-610 | 1.524 | $438.229 | %81 | 4,38 |
+| 200.000 | 3931-624 | 3.059 | $659.870 | %76 | 3,30 |
+| 500.000 | 3931-744 | 7.513 | $1.268.333 | %70 | 2,54 |
+| 1.000.000 | 3931-7A3 | 14.854 | $2.279.113 | %68 | 2,28 |
 
-25K TPS'in üzerinde eğri neredeyse düz. Sebep: donanım fiyatı PCI ile doğrusal, yazılım tek bir $/MSU ile tüketime orantılı. Ölçek ekonomisini (sabit taban maliyet, azalan birim fiyatlı MLC kademeleri) içeren gerçek maliyet yapısı bir sonraki adımda modellenecek (Bölüm 12).
+Eğri artık belirgin biçimde bükülüyor: 1K'dan 1M TPS'e maliyet/TPS ~20 kat düşüyor. Mekanizma kaynaklıdır: AWLC'nin sabit taban ücreti ve MSU arttıkça düşen marjinal fiyatı. Önceki sürümdeki doğrusal fiyatla eğri 25K TPS üstünde düzdü ($1,35–1,44/TPS). Bu, Değerlendirme #1'in "mainframe maliyet/TPS'i düz, çoklu crossover hipotezi zayıf" tehdidine yapısal bir cevaptır: küçük hacimde mainframe pahalıdır, büyük hacimde birim maliyeti hızla düşer. Clustered tarafın eğrisi büyük olasılıkla daha düz olacağından, iki eğrinin kesişmesi için gereken yapı artık mevcuttur.
+
+Kademe seçimi de değişti: aynı kapasiteyi daha düşük MSU ile veren kademe artık açıkça avantajlıdır (örn. 50K TPS'te 32 CP'lik alt-kapasite 3931-432). Bu davranış gerçek kapasite planlamasıyla uyumludur. Ancak düşük hızlı CP'lerin latency etkisi yalnızca latency hedefi verildiğinde bağlayıcı olur.
 
 ## 8. Storage Katmanı — IBM DS8900F
 
@@ -342,7 +425,7 @@ Projenin araştırma boşluğu iddiası, mevcut karşılaştırmaların "yalnız
 | I/O'nun CPU maliyeti | Kanal alt sistemi ve SAP'lerde | Host CPU'sunda (storage yığını, replikasyon) | x86 compute boyutu storage'a bağlı |
 | I/O gecikmesi | zHyperLink ~20 µs, zHPF ~90 µs | Yerel NVMe düşük; ağ üzerinden storage daha yüksek | Latency modelindeki D_io storage olmadan kalibre edilemez |
 
-Modelin sonuçları bu öngörüyü doğruluyor: 50K TPS'te storage, 20 TB veride toplamın %9'u iken 500 TB'ta %68'i (Bölüm 8.7). Compute sabit kalırken storage veri hacmiyle büyüdüğü için veri hacmi, TPS'ten bağımsız ikinci bir crossover ekseni oluşturuyor. Bu, Değerlendirme #1'de zayıf bulunan çoklu crossover hipotezini destekleyen ilk somut mekanizmadır.
+Modelin sonuçları bu öngörüyü doğruluyor: 50K TPS'te storage, 20 TB veride toplamın %2,5'i iken 500 TB'ta %35'i, 2.000 TB'ta %68'i (Bölüm 8.7; AWLC kademeli yazılımla). Compute sabit kalırken storage veri hacmiyle büyüdüğü için veri hacmi, TPS'ten bağımsız ikinci bir crossover ekseni oluşturuyor. Bu, Değerlendirme #1'de zayıf bulunan çoklu crossover hipotezini destekleyen ilk somut mekanizmadır.
 
 #### 8.1.2. Neden DS8900F ve neden tek alternatif
 
@@ -481,19 +564,19 @@ Sonuç: M1'de 69 µs/I/O (D_io 0,69 ms, average RNI). M2–M4'te 129 µs/I/O (1,
 
 ### 8.7. Doğrulama Örnekleri
 
-Statik mod, average RNI, 20 TB veri, varsayılan parametreler:
+Statik mod, average RNI, 20 TB veri, varsayılan parametreler (AWLC kademeli yazılım ve zIIP dahil):
 
 | Senaryo | Seçim | Storage | Storage / toplam |
 |---|---|---|---|
-| 50K TPS, %99,9 | M1, 3931-436 | 1× DS8910F-993, 76 TB ham, $7.496/ay | %9,4 |
-| 50K TPS, %99,999 | M2, 3931-436 | 2× DS8910F-993, $13.778/ay | %10,9 |
-| 50K TPS, %99,99999 | M4, 3931-436 | 4× DS8910F-993, $26.344/ay | %17,7 |
-| 90K TPS, %99,9 | M1, 3931-610 | 900K IOPS (> 0,7 × 860K) → 1× DS8950F-996, $8.419/ay | %6,3 |
-| 300K TPS, %99,9 | M1, 3931-727 | 3M IOPS → 2× DS8950F-996, $10.776/ay | %2,6 |
+| 50K TPS, %99,9 | M1, 3931-432 | 1× DS8910F-993, 76 TB ham, $7.496/ay | %2,5 |
+| 50K TPS, %99,999 | M2, 3931-432 | 2× DS8910F-993, $13.778/ay | %4,0 |
+| 50K TPS, %99,99999 | M4, 3931-432 | 4× DS8910F-993, $26.344/ay | %6,2 |
+| 90K TPS, %99,9 | M1, 3931-609 | 900K IOPS (> 0,7 × 860K) → 1× DS8950F-996, $8.419/ay | %2,0 |
+| 300K TPS, %99,9 | M1, 3931-724 | 3M IOPS → 2× DS8950F-996, $10.776/ay | %1,3 |
 
-Veri hacmi ekseni (50K TPS, %99,9): 5 TB'ta storage toplamın %3,9'u, 100 TB'ta %30,6'sı, 500 TB'ta %68'i, 2.000 TB'ta %89,5'i. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Bu, Değerlendirme #3'te öngörülen ikinci crossover ekseninin (veri hacmi) mainframe tarafında gerçekten oluştuğunu gösteriyor; clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
+Veri hacmi ekseni (50K TPS, %99,9): 5 TB'ta storage toplamın %1,0'ı, 100 TB'ta %10'u, 500 TB'ta %35'i, 2.000 TB'ta %68'i. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Değerlendirme #3'te öngörülen ikinci crossover ekseni (veri hacmi) mainframe tarafında oluşuyor. Ancak gerçekçi yazılım maliyetiyle eksenin devreye girdiği hacim yükseldi: storage'ın toplamın üçte birine ulaşması artık ~500 TB'ı buluyor (önceki sürümde ~100 TB). Clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
 
-Yıllık mod (50K TPS ortalama, 20 TB): storage yıllık toplamın %3–7'si; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
+Yıllık mod (50K TPS ortalama, 20 TB): storage yıllık toplamın %1,4–2,2'si; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
 
 ### 8.8. Duyarlılık
 
@@ -600,15 +683,16 @@ Yazılım (Software Consumption Solution) [TFP-SW]: R4HA yerine yıl boyunca tü
 
 | Preset | A: Permanent | B: Base + CoD | C: TFP | Kazanan, A'ya göre |
 |---|---|---|---|---|
-| steady_oltp | $1,496M (3931-516) | $1,528M (515, 261 gün CoD) | **$1,350M** (512 + corridor 516) | C, −%9,8 |
-| retail_bursty | $3,078M (3931-624) | $2,333M (518 → 624, 20 gün) | **$2,331M** (518 + corridor 523 → 624) | C, −%24,3 (B ile fark %0,1) |
-| batch_heavy | $2,279M (3931-616) | $1,871M (515 → 616, 30 gün) | **$1,763M** (512 + corridor 516 → 616) | C, −%22,6 |
+| steady_oltp | $4,693M (3931-514) | $4,727M (513 → 514, 261 gün CoD) | **$4,576M** (511 + corridor 514) | C, −%2,5 |
+| retail_bursty | $7,322M (3931-621) | **$6,618M** (609 → 621, 20 gün) | $6,647M (609 + corridor 612 → 621) | B, −%9,6 (C ile fark %0,4) |
+| batch_heavy | $6,108M (3931-614) | $5,752M (705 → 709, 30 gün) | **$5,690M** (511 + corridor 514 → 614) | C, −%6,8 |
 
 Yorum:
 
 - **Günlük dalgalanma corridor'un, seyrek mevsimsel tepeler CoD'nin alanıdır.** steady_oltp'de günlük tepe base'i neredeyse her gün aşar; B bunu 261 gün CoD ile karşılamak zorunda kalır ve A'dan pahalıya gelir, C ise bu tepeleri tüketim bazlı corridor'la ucuza emer. retail_bursty'de maliyeti 20 günlük büyük tepeler belirler; B ve C neredeyse eşittir ve kazanan corridor fiyat varsayımlarına göre değişir (Bölüm 9.8).
-- **%100 kuralı bağlayıcıdır.** retail_bursty'de peak kademe 3931-624 (3.059 MSU); bunu geçici olarak açabilmek için base en az 1.530 MSU olmalıdır. Model base'i 3931-518'e (1.560 MSU) çıkarır. Sınır uygulanmadan model 3931-515 (1.351 MSU) seçiyordu; bu, resmî kurala göre ulaşılamayan bir konfigürasyondu.
-- Yazılım, yıllık toplamın %42–57'sidir ve en büyük tek kalemdir; donanım fiyatlama stratejisi yalnızca donanım kalemini yeniden dağıtır. Bu, maliyet/TPS eğrisinin düzlüğü sorununu tek başına çözmez.
+- **%100 kuralı bağlayıcıdır.** Geçici kapasite, satın alınan MSU'nun en fazla iki katına çıkabilir. Bu yüzden tepe kademesi base'in alt sınırını belirler (örn. retail_bursty'de 621'e geçici olarak çıkabilmek için base 609). Sınır uygulanmadığında model resmî kurala göre ulaşılamayan konfigürasyonlar seçiyordu.
+- **Yazılım yıllık toplamın %76–86'sıdır.** Donanım fiyatlama stratejisi (A/B/C) yalnızca kalan ~%15–25'i yeniden dağıtır. Bu yüzden stratejiler arası fark, doğrusal $40/MSU'lu önceki sürüme göre (%10–24) küçüldü (%2,5–10). Strateji seçimini asıl belirleyen, TFP-SW'nin yazılım faturasına getirdiği indirimdir (Bölüm 9.8). retail_bursty'de B ve C arasındaki fark %0,4'tür; varsayılanlarla B öne geçer.
+- TFP'nin yazılım kalemi retail_bursty'de Permanent'ten %1 yüksek çıkar. Gelir-nötr kalibrasyon referans kademenin MSU/PCI oranını kullanır; TFP'de base ve corridor kademelerinin oranı biraz farklıdır. Bu bir model artefaktıdır ve sıralamayı yalnızca B/C neredeyse eşit olduğu bu durumda etkiler.
 
 ### 9.8. Duyarlılık Analizi (Fiyatlama Varsayımları)
 
@@ -616,16 +700,18 @@ Yorum:
 
 | Parametre (varsayılan) | Değer | steady_oltp A / B / C | retail_bursty A / B / C | batch_heavy A / B / C |
 |---|---|---|---|---|
-| CORRIDOR_PREMIUM (1,5) | 1,0 | 1,496 / 1,528 / **1,345** | 3,078 / 2,333 / **2,329** | 2,279 / 1,871 / **1,758** |
-| | 4,0 | 1,496 / 1,528 / **1,376** | 3,078 / **2,333** / 2,341 | 2,279 / 1,871 / **1,787** |
-| CORRIDOR_FRACTION (0,20) | 0,10 | 1,496 / 1,528 / **1,393** | 3,078 / **2,333** / 2,340 | 2,279 / 1,871 / **1,803** |
-| | 0,50 | 1,496 / 1,528 / **1,319** | 3,078 / 2,333 / **2,303** | 2,279 / 1,871 / **1,733** |
-| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 1,496 / 1,528 / **1,390** | 3,078 / **2,333** / 2,378 | 2,279 / 1,871 / **1,802** |
-| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 1,496 / 1,499 / **1,350** | 3,078 / **2,296** / 2,304 | 2,279 / 1,841 / **1,736** |
-| | 4,0 | 1,496 / 1,570 / **1,350** | 3,078 / 2,389 / **2,370** | 2,279 / 1,916 / **1,804** |
-| TFP_SW_DISCOUNT (0) | 0,10 | 1,496 / 1,528 / **1,290** | 3,078 / 2,333 / **2,205** | 2,279 / 1,871 / **1,668** |
+| CORRIDOR_PREMIUM (1,5) | 1,0 | 4,693 / 4,727 / **4,573** | 7,322 / **6,618** / 6,645 | 6,108 / 5,752 / **5,687** |
+| | 4,0 | 4,693 / 4,727 / **4,592** | 7,322 / **6,618** / 6,659 | 6,108 / 5,752 / **5,705** |
+| CORRIDOR_FRACTION (0,20) | 0,10 | 4,693 / 4,727 / **4,611** | 7,322 / **6,618** / 6,659 | 6,108 / 5,752 / **5,729** |
+| | 0,50 | 4,693 / 4,727 / **4,534** | 7,322 / 6,618 / **6,606** | 6,108 / 5,752 / **5,642** |
+| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 4,693 / 4,727 / **4,608** | 7,322 / **6,618** / 6,699 | 6,108 / 5,752 / **5,722** |
+| | 0,50 | 4,693 / 4,727 / **4,640** | 7,322 / **6,618** / 6,751 | 6,108 / **5,752** / 5,753 |
+| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 4,693 / 4,697 / **4,576** | 7,322 / **6,584** / 6,625 | 6,108 / 5,723 / **5,666** |
+| | 4,0 | 4,693 / 4,771 / **4,576** | 7,322 / **6,668** / 6,681 | 6,108 / 5,797 / **5,727** |
+| TFP_SW_DISCOUNT (0) | 0,05 | 4,693 / 4,727 / **4,384** | 7,322 / 6,618 / **6,365** | 6,108 / 5,752 / **5,446** |
+| | 0,10 | 4,693 / 4,727 / **4,192** | 7,322 / 6,618 / **6,083** | 6,108 / 5,752 / **5,201** |
 
-Sonuç: steady_oltp ve batch_heavy'de TFP'nin üstünlüğü tüm taranan aralıkta korunur. retail_bursty'de B ile C arasındaki seçim fiyat varsayımlarına duyarlıdır (fark ±%2 içinde); bu, gerçek sözleşme fiyatları olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemeyeceği anlamına gelir ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
+Sonuç: steady_oltp'de TFP'nin üstünlüğü tüm taranan aralıkta korunur; batch_heavy'de yalnızca çok yüksek corridor aboneliğinde (0,50) B ile eşitlenir. retail_bursty'de varsayılanlarla B kazanır ama fark %1'in altındadır. Donanım parametreleri (corridor, CoD) sıralamayı en fazla binde birkaç oynatırken, **TFP_SW_DISCOUNT'un yalnızca %5'i** C'yi her presette açık ara öne geçirir. Yani yazılım gerçekçi fiyatlandığında strateji kararını donanım değil, IBM ile pazarlıkla belirlenen TFP-SW yazılım fiyatı verir. Gerçek sözleşme fiyatı olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemez ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
 
 ### 9.9. Grafik-Hazır CSV Çıktısı
 
@@ -644,6 +730,7 @@ Work_Emirhan/
   src/tools/build_z16_capacity_table.py  kademe tablosunu ham verilerden üretir
   src/tools/pricing_sensitivity.py     fiyatlama varsayımlarının duyarlılık analizi
   src/tools/storage_sensitivity.py     storage (DS8900F) duyarlılık analizi
+  src/tools/software_sensitivity.py    yazılım yığını (AWLC + zIIP) duyarlılık analizi
   data/ds8900f_models.csv              DS8900F model kataloğu (kaynaklar dosya başlığında)
 ```
 
@@ -662,7 +749,7 @@ python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000 --
 
 ### 10.4. Testler
 
-python src/test_mainframe_model.py — 10 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması, storage boyutlandırmasının (topolojiden kopya sayısı, IOPS'tan model, veri hacminden kapasite) ve zHyperLink / senkron replikasyonun D_io'ya etkisinin beklenen yönde olması. Latency testinin infeasible eşiği artık storage'tan gelen D_io'ya göre hesaplanıyor.
+python src/test_mainframe_model.py — 11 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması, storage boyutlandırmasının (topolojiden kopya sayısı, IOPS'tan model, veri hacminden kapasite) ve zHyperLink / senkron replikasyonun D_io'ya etkisinin beklenen yönde olması. Ayrıca AWLC yazılım fonksiyonunun IBM örnek faturasını (265 MSU) ve Db2 referans eğrisini yeniden üretmesi, toplamın artan ama MSU başına fiyatın azalan olması, maliyet/TPS'in 5K → 500K TPS arasında en az 3 kat düşmesi, zIIP payı arttıkça faturalanan MSU'nun düşmesi ve zIIP sayısının 2:1 sınırına uyması test edilir. Latency testinin infeasible eşiği storage'tan gelen D_io'ya göre hesaplanır.
 
 ## 11. Referanslar ve Kullanım Amaçları
 
@@ -701,7 +788,14 @@ python src/test_mainframe_model.py — 10 test: latency monotonluğu, latency'ni
 
 ### 11.5. Maliyet Verileri (Yarı-Kapalı)
 - **\[PRICE\] —** Bağımsız mainframe fiyat rehberleri (electronics.alibaba buying guides serisi). z15/z16 donanım fiyat aralığı (\$0.5M-\$10M+), yıllık bakım donanım değerinin %10-15'i, alt ekonomik eşik ~150 MIPS. HARDWARE_COST_PER_MIPS = \$200 ve MAINTENANCE_RATE_ANNUAL = 0.125 değerlerinin kaynağıdır. Açık liste fiyatı olmadığı için kestirim.
-- **\[LIC\] —** MLC/MSU lisanslama kaynakları (atonementlicensing.com, redresscompliance.com). Tipik kurumsal 600-2500 MSU → aylık \$15K-\$80K → ~\$25-55/MSU/ay aralığı. SOFTWARE_COST_PER_MSU_MONTH = \$40 (orta değer) bu kaynaktan.
+- **[IBM-2004] —** IBM, "Workload License Charges" sunumu, z/VM sayfası (vm.ibm.com, 2005-Z24, 2004 fiyatları). Db2 PSLC/WLC kademe fiyatları (Base $3.960 ilk 3 MSU dahil; 4–45 $208; 46–175 $88; 176–315 $66; 316+ $50 /MSU/ay) ve örnek sub-capacity faturası (z/OS $75.459 @265 MSU, CICS $32.978 @210 MSU, Db2 $31.876 @265 MSU). AWLC kademe düşüş eğrisinin ve ürün katsayılarının kaynağı. 2004 tarihli olduğu için mutlak seviye SW_PRICE_LEVEL_FACTOR ile taranır.
+- **[IBM-ZNALC] —** IBM, "z Systems New Application License Charges (zNALC)", ZSL03508-USEN-01. Kademe sınırları (Base 3, L0 4–45 … L7 1.976+) ve "kümülatif aylık fiyatlama" ilkesi (aynı yapı AWLC'de geçerli).
+- **[CMG-2020] —** CMG, "Understanding Z Pricing to Control your Software Costs" (2020). AWLC kademe sınırlarının güncel teyidi; R4HA'nın LPAR bazlı tepeye göre faturalanması.
+- **[LONGPELA] —** Longpela Expertise, MLC fiyatlama yazıları. "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi; L4+ için ×0,80 düşüş varsayımının dayanağı.
+- **[VALUE4IT] —** value-4it, "Mainframe Software Costs" yazı dizisi. ~150 MSU ≈ yıllık £1M yazılım; büyüklük mertebesi teyidi.
+- **[TU11] —** IBM Technology Update Pricing (z17 için TU11): AWLC indirimleri kademe bandına göre %12–42. Mutlak seviyenin aşağı yönlü gerekçesi.
+- **[ZIIP] —** IBM z16 zIIP kuralları (SG24-8950): zIIP MSU'ya sayılmaz, alt-kapasite modellerde tam hızda çalışır, zIIP:CP ≤ 2:1. Tipik offload aralığı (%10–25, Redress Compliance) doğrulanmamıştır, yalnızca aralık olarak kullanılır.
+- **\[LIC\] (kullanımdan kaldırıldı) —** Önceki sürümdeki $40/MSU/ay değerinin kaynağı (atonementlicensing.com). Metodolojisi açıklanmadığı ve IBM'in kendi örnek faturasıyla ~7–10 kat çeliştiği için bırakıldı.
 - **\[PWR\] —** Aynı fiyat rehberi (electronics.alibaba) enerji ölçütleri. z15/z16 frame başına 20-40 kW; modelde POWER_KW_PER_SYSTEM = 30 kW (orta).
 
 ### 11.6. Teorik Temel
@@ -714,7 +808,8 @@ python src/test_mainframe_model.py — 10 test: latency monotonluğu, latency'ni
 
 - RNI çarpanları low 1,25 / high 0,70 (ve LSPR RNI kavramıyla ayrıştırılması)
 - HARDWARE_COST_PER_MIPS = $200/PCI (doğrusal kestirim)
-- SOFTWARE_COST_PER_MSU_MONTH = $40 (tek fiyat; gerçekte ürün başına kademeli)
+- Yazılım: SW_PRICE_LEVEL_FACTOR = 1,0 (2004 nominal), L4+ kademe düşüşü ×0,80, ürün katsayılarının 2004 oranlarını koruduğu varsayımı (Bölüm 7.1.6)
+- zIIP: ZIIP_OFFLOAD_FRACTION = 0,10, ZIIP_HW_PRICE_FACTOR = 0,25
 - GDPS yazılım primi (M3 ×1,15, M4 ×1,30)
 - COD_DAILY_MULTIPLIER = 2,5 ve base kademe için "≥ ortalama yükün %120'si" eşiği
 - TFP: CORRIDOR_PREMIUM = 1,5, CORRIDOR_FRACTION = 0,20 (IBM örneğinden), CORRIDOR_SUBSCRIPTION_RATE = 0, TFP_SW_DISCOUNT = 0 (Bölüm 9.8'de taranır)
@@ -736,7 +831,7 @@ python src/test_mainframe_model.py — 10 test: latency monotonluğu, latency'ni
 ### 12.3. Yol Haritası (Değerlendirme #2, M3–M8)
 
 - REDP-5320 iş yükü profilinin çıkarılması (transaction köprüsünün mainframe yarısı; D_io kalibrasyonu)
-- Maliyet yapısı: donanımda taban + drawer + kapasite başına artış (drawer özelliğini karar değişkeni yapar), ürün başına kademeli MLC (z/OS, CICS, Db2), zIIP (TFP-HW zIIP corridor'u dahil)
+- Maliyet yapısı: donanımda taban + drawer + kapasite başına artış (drawer özelliğini karar değişkeni yapar); gerçek bir AWLC fiyat tablosuyla L4+ kademelerin ve mutlak seviyenin kalibrasyonu; TFP-HW zIIP corridor'u
 - Availability: RPO/RTO bağlantısı, M4 düzeltmesi, DR frame için CBU
 - Storage: gerçek bir DS8900F teklifiyle indirim/lisans kalibrasyonu; TS7700 yedekleme; DS8000 G10
 - Personel ve GDPS ayrı kalem

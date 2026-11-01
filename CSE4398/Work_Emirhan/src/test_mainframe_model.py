@@ -157,6 +157,37 @@ def test_storage_sizing_and_mainframe_features():
         m.ZHYPERLINK_ENABLED = old
 
 
+def test_awlc_software_stack_and_ziip():
+    """AWLC: IBM ornek faturasini (265 MSU) yeniden uretmeli, toplam artan ama
+    MSU basina azalan olmali; zIIP payi faturalanan MSU'yu dusurmeli."""
+    # kalibrasyon capalari: z/OS ve Db2 265 MSU'da ornek faturaya esit
+    _, parts = m.software_monthly_cost(265, breakdown=True)
+    assert abs(parts["z/OS"] - 75459) < 1 and abs(parts["Db2"] - 31876) < 1
+    # Db2 referans egrisi IBM tablosunu kumulatif uretir (265 MSU = $30,076)
+    assert abs(m._awlc_reference_curve(265) - 30076) < 1
+    msus = [10, 45, 46, 175, 315, 575, 875, 1315, 1975, 5000]
+    costs = [m.software_monthly_cost(x) for x in msus]
+    assert all(a < b for a, b in zip(costs, costs[1:]))
+    per = [c / x for c, x in zip(costs, msus)]
+    assert all(a > b for a, b in zip(per, per[1:]))
+    # olcek ekonomisi: maliyet/TPS buyuk hacimde belirgin dusmeli
+    lo = m.solve(5000, verbose=False, data_tb=20)[2]["total"] / 5000
+    hi = m.solve(500000, verbose=False, data_tb=20)[2]["total"] / 500000
+    assert hi < lo / 3
+    # zIIP: daha fazla offload -> daha az faturalanan MSU, zIIP motoru > 0
+    old = m.ZIIP_OFFLOAD_FRACTION
+    try:
+        m.ZIIP_OFFLOAD_FRACTION = 0.0
+        r0 = m.solve(50000, verbose=False)
+        assert m.ziip_engines(r0[0]) == 0
+        m.ZIIP_OFFLOAD_FRACTION = 0.25
+        r1 = m.solve(50000, verbose=False)
+        assert r1[0].msu < r0[0].msu and r1[2]["software"] < r0[2]["software"]
+        assert 0 < m.ziip_engines(r1[0]) <= m.ZIIP_PER_CP_LIMIT * r1[0].cps
+    finally:
+        m.ZIIP_OFFLOAD_FRACTION = old
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):
