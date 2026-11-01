@@ -1,0 +1,3 @@
+# Kaynak: K. Stine, "IBM z16 Technical Overview", IBM Z Council 2022 (https://ibm-zcouncil.com/wp-content/uploads/2022/05/z16-Technical-Overview-50M-KennyStine.pdf): z16 200-way = 215,089 PCI. Turetilmis PCI degerlerinin bagimsiz dogrulamasi icin kullanilir; tabloya girmez.
+model,cp,pci
+3931-7K0,200,215089

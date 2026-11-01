@@ -61,7 +61,7 @@ Her karar: **ne** → **neden** → **neyi reddettik**. Yeni chat bu mantığı 
 ### 4.1. Kapsam: "compute gücü/$" değil, full-stack TCO
 - *Orijinal niyet:* hangi altyapının kuruma daha mantıklı/ucuz olduğunu görmek.
 - *Sapma:* model bir ara raw compute gücü/$ karşılaştırmasına kaymıştı.
-- *Neden yanlış:* mainframe'in değeri ve maliyeti entegre yığında (CICS/Db2/MQ lisansı, I/O alt sistemi, yüksek availability topolojisi, operasyon). MIPS/$ ile vCPU/$ karşılaştırması elma-armut; ayrıca kurum satın alırken çekirdek değil çözüm alır.
+- *Neden yanlış:* mainframe'in değeri ve maliyeti entegre yığında (CICS/Db2 lisansı, I/O alt sistemi, yüksek availability topolojisi, operasyon). MIPS/$ ile vCPU/$ karşılaştırması elma-armut; ayrıca kurum satın alırken çekirdek değil çözüm alır.
 - *Karar:* iki tarafın kapsamı genişletilir, "gerçekten muadil iki sistem" karşılaştırılır. Mainframe tarafı da TCO'ya genişleyecek (bugün TCO'nun ~%40–50'sini kapsıyor).
 
 ### 4.2. Mainframe karşısındaki rakip: gerçek hayatta mainframe'den çıkan kurumlar nereye gidiyor?
@@ -80,7 +80,7 @@ Her karar: **ne** → **neden** → **neyi reddettik**. Yeni chat bu mantığı 
 
 ### 4.5. Statik çıktı yerine yıllık (8760 saat) simülasyon + CoD
 - *Neden:* mainframe yazılım faturası **aylık R4HA (rolling 4-hour average) tepe** üzerinden kesilir; tek nokta TPS bunu yakalayamaz. Tepe yönetimi kademe seçimini değiştirir. Workload preset'leri: steady_oltp, retail_bursty, batch_heavy.
-- *CoD:* kullanıcı, On/Off Capacity-on-Demand ile küçük kademe + geçici kapasitenin bazen üst kademeden ucuz olacağını belirtti. Strateji A (kalıcı tepe boyutu) vs B (taban + CoD); model **her zaman ikisini karşılaştırıp** ucuz feasible olanı çıktı verir. CoD günlük maliyeti = kalıcı günlük eşdeğer × 2.5 [ASSUME]. Doğrulama: retail_bursty'de CoD ~%36 tasarruf.
+- *CoD:* kullanıcı, On/Off Capacity-on-Demand ile küçük kademe + geçici kapasitenin bazen üst kademeden ucuz olacağını belirtti. Strateji A (kalıcı tepe boyutu) vs B (taban + CoD); model **her zaman ikisini karşılaştırıp** ucuz feasible olanı çıktı verir. CoD günlük maliyeti = kalıcı günlük eşdeğer × 2.5 [ASSUME]. Doğrulama: retail_bursty'de CoD ~%32 tasarruf (2026-10-31 R4HA düzeltmesinden sonra; önceki %36 Permanent stratejiye R4HA uygulanmadığı için şişkindi).
 
 ### 4.6. On-prem simetrisi (en kritik kapsam düzeltmesi)
 - *Sapma:* mainframe karşısına bulut tabanlı bir yığın konmuştu; mainframe'ler ise on-prem. Kullanıcının tespiti: iki taraf kurumun kendi veri merkezinde karşılaştırılmalı.
@@ -94,7 +94,7 @@ Her karar: **ne** → **neden** → **neyi reddettik**. Yeni chat bu mantığı 
 - **Storage her iki tarafa birlikte eklenir** (asimetri karşılaştırmayı bozar).
 
 ### 4.8. Clustered stack: neden 2×2×2 ve "stack seçim motoru"
-Kullanıcının fikri: mainframe tarafı **sabit/monolitik** (z/OS+CICS+Db2+MQ+DS8900F+GDPS); pratikte kuruma özgü varyasyon az, alternatifi yok. Clustered tarafta ise kurum ihtiyacına göre **farklı stack'ler "en iyi" olabilir**. O yüzden clustered'ı tek sabit stack yerine **iş yüküne göre seçilen** stack olarak modelliyoruz: farklı girdiler için en uygun stack eşleştirilir ve mainframe'e rakip topoloji olarak sunulur. Bu asimetri bilinçli: mainframe seçim özgürlüğü sunmaz, clustered sunar, ve bu maliyetin parçasıdır.
+Kullanıcının fikri: mainframe tarafı **sabit/monolitik** (z/OS+CICS+Db2+DS8900F+GDPS); pratikte kuruma özgü varyasyon az, alternatifi yok. Clustered tarafta ise kurum ihtiyacına göre **farklı stack'ler "en iyi" olabilir**. O yüzden clustered'ı tek sabit stack yerine **iş yüküne göre seçilen** stack olarak modelliyoruz: farklı girdiler için en uygun stack eşleştirilir ve mainframe'e rakip topoloji olarak sunulur. Bu asimetri bilinçli: mainframe seçim özgürlüğü sunmaz, clustered sunar, ve bu maliyetin parçasıdır.
 
 Katman kararları ve gerekçeleri:
 - **Her zaman virtualization katmanı var; bare-metal Kubernetes yok.** *Neden:* enterprise OLTP pratikte neredeyse her zaman sanallaştırılmış; çıplak K8s atipik ve gerçek dünyadan uzaklaştırır.
@@ -102,7 +102,8 @@ Katman kararları ve gerekçeleri:
 - **Container yönetimi (2): vanilla Kubernetes + Red Hat OpenShift.** Açık kaynak vs enterprise destekli lisanslı ikilisi.
 - **Veritabanı (2): PostgreSQL + Patroni (açık kaynak) + Oracle Database (lisanslı).** Her katmanda "açık kaynak + lisanslı" çifti; maliyet farkı büyük (Oracle çekirdek başına ciddi lisans, PostgreSQL lisanssız).
 - **Windows Server dışarıda.** Enterprise OLTP'de Linux baskın; kapsam daraltma.
-- **Storage ve messaging: Phase 1'de tek alternatif** (karar bekliyor); aksi halde kombinasyon sayısı patlar.
+- **Storage: Phase 1'de tek alternatif** (karar bekliyor); aksi halde kombinasyon sayısı patlar.
+- **Messaging kapsam dışı** (kullanıcı kararı, 2026-10-31): iki tarafta da modellenmez; mainframe'de IBM MQ yok.
 - 2×2×2 = 8 kombinasyon; hepsi mantıklı değil, motor workload profiline göre aday aileyi daraltır, her adayı feasibility+maliyet için ayrı değerlendirip **en ucuzu** seçer (hibrit yaklaşım).
 
 **Başlangıç daraltma kuralları:**
@@ -126,7 +127,7 @@ Katman kararları ve gerekçeleri:
 | Orkestrasyon | CICS region yönetimi | Vanilla K8s **veya** OpenShift |
 | Transaction mgmt | CICS TS (ayrı MSU lisansı) | Yok; uygulama + DB ACID'ine delege |
 | Veritabanı | Db2 for z/OS | PostgreSQL+Patroni **veya** Oracle |
-| Messaging | IBM MQ | Phase 1 tek alternatif (açık) |
+| Messaging | Kapsam dışı | Kapsam dışı |
 | Storage | DS8900F | Phase 1 tek alternatif (açık) |
 | Backup/DR | GDPS + tape | Veeam veya alternatif (açık) |
 | Operasyon | Sysprog + DBA + capacity planner | Linux admin + K8s operator + DBA + storage + network |
@@ -141,7 +142,7 @@ Katman kararları ve gerekçeleri:
 
 **Tamam:** z16 katalog (28 temsili / 128 yapısal), LSPR→MIPS→MSU köprüsü, CP-güç köprüsü (z13 benchmark × LSPR oranı), RNI çarpanları, M/M/1 dinamik tavan, M1–M4 + ITIC/Redbook ikili sınır + planlı kesinti düzeltmesi, maliyet (MSU lisans, donanım amortismanı, bakım, enerji), R4HA yıllık simülasyon, On/Off CoD, CLI, CSV.
 
-**Eksik (Phase 2 — TCO genişletme):** CICS lisansı, Db2 lisansı, MQ, DS8900F storage (TB+IOPS+maliyet), GDPS yazılım lisansı (şu an çarpan olarak gömülü), operasyon personeli. Bu kalemlerle mainframe TCO'sunun 2–3 kat büyümesi beklenir. Tam 128 tier tablosu da tamamlanacak.
+**Eksik (Phase 2 — TCO genişletme):** CICS lisansı, Db2 lisansı, DS8900F storage (TB+IOPS+maliyet), GDPS yazılım lisansı (şu an çarpan olarak gömülü), operasyon personeli. Bu kalemlerle mainframe TCO'sunun 2–3 kat büyümesi beklenir. Tam 128 tier tablosu da tamamlanacak.
 
 Önemli sabitler ve formüller `mainframe_model_documentation_v2.md` içinde.
 
@@ -158,7 +159,7 @@ Mainframe'in aynı disiplini: gerçek katalog, gerçek benchmark çapası, açı
 5. **Maliyet (hepsi [ASSUME] aralık):** vSphere ~$300–450/çekirdek/yıl (Broadcom sonrası abonelik); OpenShift ~$2.500–5.000/çekirdek/yıl; Oracle EE $47.500/çekirdek liste (x86 çekirdek faktörü 0.5) + %22/yıl destek; PostgreSQL lisanssız (opsiyonel destek sözleşmesi); operasyon personeli (rol × maaş × node sayısına bağlı kişi sayısı).
 6. **Yıllık simülasyon karşılığı:** Strateji A statik (tepe için sabit N düğüm), Strateji B dinamik (taban + fazla donanım rezervi, HPA/DRS). On-prem'de fark mainframe CoD kadar keskin değil: donanım alınmış, boşta da amortisman ödenir; lisans kullanıma bağlıysa kısmi fark.
 7. **Stack seçim motoru** (Bölüm 4.8).
-8. **Storage, messaging, backup tek alternatiflerinin seçimi** (açık karar).
+8. **Storage ve backup tek alternatiflerinin seçimi** (açık karar). Messaging kapsam dışı.
 
 ---
 
@@ -192,7 +193,7 @@ Mainframe'in aynı disiplini: gerçek katalog, gerçek benchmark çapası, açı
 
 ## 10. Plan
 
-**Hafta 1–2:** mainframe TCO genişletme (CICS/Db2/MQ/DS8900F/GDPS/personel). **3–4:** clustered kalibrasyon araştırması. **5–6:** clustered model (katalog, 2×2×2, köprü, maliyet). **7:** C1–C4 + M/M/c. **8:** stack seçim motoru. **9:** clustered yıllık simülasyon. **10:** karşılaştırma katmanı + parametre taraması. **11:** crossover görselleştirme + duyarlılık. **12:** (zaman kalırsa) stokastik arıza modeli. **13–14:** dokümantasyon, tez, sunum. Phase 3 (Monte Carlo) opsiyonel.
+**Hafta 1–2:** mainframe TCO genişletme (CICS/Db2/DS8900F/GDPS/personel). **3–4:** clustered kalibrasyon araştırması. **5–6:** clustered model (katalog, 2×2×2, köprü, maliyet). **7:** C1–C4 + M/M/c. **8:** stack seçim motoru. **9:** clustered yıllık simülasyon. **10:** karşılaştırma katmanı + parametre taraması. **11:** crossover görselleştirme + duyarlılık. **12:** (zaman kalırsa) stokastik arıza modeli. **13–14:** dokümantasyon, tez, sunum. Phase 3 (Monte Carlo) opsiyonel.
 **B-plan:** kalibrasyon verisi yetersizse yalnız baz stack (PostgreSQL + K8s + VMware) + diğerleri [ASSUME] etiketli.
 **Ayrıca:** açık sistem tarafı için araştırma yapılacak (kullanıcı belirtti).
 
@@ -201,7 +202,7 @@ Mainframe'in aynı disiplini: gerçek katalog, gerçek benchmark çapası, açı
 ## 11. Referanslar
 
 **Mainframe (kalibre):** [LSPR](https://www.ibm.com/support/pages/node/6953823) · [EPS Chapman](https://www.epstrategies.com/library/content/Chapman_Exploring_CPU_Measurements.pdf) · [REDP-5320](https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf) · [SG24-8446](https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf) · [ITIC](https://itic-corp.com/) · [Precisely HA](https://www.precisely.com/glossary/high-availability-ha/) · [IBM SC28-7025 CoD](https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf)
-**Mainframe TCO (araştırılacak):** IBM MLC fiyatları (CICS/Db2/MQ), DS8900F, mainframe DBA/sysprog maaşları.
+**Mainframe TCO (araştırılacak):** IBM MLC fiyatları (CICS/Db2), DS8900F, mainframe DBA/sysprog maaşları.
 **Clustered (araştırılacak):** Dell R760 / HPE DL380 Gen11 / Lenovo SR650 V3 spec+fiyat; vSphere 8 (Broadcom) fiyatı; OpenShift/OpenShift Virt fiyat ve overhead; HammerDB TPC-C (PostgreSQL, Oracle); YugabyteDB TPC-C; Oracle çekirdek faktör tablosu; Oracle MAA; Patroni+etcd, CloudNativePG; OpenShift OLTP referans mimarileri.
 **Meşruiyet/bağlam:** [Capgemini 2024](https://www.capgemini.com/insights/research-library/mainframe-modernization-patterns-for-financial-services/) · [CNCF Infosys](https://www.cncf.io/case-studies/infosysmainframe/) · [Modernization Intel 2025](https://softwaremodernizationservices.com/insights/mainframe-to-cloud-migration-challenges/) · [SNIA](https://www.snia.org/sites/default/files/PerformanceBenchmarking.Nov2010.pdf) · [Simplyblock OLTP vs OLAP](https://www.simplyblock.io/glossary/oltp-vs-olap-storage-io-patterns/) · [Veeam RTO/RPO](https://www.veeam.com/blog/recovery-time-recovery-point-objectives.html)
 

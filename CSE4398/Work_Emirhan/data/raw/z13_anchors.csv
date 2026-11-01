@@ -1,0 +1,4 @@
+# Kaynak: IBM Z LSPR ITR zOSv2r2 (https://www.ibm.com/support/pages/node/6953815), z13 2964 satirlari; erisim 2026-10-31. Benchmark TPS: REDP-5320.
+processor,cp,pci,msu,low,avg,high,benchmark_tps
+2964-718,18,21579,2584,46.26,38.55,32.66,174000
+2964-726,26,29048,3414,63.69,51.89,43.72,227000

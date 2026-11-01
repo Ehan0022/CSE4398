@@ -1,279 +1,250 @@
 """
 ================================================================================
-MAINFRAME (VERTICAL / SCALE-UP) MODEL
+MAINFRAME (VERTICAL / SCALE-UP) MODEL — IBM z16 A01 (3931)
 ================================================================================
 Bu modul, verilen bir is yuku + SLA girdisi icin, onu saglayan minimum maliyetli
-IBM z16 konfigurasyonunu bulur.
+IBM z16 A01 konfigurasyonunu bulur. Degisiklik gecmisi: PROJECT_LOG.md.
+Teknik dokumantasyon: docs/mainframe_model_documentation_v3.md.
 
 Akis:
-  1. CP-guc koprusu (z13 benchmark + LSPR oranlari) ile her z16 kademesinin
-     verilen RNI altinda saglayabilecegi max TPS hesaplanir
-  2. Latency hedefi varsa M/M/1 kuyruk formulunden DINAMIK utilization tavani
-     hesaplanir (her kademe icin ayri); yoksa sabit %90 tavan kullanilir
-  3. availability hedefini karsilayan TOPOLOJILER filtrelenir
-     (single-frame / multi-frame / GDPS Metro / GDPS CA)
-     ITIC bagimsiz alt sinirina karsi kontrol; planned outage indirimi (%90)
-     uygulanmis halı kullanilir
-  4. her feasible topoloji icin gereken TPS'i karsilayan kademeler aday olur
-  5. tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir
+  1. Kademe tablosu (data/z16_a01_capacity.csv, 317 kademe) yuklenir.
+  2. Kapasite koprusu: kademe TPS'i = PCI x TPS_PER_PCI x RNI carpani.
+     TPS_PER_PCI, REDP-5320 z13 benchmark'inin ayni LSPR/PCI olcegindeki
+     z13 kapasitesine bolunmesiyle bulunur (nesiller arasi LSPR oranlari
+     zaten bu olcege gomulu).
+  3. Latency hedefi varsa per-CP M/M/1 + sabit I/O gecikmesinden dinamik
+     utilization tavani; operasyonel %90 tavan her zaman gecerli.
+  4. Availability hedefini karsilayan topolojiler (M1-M4) filtrelenir
+     (ITIC alt siniri + planli kesinti duzeltmesi).
+  5. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir.
+  6. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
+     Base + On/Off CoD, Tailored Fit Pricing (base + corridor + CoD). Gecici
+     kapasite SC28-7025 sinirlarina tabidir (%100 kurali, drawer, alt-kapasite).
 
-KOPRU MANTIGI: MIPS bazli koprü yerine CP-guc koprüsü kullanildi.
-  z13 18 CP gercek TPS -> z13 CP basina TPS -> (LSPR ile guc orani) -> z16 CP TPS
-
-LATENCY MODELI: M/M/1 kuyruk teorisi (Secenek A - dinamik tavan):
-  Verilen (latency_target, percentile) icin her kademe icin max_utilization
-  hesaplanir:  rho_max = 1 - (E[X] / latency_target) * ln(1/(1-p))
-  E[X] = ortalama servis suresi (kademe-ozgu); kademe daha hizliysa daha
-  yuksek utilization'i destekler. Bu, %90 sabit tavan basitlestirmesini eler.
-  Kuyruk modeli SADECE CPU bekleme + servis suresini kapsar; network/disk
-  gibi diger latency kaynaklari ihmal edilir (mainframe'de kucuk).
-
-AVAILABILITY MODELI: IBM Z Resiliency 4-model cercevesi (SG24-8446):
-  M1 = Single-frame sysplex (ICF)         - 1 frame, hw 5-6 nine, total 4-5 nine
-  M2 = Multi-frame failover               - 2 frame, hw 7-8 nine, total 6-7 nine
-  M3 = Fault-tolerant + GDPS Metro/Global - 2 frame, hw 8-9 nine, total 7-8 nine
-  M4 = GDPS Continuous Availability       - 2 site,  hw 7-8 nine, total = hw
-       (M4 planned outage'i da maskeler, planned indirimi uygulanmaz)
+KAPSAM DISI: z16 A02 / AGZ (3932, rack-mount) modelleri ve 3931-400 (yalnizca
+  CF). Bkz. dokumantasyon, Bolum 3.4.
 
 KAYNAK ETIKETLERI:
-  [LSPR]     = IBM Z LSPR ITR tablosu, ibm.com/support/pages/node/6953823 (resmi)
-  [EPS]      = Chapman, "Exploring z/OS WLM CPU Measurements", EPStrategies +
-               IBM ResourceLink (3931-604 capasi: 5511 PCI = 675 MSU)
+  [LSPR]     = IBM Z LSPR ITRRs, ibm.com/support/pages/ibm-z-lspr-itrrs
+               (3931 4xx/5xx/6xx 1-39 CP ve 701-703: PCI, MSU, Low/Avg/High)
+  [LSPR-z13] = IBM Z LSPR ITR zOSv2r2, ibm.com/support/pages/node/6953815
+               (2964-718: 21579 PCI; 2964-726: 29048 PCI)
+  [EXHIBIT]  = IBM Mainframe Exhibit, Full Capacity MSUs (5/2/2025),
+               3931-701..7K0 resmi MSU degerleri
+  [STINE]    = K. Stine, "IBM z16 Technical Overview" (2022): 200-way = 215,089 PCI
+  [SG24-8950]= IBM z16 Technical Introduction: A01'de 317 kapasite seviyesi
+               (200 tam-hiz + 117 alt-kapasite, ilk 39 CP icin)
   [REDP]     = IBM Redpaper REDP-5320 "CICS TS V5.3 Benchmark on IBM z13"
                (18 CP -> 174000 TPS ; 26 CP -> 227000 TPS)
   [REDBOOK]  = IBM Resiliency Redbook SG24-8446, Table 1-4 + Section 2
-               (availability tasarim hedefleri, 4-model cercevesi)
   [ITIC]     = ITIC Global Server Reliability Surveys 2020-2024
-               (bagimsiz endustri olcumu, gercek musteri raporlari)
   [PRECISELY]= Precisely HA Definition: total downtime'in %90'i planned
-               (planned outage indirim kurali)
-  [QUEUE]    = M/M/1 kuyruk teorisi - WLM/RMF response time percentile
-               metodolojisiyle uyumlu; IBM bunu SMF 72.3 / SMF 110.1 ile olcer
-  [CFCC]     = Coupling Facility / ICF aciklamalari (Raften, IBM)
-               ICF specialty engine, yazilim lisansini etkilemez
-  [PRICE]    = Mainframe fiyat rehberleri
-               (donanim ~$0.5M-10M+; bakim %10-15/yil)
+  [QUEUE]    = Kuyruk teorisi (per-CP M/M/1); WLM/RMF percentile metodolojisiyle uyumlu
+  [CFCC]     = Coupling Facility / ICF: specialty engine, yazilim lisansini etkilemez
+  [R4HA]     = IBM MLC sub-capacity: aylik en yuksek 4-saatlik kayan ortalama
+  [COD]      = IBM SC28-7025 Capacity on Demand User's Guide
+  [TFP-HW]   = IBM Tailored Fit Pricing, Hardware Consumption Solution (corridor)
+  [TFP-TCO]  = IBM IT Economics, TFP for IBM Z Hardware maliyet calismasi (2021)
+  [TFP-SW]   = IBM Tailored Fit Pricing, Software Consumption Solution
+  [PRICE]    = Mainframe fiyat rehberleri (donanim ~$0.5M-10M+; bakim %10-15/yil)
   [LIC]      = MSU lisanslama: ~$25-55 / MSU / ay
   [PWR]      = Enerji: 20-40 kW/frame
   [ASSUME]   = Kalibre edilmemis varsayim
 ================================================================================
 """
 
-# ------------------------------------------------------------------------------
-# BOLUM 1 — KAPASITE KOPRUSU SABITLERI
-# ------------------------------------------------------------------------------
-
-# [EPS] Resmi IBM cevrim capasi: 3931-604 modeli
-#   LSPR orani (Average RNI) = 9.85  [LSPR]
-#   mutlak kapasite          = 5511 PCI (= IBM "MIPS")  [EPS]
-#   => 1 LSPR birimi kac MIPS eder:
-LSPR_TO_MIPS = 5511.0 / 9.85          # ~559.5 MIPS / LSPR birimi   [EPS + LSPR]
-
-# [EPS] MSU <-> MIPS orani (ayni 3931-604 capasindan):
-#   675 MSU karsilik 5511 PCI
-MSU_PER_MIPS = 675.0 / 5511.0         # ~0.1225 MSU / MIPS          [EPS]
+import csv
+import math
+import os
 
 # ------------------------------------------------------------------------------
-# BOLUM 2 — z16 KAPASITE KADEMELERI (LSPR tablosundan)
+# BOLUM 1-2 — z16 A01 KAPASITE KADEMELERI (data/z16_a01_capacity.csv)
 # ------------------------------------------------------------------------------
-# [LSPR] IBM z16 A01 (3931), System z9 2094-701 = 1.00 bazli, Average RNI sutunu.
-# Tam tabloda 128 kademe var (4xx/5xx/6xx/7xx serileri x 32 CP).
-# Burada temsil icin her seriden bir alt-kume aldim; tum tablo eklenebilir.
-# Format: (model_kodu, CP_sayisi, LSPR_orani)
-Z16_TIERS_RAW = [
-    # --- 4xx serisi (en dusuk alt-kapasite, 701'in ~%12'si tek CP) [LSPR]
-    ("3931-401", 1, 0.50), ("3931-404", 4, 1.85), ("3931-408", 8, 3.50),
-    ("3931-412", 12, 5.00), ("3931-418", 18, 7.00), ("3931-426", 26, 9.55),
-    ("3931-432", 32, 11.44),
-    # --- 5xx serisi (~%41) [LSPR]
-    ("3931-501", 1, 1.67), ("3931-504", 4, 6.15), ("3931-508", 8, 11.60),
-    ("3931-512", 12, 16.53), ("3931-518", 18, 23.06), ("3931-526", 26, 31.31),
-    ("3931-532", 32, 37.38),
-    # --- 6xx serisi (~%66) [LSPR]
-    ("3931-601", 1, 2.67), ("3931-604", 4, 9.85), ("3931-608", 8, 18.52),
-    ("3931-612", 12, 26.27), ("3931-618", 18, 36.44), ("3931-626", 26, 49.30),
-    ("3931-632", 32, 58.89),
-    # --- 7xx serisi (tam hiz, %100) [LSPR]
-    ("3931-701", 1, 4.02), ("3931-704", 4, 14.71), ("3931-708", 8, 27.65),
-    ("3931-712", 12, 39.13), ("3931-718", 18, 54.06), ("3931-726", 26, 72.88),
-    ("3931-732", 32, 86.89),
-]
+# 317 kademe [SG24-8950]: 4xx/5xx/6xx serileri 1-39 CP, 7xx serisi 1-200 CP.
+# Sutunlar: model, series, cps, pci, msu, lspr_low, lspr_avg, lspr_high,
+#           pci_source, msu_source.
+#   - 4xx/5xx/6xx ve 701-703: PCI, MSU ve LSPR oranlari dogrudan [LSPR].
+#   - 704-7K0: MSU resmi [EXHIBIT]; PCI, MSU/PCI oran egrisinden turetilmis
+#     (DERIVED_FROM_MSU). Dogrulama: 7K0 icin turetilen 215,099 PCI,
+#     IBM'in yayimladigi 215,089 ile %0.004 fark [STINE]; bilinen satirlarda
+#     birini-disarida-birak hatasi maks %1.07. Uretim: src/tools/build_z16_capacity_table.py
+# PCI ("Processor Capacity Index") IBM'in "MIPS" icin kullandigi addir;
+# kodda tarihsel nedenle tier.mips = tier.pci.
+# MSU artik kademe basina resmi degerdir (sabit MSU/MIPS orani kullanilmaz).
+
+_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+Z16_CAPACITY_CSV = os.path.join(_DATA_DIR, "z16_a01_capacity.csv")
 
 
 class Tier:
-    """Bir z16 kapasite kademesi."""
-    def __init__(self, model, cps, lspr):
+    """Bir z16 A01 kapasite kademesi."""
+    def __init__(self, model, series, cps, pci, msu, lspr_avg, pci_source):
         self.model = model
-        self.cps = cps
-        self.lspr = lspr                       # [LSPR] kapasite orani
-        self.mips = lspr * LSPR_TO_MIPS        # mutlak MIPS  [EPS kopru]
-        self.msu = self.mips * MSU_PER_MIPS    # yazilim fiyatlama birimi [EPS]
+        self.series = series                   # '4xx' / '5xx' / '6xx' / '7xx'
+        self.cps = cps                         # fiziksel CP sayisi
+        self.pci = pci                         # [LSPR] ya da turetilmis
+        self.mips = pci                        # geriye uyumluluk (PCI = IBM "MIPS")
+        self.msu = msu                         # [LSPR] / [EXHIBIT] resmi MSU
+        self.lspr = lspr_avg                   # z9 2094-701 = 1.00 olcegi
+        self.pci_source = pci_source
 
     def __repr__(self):
         return (f"{self.model} ({self.cps} CP, "
-                f"{self.mips:,.0f} MIPS, {self.msu:,.0f} MSU)")
+                f"{self.pci:,.0f} PCI, {self.msu:,.0f} MSU)")
 
 
-Z16_TIERS = sorted([Tier(m, c, l) for (m, c, l) in Z16_TIERS_RAW],
-                   key=lambda t: t.mips)
+def load_tiers(path=Z16_CAPACITY_CSV):
+    tiers = []
+    with open(path) as f:
+        for r in csv.DictReader(f):
+            tiers.append(Tier(r["model"], r["series"], int(r["cps"]),
+                              float(r["pci"]), float(r["msu"]),
+                              float(r["lspr_avg"]), r["pci_source"]))
+    return sorted(tiers, key=lambda t: (t.pci, t.model))
+
+
+Z16_TIERS = load_tiers()
 
 
 # ------------------------------------------------------------------------------
-# BOLUM 3 — CP-GUC KOPRUSU: z13 BENCHMARK -> z16 CP BASINA TPS
+# BOLUM 3 — KAPASITE KOPRUSU: z13 BENCHMARK -> PCI BASINA TPS
 # ------------------------------------------------------------------------------
-# Yontem: z13'un gercek olculmus TPS'inden CP basina TPS'i bul, sonra z16/z13
-# CP guc oranini (LSPR'den) uygulayarak z16 CP basina TPS'i turet.
+# LSPR, tum nesilleri ayni baza (System z9 2094-701 = 1.00) gore olcer; PCI bu
+# oranin sabit bir katidir (~559.8 PCI / LSPR birimi). Bu yuzden bir benchmark'in
+# TPS'ini, benchmark'in kostugu sistemin PCI'sine bolmek, nesilden bagimsiz bir
+# "PCI basina TPS" katsayisi verir. n-way olcekleme kaybi (sublinearite) her
+# kademenin PCI'sinde zaten yer alir; ayrica uygulanmaz.
 #
-# Neden MIPS koprusu yerine bu? Cunku MIPS nesiller arasi tam normalize degil.
-# z16 Telum islemcisi mimari olarak z13'ten farkli (cache, pipeline, bellek
-# hiyerarsisi). LSPR ayni baz sisteme gore iki nesli olcuyor, bu yuzden CP-CP
-# karsilastirmasi MIPS varsayimindan daha dogrudan.
-#
-# [REDP] z13 benchmark capalari:
-_Z13_18CP_TPS = 174000.0    # [REDP] 2964-718 (18 CP, tam hiz LPAR)
-_Z13_26CP_TPS = 227000.0    # [REDP] 2964-726 (26 CP, tam hiz LPAR)
+# [REDP] z13 benchmark capalari ve [LSPR-z13] ayni sistemlerin PCI'si:
+_Z13_718_TPS, _Z13_718_PCI = 174000.0, 21579.0   # 2964-718 (18 CP), LSPR avg 38.55
+_Z13_726_TPS, _Z13_726_PCI = 227000.0, 29048.0   # 2964-726 (26 CP), LSPR avg 51.89
 
-# [LSPR] Karsilik gelen z13 ve z16 7xx kademelerinin LSPR oranlari:
-# Benchmark 18 CP'de yapildi -> 18-CP karsilastirmasi:
-_Z13_718_LSPR = 38.55       # [LSPR] 2964-718
-_Z16_718_LSPR = 54.06       # [LSPR] 3931-718
-# Ayni sekilde 26 CP icin:
-_Z13_726_LSPR = 51.89       # [LSPR] 2964-726
-_Z16_726_LSPR = 72.88       # [LSPR] 3931-726
+_TPS_PER_PCI_718 = _Z13_718_TPS / _Z13_718_PCI     # ~8.06
+_TPS_PER_PCI_726 = _Z13_726_TPS / _Z13_726_PCI     # ~7.81
+# Iki nokta arasindaki ~%3 fark, benchmark is yukunun LSPR karisimindan biraz
+# daha kotu olceklendigini gosterir. Ortalama kullanilir; fark belirsizlik
+# araligi olarak raporlanir.
+TPS_PER_PCI = (_TPS_PER_PCI_718 + _TPS_PER_PCI_726) / 2.0   # ~7.94 [REDP+LSPR]
 
-# CP guc orani: ayni CP sayisinda z16 z13'ten kac kat guclu.
-# Bu oran, ayni "mantiksal CP sayisi" konfigurasyonunda z16'nin z13'e gore
-# kapasite katsayisi. Sublinearite zaten her iki nesilde benzer sekilde devrede
-# oldugu icin oran 18 ve 26 CP icin yakin cikiyor.
-_CP_POWER_RATIO_18 = _Z16_718_LSPR / _Z13_718_LSPR   # ~1.402
-_CP_POWER_RATIO_26 = _Z16_726_LSPR / _Z13_726_LSPR   # ~1.405
-
-# z13'te CP basina gercek TPS (benchmark'tan, sublinearite dahil):
-_Z13_TPS_PER_CP_18 = _Z13_18CP_TPS / 18.0
-_Z13_TPS_PER_CP_26 = _Z13_26CP_TPS / 26.0
-
-# z16'da CP basina TPS = z13 CP TPS x guc orani (ayni CP sayisinda):
-_Z16_TPS_PER_CP_18 = _Z13_TPS_PER_CP_18 * _CP_POWER_RATIO_18
-_Z16_TPS_PER_CP_26 = _Z13_TPS_PER_CP_26 * _CP_POWER_RATIO_26
-
-# Iki nokta arasi sublinearite z16'da: 18 CP daha verimli, 26 CP daha az verimli.
-# Ortalamayi "baz" katsayi olarak aliyoruz (average RNI, full-speed 7xx CP):
-BASE_TPS_PER_CP = (_Z16_TPS_PER_CP_18 + _Z16_TPS_PER_CP_26) / 2.0   # [REDP+LSPR]
-
-# UYARI: bu katsayi tam-hiz (7xx) CP icin. Alt-kapasite kademelerinde (4xx/5xx/
-# 6xx) CP'nin etkin gucu daha dusuk; bu zaten Tier nesnesinin LSPR oraninda
-# ic.eriliyor (3931-501'in 1 CP'si, 3931-701'in 1 CP'sinden farkli LSPR'ye
-# sahip). Asagidaki cp_equivalents() bu farki LSPR oraniyla normalize ediyor.
 
 def cp_equivalents(tier):
-    """
-    Bir kademenin 'tam-hiz 7xx CP esdegerini' verir. Yani alt-kapasite CP'leri
-    daha az "etkin CP" sayilir, cunku LSPR oranlarinda zaten az kapasite gozukur.
-    Ornek: 3931-501 (1 CP, LSPR=1.67) ile 3931-701 (1 CP, LSPR=4.02) -> 501
-    aslinda ~0.42 tam-hiz CP esdegerinde.
-    """
-    # 1 tam-hiz 7xx CP'nin LSPR'si ~4.02 [LSPR 3931-701]
-    LSPR_PER_FULL_CP = 4.02
-    return tier.lspr / LSPR_PER_FULL_CP
+    """Kademenin 'tam-hiz tek CP' (3931-701) cinsinden kapasitesi (bilgi amacli)."""
+    return tier.pci / 2253.0   # 3931-701 = 2253 PCI [LSPR]
 
-# [ASSUME] RNI (islem karmasikligi) carpanlari, BASE_TPS_PER_CP'ye uygulanir.
-# average=1.0 benchmark noktasi. low/high carpanlari kalibre edilebilir.
+
+# [ASSUME] Islem karmasikligi carpanlari (TPS kapasitesine uygulanir).
+# average = 1.0 = REDP benchmark is yuku. low/high kalibre edilmedi.
+# Not: LSPR'nin Low/High RNI sutunlari ayni is icin "nest intensity" etkisini
+# olcer (39-way'de ~+%15 / -%10); buradaki carpan ise transaction basina is
+# miktarindaki farki da temsil ediyor. Iki kavramin ayrilmasi acik is.
 RNI_MULTIPLIER = {
-    "low":     1.25,   # hafif islem -> daha fazla TPS/CP   [ASSUME]
-    "average": 1.00,   # REDP benchmark noktasi             [REDP baz]
-    "high":    0.70,   # agir islem -> daha az TPS/CP       [ASSUME]
+    "low":     1.25,   # hafif islem -> daha fazla TPS   [ASSUME]
+    "average": 1.00,   # REDP benchmark noktasi          [REDP baz]
+    "high":    0.70,   # agir islem -> daha az TPS       [ASSUME]
 }
-# NOT: MIPS-bazli modelde RNI carpani gereken MIPS'i artiriyordu; CP-bazli
-# modelde mantik tersine doner -> RNI carpani CP basina TPS kapasitesini
-# ETKILIYOR. low: ayni CP daha cok islem yapar (>1), high: daha az (<1).
 
 # ------------------------------------------------------------------------------
-# BOLUM 4 — LATENCY MODELI (M/M/1 kuyrugu, dinamik utilization tavani)
+# BOLUM 4 — LATENCY MODELI (per-CP M/M/1 kuyrugu + sabit I/O gecikmesi)
 # ------------------------------------------------------------------------------
-# Latency hedefi -> dinamik utilization tavani.
-# Kuyruk teorisinin klasik M/M/1 sonucu, percentile yanit suresi icin:
-#   R(p) = E[X] * (1 / (1 - rho)) * ln(1 / (1 - p))
-# Burada:
-#   E[X] = ortalama servis suresi = 1 / max_tps_at_full_utilization
-#   rho  = utilization (= TPS / max_tps_raw)
-#   p    = istenen percentile (orn. 0.99 = p99)
+# MODEL:
+#   - Sunucu = fiziksel CP. CP basina servis hizi mu = raw_tps / c, yani
+#     E[X_cpu] = c / raw_tps. Alt-kapasite (4xx/5xx/6xx) CP'leri LSPR geregi
+#     daha yavas oldugu icin E[X] daha buyuk cikar (gercek bir mainframe etkisi:
+#     alt-kapasite kademeleri daha uzun CPU suresi = daha kotu yanit suresi).
+#   - TUTUCU kuyruk: c adet bagimsiz M/M/1 kuyrugu, her birine lambda/c.
+#     Paylasimli kuyruktan (M/M/c) daha kotu yanit verir -> gercek bir ust sinir.
+#       R_cpu(p) = E[X_cpu] / (1 - rho) * ln(1/(1-p))
+#   - Sabit I/O gecikmesi (kuyruktan bagimsiz, deterministik):
+#       D_io = IOPS_PER_TX[rni] * IO_SERVICE_TIME_S
+#     IOPS_PER_TX proje kararindan (RNI hem CPU hem I/O yogunlugunu temsil eder,
+#     low ~5, avg ~10, high ~20 IOPS/tx). Tum I/O'lar sirali/senkron sayilir
+#     (tutucu; gercekte bir kismi paralel ve buffer pool'dan karsilanir).
+#   - Toplam: R(p) = D_io + R_cpu(p)
+#   - Cozum:  rho_max = 1 - E[X_cpu] * ln(1/(1-p)) / (latency_target - D_io)
+#   - Operasyonel tavan HER ZAMAN gecerli: rho = min(rho_latency, 0.90).
+#     Latency hedefi tavani sadece DUSUREBILIR, asla yukseltemez.
 #
-# Modelin sertligini koruyan basitlestirmeler:
-#   - M/M/1 yaklasimi (tek-sira) -> tutucu bir UST SINIR verir;
-#     gercek mainframe c paralel CP'siyle daha iyi davranir (M/M/c daha gevsek).
-#   - Sadece CPU kuyrugundan kaynaklanan bekleme + servis modellenir;
-#     network/disk I/O gibi diger latency kaynaklari mainframe'de kucuk
-#     oldugu icin ihmal edilir (clustered tarafta eklencektir).
-#
-# Sectigimiz yaklasim (Secenek A):
-#   Verilen (TPS, latency_target, percentile) icin, her kademenin
-#   destekleyebilecegi MAX_UTILIZATION'i ayri ayri turetiriz.
-#   M/M/1 formulundan rho icin cozdugumuzde:
-#       rho_max = 1 - (E[X] / latency_target) * ln(1/(1-p))
-#   Bu degerin 0-1 arasinda olmasi gerekir; <=0 cikarsa kademe yetersiz.
+# Sinirlamalar: network ihmal (mainframe ic fabric), lock/latch beklemesi ve
+# Db2 buffer pool isabet orani modellenmez. Clustered taraf ayni yapiyi
+# kullanmali (ayni kuyruk ailesi + D_io + ag gecikmesi) ki iki taraf ayni
+# disiplinle karsilastirilsin.
 
-import math
+# Operasyonel utilization tavani: latency hedefi olsa da olmasa da asilmaz.
+# Mainframe kapasite planlama pratiginde %90 uzeri burst ve mikro ariza
+# riskini artirir. [ASSUME, pratik dayanak]
+DEFAULT_UTILIZATION_CEILING = 0.90
+# Geriye uyumluluk icin eski isim; ayni deger.
+HARD_UTILIZATION_CAP = DEFAULT_UTILIZATION_CEILING
 
-# Fallback (latency parametresi verilmediginde kullanilan global tavan):
-DEFAULT_UTILIZATION_CEILING = 0.90  # [ASSUME, pratik dayanak]
+# [ASSUME] Transaction basina I/O sayisi (proje karari, RNI'ya bagli).
+# Bu deger Phase 2'de DS8900F IOPS boyutlandirmasinda da kullanilacak;
+# clustered tarafa da ayni tablo tasinmali.
+IOPS_PER_TX = {
+    "low":      5,
+    "average": 10,
+    "high":    20,
+}
 
-# Hard upper bound: latency hedefi cok gevsek olsa bile, mainframe
-# capacity planning pratiginde %95 utilization uzerinde calistirmak
-# operasyonel olarak risklidir (bursts, mikro arizalar). [ASSUME]
-HARD_UTILIZATION_CAP = 0.95
+# [ASSUME] DS8900F + FICON/zHPF tek I/O servis suresi. Sektor araligi
+# ~0.1-0.5 ms (zHyperLink okumalarinda ~0.02 ms). Orta deger 0.3 ms.
+IO_SERVICE_TIME_S = 0.0003
+
+
+def io_delay_seconds(rni="average"):
+    """Transaction basina deterministik I/O gecikmesi (saniye)."""
+    return IOPS_PER_TX[rni] * IO_SERVICE_TIME_S
+
+
+def raw_tier_tps(tier, rni="average"):
+    """Kademenin %100 utilization'daki ham TPS kapasitesi."""
+    return tier.pci * TPS_PER_PCI * RNI_MULTIPLIER[rni]
 
 
 def avg_service_time_seconds(tier, rni="average"):
     """
-    Ortalama servis suresi E[X] = 1 / max_tps_raw  (saniye).
-    max_tps_raw = utilization tavansiz ham kapasite.
+    CP basina ortalama CPU servis suresi E[X_cpu] = c / raw_tps (saniye).
+    c = fiziksel CP sayisi. Bir transaction tek bir CP'de islenir.
     """
-    cp_equiv = cp_equivalents(tier)
-    raw_tps = cp_equiv * BASE_TPS_PER_CP * RNI_MULTIPLIER[rni]
+    raw_tps = raw_tier_tps(tier, rni)
     if raw_tps <= 0:
         return float('inf')
-    return 1.0 / raw_tps
+    return tier.cps / raw_tps
 
 
 def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile):
     """
-    M/M/1 percentile latency formulunden rho'yu cozer.
-    Verilen latency hedefini saglayan maksimum utilization'i dondurur.
-    Donen deger 0-1 arasi (HARD_UTILIZATION_CAP ile sinirli).
+    Latency hedefini saglayan maksimum utilization (0 ile 0.90 arasi).
+    Latency hedefi yoksa operasyonel tavan (0.90) doner.
+    0 donerse kademe bu hedefi hicbir yukte saglayamaz.
     """
     if latency_target_seconds is None:
-        # Latency hedefi verilmediyse default tavan
         return DEFAULT_UTILIZATION_CEILING
 
     ex = avg_service_time_seconds(tier, rni)
-    if ex >= latency_target_seconds:
-        # Servis suresi bile hedeften buyukse, hicbir utilization saglamaz
+    budget = latency_target_seconds - io_delay_seconds(rni)
+    ln_term = math.log(1.0 / (1.0 - percentile))
+    if budget <= 0 or ex * ln_term >= budget:
+        # I/O gecikmesi ya da bos sistemdeki CPU suresi bile hedefi asiyor
         return 0.0
 
-    # rho_max = 1 - (E[X] / R) * ln(1/(1-p))
-    ln_term = math.log(1.0 / (1.0 - percentile))
-    rho_max = 1.0 - (ex / latency_target_seconds) * ln_term
-
-    # 0 ile HARD_UTILIZATION_CAP arasinda sinirla
-    rho_max = max(0.0, min(rho_max, HARD_UTILIZATION_CAP))
-    return rho_max
+    rho_max = 1.0 - (ex * ln_term) / budget
+    return max(0.0, min(rho_max, DEFAULT_UTILIZATION_CEILING))
 
 
 def expected_latency_at(tier, rni, tps, percentile):
     """
-    Verilen TPS yukunde, M/M/1 percentile yanit suresini hesaplar (saniye).
-    Bilgi amacli; feasibility yerine raporlama/debug icin.
+    Verilen TPS yukunde tahmini percentile yanit suresi (saniye):
+    D_io + per-CP M/M/1 percentile. Bilgi amacli.
     """
-    ex = avg_service_time_seconds(tier, rni)
-    cp_equiv = cp_equivalents(tier)
-    raw_tps = cp_equiv * BASE_TPS_PER_CP * RNI_MULTIPLIER[rni]
+    raw_tps = raw_tier_tps(tier, rni)
     if raw_tps <= 0:
         return float('inf')
     rho = tps / raw_tps
     if rho >= 1.0:
         return float('inf')
+    ex = avg_service_time_seconds(tier, rni)
     ln_term = math.log(1.0 / (1.0 - percentile))
-    return ex * (1.0 / (1.0 - rho)) * ln_term
+    return io_delay_seconds(rni) + ex * (1.0 / (1.0 - rho)) * ln_term
 
 # ------------------------------------------------------------------------------
 # AVAILABILITY MODELI — IBM Z Resiliency Models (Redbook SG24-8446)
@@ -447,8 +418,7 @@ def tier_max_tps(tier, rni="average", latency_target_seconds=None, percentile=0.
     Latency hedefi varsa, M/M/1 formulunden o kademenin destekleyebilecegi
     max utilization hesaplanir; gercek tavan budur.
     """
-    cp_equiv = cp_equivalents(tier)
-    raw_tps = cp_equiv * BASE_TPS_PER_CP * RNI_MULTIPLIER[rni]
+    raw_tps = raw_tier_tps(tier, rni)
     rho_max = max_utilization_for_latency(tier, rni, latency_target_seconds, percentile)
     return raw_tps * rho_max
 
@@ -459,19 +429,35 @@ def is_capacity_feasible(tier, tps_required, rni="average",
     return tier_max_tps(tier, rni, latency_target_seconds, percentile) >= tps_required
 
 
-def monthly_cost(tier, topology):
+def consumed_msu(tier, load_tps, rni="average"):
+    """
+    Sub-capacity MLC icin faturalanan MSU: kademenin kurulu MSU'sunun, verilen
+    yukun (R4HA) kullandigi kismi. Kurulu kapasiteyi asamaz.  [R4HA]
+    """
+    raw = raw_tier_tps(tier, rni)
+    if raw <= 0:
+        return tier.msu
+    return min(load_tps / raw, 1.0) * tier.msu
+
+
+def monthly_cost(tier, topology, billed_msu=None):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
-      - software:     tier.msu x USD/MSU x software_premium (GDPS gibi)
+      - software:     billed_msu x USD/MSU x software_premium (GDPS gibi)
+                      billed_msu verilmezse kademenin tam kurulu MSU'su
+                      (full-capacity fiyatlama) kullanilir. Sub-capacity
+                      fiyatlamada billed_msu = aylik R4HA tepesinde tuketilen
+                      MSU'dur (bkz. consumed_msu).
                       ICF specialty engine oldugundan ek frame'ler software
                       premium'a girmez; sadece GDPS yazilimi premium ekler.
       - hardware:     tam fiyat x cost_multiplier (frame sayisi)
       - maintenance:  hardware'a oranli
       - energy:       frame sayisi x kW x elektrik
     """
+    msu = tier.msu if billed_msu is None else billed_msu
     # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
-    software = tier.msu * SOFTWARE_COST_PER_MSU_MONTH * topology.software_premium
+    software = msu * SOFTWARE_COST_PER_MSU_MONTH * topology.software_premium
     # Donanim amortismani - frame carpani  [PRICE/ASSUME]
     hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
@@ -524,7 +510,7 @@ def solve(tps, availability=0.999, rni="average",
         else:
             print(f"         latency hedefi: yok -> default %{DEFAULT_UTILIZATION_CEILING*100:.0f} "
                   f"utilization tavani")
-        print(f"  -> CP koprusu: z16 tam-hiz CP basina ~{BASE_TPS_PER_CP:,.0f} TPS "
+        print(f"  -> Kapasite koprusu: ~{TPS_PER_PCI:.2f} TPS / PCI "
               f"(average RNI) [REDP+LSPR]")
         print(f"     RNI carpani: x{RNI_MULTIPLIER[rni]}")
         print(f"  -> Feasible topolojiler (ITIC low + planned indirimi):")
@@ -544,7 +530,9 @@ def solve(tps, availability=0.999, rni="average",
     for topo in feasible_topos:
         for tier in Z16_TIERS:
             if is_capacity_feasible(tier, tps, rni, latency_target_s, percentile_frac):
-                cost = monthly_cost(tier, topo)
+                # Sabit yukte R4HA = tps -> sub-capacity faturasi  [R4HA]
+                cost = monthly_cost(tier, topo,
+                                    billed_msu=consumed_msu(tier, tps, rni))
                 rho_max = max_utilization_for_latency(tier, rni,
                                                       latency_target_s, percentile_frac)
                 max_t = tier_max_tps(tier, rni, latency_target_s, percentile_frac)
@@ -593,25 +581,74 @@ def solve(tps, availability=0.999, rni="average",
 
 
 # ==============================================================================
-# YILLIK SIMULASYON — WORKLOAD PROFILE + R4HA + ON/OFF COD
+# YILLIK SIMULASYON — WORKLOAD PROFILE + FIYATLAMA STRATEJILERI
 # ==============================================================================
-# Bu bolum, statik tek-nokta sorgusunu yillik bir saat-saat simulasyona evrir.
+# 8760 saatlik profil uzerinde uc donanim edinim/fiyatlama stratejisi
+# karsilastirilir:
 #
-# Akis:
-#   1. generate_hourly_profile() ile 8760 saatlik TPS vektoru uretilir
-#   2. R4HA: aylik kayan 4-saatlik en yuksek ortalama (MLC faturalandirma birimi)
-#   3. Iki strateji karsilastirilir:
-#      A) Permanent: peak yuku karsilayan kademe surekli acik
-#      B) Base+CoD: kucuk base + peak gunlerde On/Off CoD ile gecici upgrade
-#   4. En ucuz strateji secilir, grafik-hazir cikti dondurulur
+#   A) Permanent    : peak'i karsilayan kademe satin alinir. Yazilim: aylik
+#                     R4HA sub-capacity MLC.
+#   B) Base + CoD   : kucuk base kademe satin alinir; base'in yetmedigi gunlerde
+#                     On/Off CoD ile gecici upgrade (24 saatlik periyot, gun
+#                     basina aktif kapasite uzerinden ucret). Yazilim: R4HA.
+#   C) TFP          : Tailored Fit Pricing for IBM Z. Base kademe satin alinir;
+#                     ustune her zaman acik bir "capacity corridor" (Hardware
+#                     Consumption Solution) gelir ve corridor yalnizca base'in
+#                     ustunde FIILEN tuketilen MSU kadar, saatlik olculerek
+#                     ucretlendirilir. Corridor'u asan gunlerde On/Off CoD.
+#                     Donanim corridor'u, yazilim tarafinda Software Consumption
+#                     Solution'i sart kostugu icin yazilim yillik tuketilen
+#                     MSU-saat x efektif fiyat ile faturalanir (R4HA yok).
+#
+# Gecici kapasite (corridor + CoD) kisitlari [COD]:
+#   - Gecici kapasite satin alinan (permanent) kapasitenin %100'unu asamaz
+#     (MSU olarak; yani aktif toplam <= 2 x base MSU).
+#   - Fiziksel olarak kurulu kapasiteyi asamaz: gecici aktivasyon drawer
+#     ekleyemez, yani hedef CP sayisi kurulu ozelligin (Max39/82/125/168/200)
+#     sinirinda kalir. Ozellik varsayilan olarak base'i tasiyan en kucuk
+#     ozelliktir (bos drawer satin alinmaz); drawer maliyeti modele girene
+#     kadar (yol haritasi M4) bu bir parametredir.
+#   - Gecici upgrade permanent alt-kapasite seviyesinin altina inemez ve
+#     seviyeyi 4xx/5xx'e cekemez; hedef seri, base serisi veya daha yuksek
+#     6xx/7xx olabilir. CP sayisi azalamaz.
 #
 # KAYNAKLAR (mevcut etiketlere ek):
-#   [COD]   = IBM SC28-7025 "IBM Z and LinuxONE Capacity on Demand User's Guide"
-#             On/Off CoD: gun-bazli faturalandirma, 24-saatlik aktivasyon periyodu
-#   [R4HA]  = IBM MLC sub-capacity: aylik en yuksek 4-saatlik kayan ortalama
+#   [COD]     = IBM SC28-7025 Capacity on Demand User's Guide: On/Off CoD
+#               24 saatlik faturalama, %100 siniri, kurulu kapasite siniri,
+#               alt-kapasite kurallari, ayni anda tek aktif kayit.
+#   [TFP-HW]  = IBM Z Content Solutions, "Tailored Fit Pricing": Hardware
+#               Consumption Solution = "always-on, subscription-based corridor
+#               of pay-for-use capacity, on top of purchased capacity";
+#               z15+, z/OS genel amacli CP, Software Consumption Solution sart.
+#   [TFP-TCO] = IBM IT Economics, TFP for IBM Z Hardware maliyet calismasi
+#               (Mayis 2021): ornek corridor = yeni is yukunun %20'si.
+#   [TFP-SW]  = IBM TFP Software Consumption Solution: gecmis 12 ayin MSU
+#               tuketiminden efektif MSU fiyati, yillik MSU taahhudu, buyume
+#               icin indirimli fiyat; R4HA/tepe/capping yok.
+#   [R4HA]    = IBM MLC sub-capacity: aylik en yuksek 4-saatlik kayan ortalama
 # ==============================================================================
 
-COD_DAILY_MULTIPLIER = 2.5   # [ASSUME] On/Off CoD daily / permanent daily
+# --- On/Off CoD -----------------------------------------------------------------
+COD_DAILY_MULTIPLIER = 2.5        # [ASSUME] CoD gunluk ucret / permanent gunluk maliyet
+COD_MAX_TEMP_FRACTION = 1.0       # [COD] gecici <= satin alinan kapasitenin %100'u (MSU)
+
+# z16 A01 CPC drawer ozellikleri: (ad, musteri CP'si icin maks. PU) [SG24-8950]
+CPC_FEATURES = [("Max39", 39), ("Max82", 82), ("Max125", 125),
+                ("Max168", 168), ("Max200", 200)]
+
+# --- TFP donanim corridor'u -----------------------------------------------------
+CORRIDOR_FRACTION = 0.20          # [TFP-TCO] corridor genisligi = base MSU'nun %20'si
+CORRIDOR_PREMIUM = 1.5            # [ASSUME] corridor MSU-saat fiyati / permanent esdegeri
+CORRIDOR_SUBSCRIPTION_RATE = 0.0  # [ASSUME] aylik sabit abonelik, corridor kapasitesinin
+                                  #   permanent aylik donanim maliyetine orani
+
+# --- TFP yazilim (consumption) --------------------------------------------------
+TFP_SW_DISCOUNT = 0.0             # [ASSUME] 0 = IBM'in gelir-notr baz fiyati [TFP-SW]
+
+# --- Strateji aramasi -----------------------------------------------------------
+BASE_MIN_AVG_FACTOR = 1.2         # [ASSUME] base kademe ortalama yukun >= 1.2 katini tasimali
+
+_SERIES_ORDER = {"4xx": 0, "5xx": 1, "6xx": 2, "7xx": 3}
 
 # Workload preset'leri
 WORKLOAD_PRESETS = {
@@ -698,81 +735,178 @@ def monthly_r4ha_peaks(hourly_load):
     return peaks
 
 
+def feature_for_cps(cps):
+    """Verilen CP sayisini tasiyan en kucuk CPC drawer ozelligi -> (ad, maks CP)."""
+    for name, max_cps in CPC_FEATURES:
+        if cps <= max_cps:
+            return name, max_cps
+    raise ValueError(f"{cps} CP z16 A01'de kurulamaz")
+
+
+def is_allowed_temporary_target(base, target, feature_max_cps=None):
+    """Base kademeden hedef kademeye gecici (corridor/CoD) upgrade izinli mi? [COD]"""
+    if feature_max_cps is None:
+        feature_max_cps = feature_for_cps(base.cps)[1]
+    if target.pci <= base.pci or target.cps < base.cps:
+        return False
+    if target.cps > feature_max_cps:                       # drawer eklenemez
+        return False
+    if target.msu > base.msu * (1.0 + COD_MAX_TEMP_FRACTION) + 1e-9:   # %100 siniri
+        return False
+    if target.series != base.series:                       # alt-kapasite kurallari
+        if target.series not in ("6xx", "7xx"):
+            return False
+        if _SERIES_ORDER[target.series] < _SERIES_ORDER[base.series]:
+            return False
+    return True
+
+
+def temporary_targets(base, feature_max_cps=None):
+    """Base'den gecici olarak ulasilabilen kademeler, PCI'ya gore sirali."""
+    return [t for t in Z16_TIERS
+            if is_allowed_temporary_target(base, t, feature_max_cps)]
+
+
+def max_temporary_tier(base, feature_max_cps=None):
+    """Gecici olarak ulasilabilen en buyuk kademe (yoksa base'in kendisi)."""
+    targets = temporary_targets(base, feature_max_cps)
+    return targets[-1] if targets else base
+
+
+def corridor_tier_for(base, fraction=None, feature_max_cps=None):
+    """Corridor tavani: base MSU x (1 + fraction)'i karsilayan en kucuk izinli
+    kademe. Kisitlar izin vermezse ulasilabilen en buyuk kademe; hic hedef
+    yoksa None (corridor kurulamaz)."""
+    if fraction is None:
+        fraction = CORRIDOR_FRACTION
+    targets = temporary_targets(base, feature_max_cps)
+    if not targets:
+        return None
+    want = base.msu * (1.0 + fraction)
+    for t in targets:
+        if t.msu >= want:
+            return t
+    return targets[-1]
+
+
+def hw_monthly_cost_per_pci():
+    """Permanent donanimin PCI basina aylik maliyeti (amortisman + bakim)."""
+    return (HARDWARE_COST_PER_MIPS / (HARDWARE_AMORTIZATION_YEARS * 12) +
+            HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL / 12)
+
+
+def consumed_pci(load_tps, rni="average"):
+    """Bir yukun tukettigi kapasite, PCI cinsinden (%100 utilization esdegeri)."""
+    return load_tps / (TPS_PER_PCI * RNI_MULTIPLIER[rni])
+
+
 def simulate_yearly(profile, tier, topology, rni="average",
-                     latency_ms=None, latency_percentile=99,
-                     cod_peak_tier=None):
-    """Bir yillik simulasyon: saatlik kapasite/utilization + maliyet."""
+                    latency_ms=None, latency_percentile=99,
+                    strategy="permanent", corridor_tier=None,
+                    feature_max_cps=None, sw_price_per_msu_hour=None):
+    """Bir yillik saat-saat simulasyon ve maliyet.
+
+    strategy:
+      "permanent"   : yalnizca `tier` (satin alinan) kapasite.
+      "base_cod"    : `tier` + gerektiginde On/Off CoD (gun bazinda).
+      "tfp"         : `tier` + her zaman acik `corridor_tier` + gerekirse CoD.
+                      Yazilim, sw_price_per_msu_hour x tuketilen MSU-saat.
+
+    Her gun icin, gunun tepe yukunu tasiyan en kucuk izinli gecici kademe
+    aktive edilir (CoD 24 saatlik periyotla faturalanir [COD]). Yuk
+    izinli en buyuk gecici kademeyi de asarsa None doner (strateji infeasible).
+
+    Gecici kapasite ucretleri tek frame icin hesaplanir: coklu-frame
+    topolojilerde ikinci frame yalnizca failover icindir ve onun gecici
+    kapasitesi CBU'nun konusudur (yol haritasi M5).
+    """
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     pct = latency_percentile / 100.0
-
-    base_max_tps = tier_max_tps(tier, rni, latency_target_s, pct)
-    if cod_peak_tier is not None:
-        peak_max_tps = tier_max_tps(cod_peak_tier, rni, latency_target_s, pct)
-        peak_cost = monthly_cost(cod_peak_tier, topology)
-    else:
-        peak_max_tps = base_max_tps
-        peak_cost = None
-
     HOURS = len(profile)
+    DAYS = HOURS // 24
+
+    def max_tps(t):
+        return tier_max_tps(t, rni, latency_target_s, pct)
+
+    if strategy == "tfp":
+        if corridor_tier is None:
+            return None
+        always_on = corridor_tier
+    else:
+        always_on = tier
+    always_on_tps = max_tps(always_on)
+    targets = []
+    if strategy in ("base_cod", "tfp"):
+        targets = [t for t in temporary_targets(tier, feature_max_cps)
+                   if t.pci > always_on.pci]
+
+    # --- gun bazinda aktif kademe -------------------------------------------
+    day_tier = [always_on] * DAYS
+    for d in range(DAYS):
+        peak = max(profile[d*24:(d+1)*24])
+        if peak <= always_on_tps:
+            continue
+        chosen = next((t for t in targets if max_tps(t) >= peak), None)
+        if chosen is None:
+            return None
+        day_tier[d] = chosen
+
     cap_tps = [0.0] * HOURS
     util = [0.0] * HOURS
     cod_active = [False] * HOURS
-
     for i in range(HOURS):
-        load = profile[i]
-        if load <= base_max_tps or cod_peak_tier is None:
-            cap_tps[i] = base_max_tps
-            cod_active[i] = False
-        else:
-            cap_tps[i] = peak_max_tps
-            cod_active[i] = True
-        util[i] = (load / cap_tps[i]) if cap_tps[i] > 0 else 0.0
+        t = day_tier[min(i // 24, DAYS - 1)]
+        cap_tps[i] = max_tps(t)
+        cod_active[i] = t is not always_on
+        util[i] = profile[i] / cap_tps[i] if cap_tps[i] > 0 else 0.0
+    cod_days = sum(1 for t in day_tier if t is not always_on)
 
-    cod_days = sum(1 for d in range(365)
-                   if any(cod_active[d*24 + h] for h in range(24)))
-
-    r4ha_peaks = monthly_r4ha_peaks(profile)
-
+    # --- permanent donanim (her frame) ---------------------------------------
     base_cost = monthly_cost(tier, topology)
-    base_software_monthly = base_cost["software"]
-    base_other_monthly = (base_cost["hardware_amort"] +
-                          base_cost["maintenance"] +
+    base_other_monthly = (base_cost["hardware_amort"] + base_cost["maintenance"] +
                           base_cost["energy"])
+    monthly_other = [base_other_monthly] * 12
 
+    # --- On/Off CoD: gun basina, aktif gecici kapasite (always-on'un ustu) ----
+    hw_pci_day = hw_monthly_cost_per_pci() / 30.0
+    cod_cost_total = sum((t.pci - always_on.pci) * hw_pci_day * COD_DAILY_MULTIPLIER
+                         for t in day_tier if t is not always_on)
+
+    # --- TFP corridor: base'in ustunde tuketilen PCI, saatlik [TFP-HW] -------
+    corridor_cost_total = 0.0
+    if strategy == "tfp":
+        hw_pci_hour = hw_monthly_cost_per_pci() / HOURS_PER_MONTH
+        for load in profile:
+            used = min(consumed_pci(load, rni), corridor_tier.pci) - tier.pci
+            if used > 0:
+                corridor_cost_total += used * hw_pci_hour * CORRIDOR_PREMIUM
+        corridor_cost_total += ((corridor_tier.pci - tier.pci) * hw_monthly_cost_per_pci()
+                                * CORRIDOR_SUBSCRIPTION_RATE * 12)
+
+    # --- yazilim -------------------------------------------------------------
+    r4ha_peaks = monthly_r4ha_peaks(profile)
+    month_len = HOURS_PER_MONTH_INT
     monthly_software = []
-    monthly_other = []
+    msu_hours = 0.0
     for m in range(12):
-        month_has_cod = any(cod_active[m*730 + i]
-                            for i in range(min(730, HOURS - m*730)))
-        if month_has_cod and cod_peak_tier is not None:
-            # R4HA tepesi base'i asiyorsa, software faturasi orantili artar
-            ratio = r4ha_peaks[m] / base_max_tps if base_max_tps > 0 else 1.0
-            if ratio > 1.0 and peak_max_tps > base_max_tps:
-                peak_ratio = peak_max_tps / base_max_tps
-                alpha = min(max((ratio - 1.0) / (peak_ratio - 1.0), 0.0), 1.0)
-                msoft = base_software_monthly + alpha * (
-                    peak_cost["software"] - base_software_monthly)
-            else:
-                msoft = base_software_monthly
+        hours = range(m * month_len, min((m + 1) * month_len, HOURS))
+        if strategy == "tfp":
+            mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], rni)
+                     for h in hours)
+            msu_hours += mh
+            monthly_software.append(mh * (sw_price_per_msu_hour or 0.0)
+                                    * topology.software_premium)
         else:
-            msoft = base_software_monthly
-        monthly_software.append(msoft)
-        monthly_other.append(base_other_monthly)
+            # ayin en buyuk aktif kademesi faturalanabilir tavandir
+            cap_tier = max((day_tier[min(h // 24, DAYS - 1)] for h in hours),
+                           key=lambda t: t.pci)
+            billed = consumed_msu(cap_tier, r4ha_peaks[m], rni)
+            monthly_software.append(
+                monthly_cost(cap_tier, topology, billed_msu=billed)["software"])
 
     yearly_software = sum(monthly_software)
     yearly_other = sum(monthly_other)
-
-    if cod_peak_tier is not None and cod_days > 0:
-        peak_daily = (peak_cost["hardware_amort"] +
-                      peak_cost["maintenance"] +
-                      peak_cost["energy"]) / 30.0
-        base_daily = base_other_monthly / 30.0
-        cod_daily_charge = (peak_daily - base_daily) * COD_DAILY_MULTIPLIER
-        cod_cost_total = cod_days * cod_daily_charge
-    else:
-        cod_cost_total = 0.0
-
-    yearly_total = yearly_software + yearly_other + cod_cost_total
+    yearly_total = yearly_software + yearly_other + cod_cost_total + corridor_cost_total
 
     return {
         "hourly_load": profile,
@@ -782,27 +916,54 @@ def simulate_yearly(profile, tier, topology, rni="average",
         "monthly_r4ha_peaks": r4ha_peaks,
         "monthly_cost_software": monthly_software,
         "monthly_cost_other": monthly_other,
+        "msu_hours": msu_hours,
         "cod_days": cod_days,
         "cod_cost_total": cod_cost_total,
+        "corridor_cost_total": corridor_cost_total,
         "yearly_software": yearly_software,
         "yearly_other": yearly_other,
         "yearly_total": yearly_total,
         "base_tier": tier,
-        "peak_tier": cod_peak_tier,
+        "corridor_tier": corridor_tier if strategy == "tfp" else None,
+        "peak_tier": max(day_tier, key=lambda t: t.pci) if cod_days else None,
+        "feature": feature_for_cps(tier.cps)[0] if feature_max_cps is None
+                   else next(n for n, c in CPC_FEATURES if c == feature_max_cps),
         "topology": topology,
+        "strategy": strategy,
     }
 
 
+HOURS_PER_MONTH_INT = 730
+
+STRATEGY_LABELS = {
+    "permanent": "Strateji A: Permanent peak kademe",
+    "base_cod":  "Strateji B: Base kademe + On/Off CoD",
+    "tfp":       "Strateji C: Tailored Fit Pricing (base + corridor + CoD)",
+}
+
+
+def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, rni="average"):
+    """TFP-SW efektif MSU-saat fiyati [TFP-SW]: IBM fiyati musterinin gecmis
+    12 ayindan belirler. Burada 'gecmis yil' = ayni profilin permanent
+    konfigurasyondaki R4HA faturasi; fiyat bu faturayi ayni yilin tuketilen
+    MSU-saatine bolerek bulunur (gelir-notr), sonra TFP_SW_DISCOUNT uygulanir."""
+    msu_hours = sum(consumed_msu(reference_tier, load, rni) for load in profile)
+    base_sw = reference_sim["yearly_software"] / reference_sim["topology"].software_premium
+    return base_sw / msu_hours * (1.0 - TFP_SW_DISCOUNT)
+
+
 def solve_yearly(preset_name=None, yearly_avg_tps=50000,
-                  peak_avg_ratio=None, peak_days=None,
-                  availability=0.999, rni="average",
-                  latency_ms=None, latency_percentile=99,
-                  verbose=True):
-    """Yillik simulasyon + iki strateji karsilastirmasi."""
+                 peak_avg_ratio=None, peak_days=None,
+                 availability=0.999, rni="average",
+                 latency_ms=None, latency_percentile=99,
+                 strategies=("permanent", "base_cod", "tfp"),
+                 verbose=True):
+    """Yillik simulasyon + strateji karsilastirmasi. En ucuz strateji, diger
+    stratejilerin en iyi sonuclari 'alternatives' listesinde doner."""
     profile = generate_hourly_profile(preset_name=preset_name,
-                                       yearly_avg_tps=yearly_avg_tps,
-                                       peak_avg_ratio=peak_avg_ratio,
-                                       peak_days=peak_days)
+                                      yearly_avg_tps=yearly_avg_tps,
+                                      peak_avg_ratio=peak_avg_ratio,
+                                      peak_days=peak_days)
     peak_load = max(profile)
     avg_load = sum(profile) / len(profile)
 
@@ -826,62 +987,60 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
             print(f"  Latency hedefi: p{latency_percentile} < {latency_ms:g} ms")
         print()
 
-    best_overall = None
-    alt_overall = None
-
+    best_by_strategy = {}
     for topo in feasible_topos:
-        # Strateji A: peak'i karsilayan permanent kademe
-        perm_tier = None
-        for tier in Z16_TIERS:
-            if is_capacity_feasible(tier, peak_load, rni,
-                                     latency_target_s, pct):
-                perm_tier = tier
-                break
+        perm_tier = next((t for t in Z16_TIERS
+                          if is_capacity_feasible(t, peak_load, rni, latency_target_s, pct)),
+                         None)
         if perm_tier is None:
             continue
+        sim_perm = simulate_yearly(profile, perm_tier, topo, rni, latency_ms,
+                                   latency_percentile, strategy="permanent")
+        sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, rni)
 
-        sim_perm = simulate_yearly(profile, perm_tier, topo, rni,
-                                    latency_ms, latency_percentile,
-                                    cod_peak_tier=None)
-        sim_perm["strategy"] = "permanent"
-        sim_perm["strategy_label"] = "Strateji A: Permanent peak kademe"
-
-        # Strateji B: base + CoD
-        best_base_sim = None
-        for base_tier in Z16_TIERS:
-            if base_tier.mips >= perm_tier.mips:
+        candidates = {"permanent": [sim_perm]} if "permanent" in strategies else {}
+        for base in Z16_TIERS:
+            if base.pci >= perm_tier.pci:
+                break
+            if not is_capacity_feasible(base, avg_load * BASE_MIN_AVG_FACTOR, rni,
+                                        latency_target_s, pct):
                 continue
-            if not is_capacity_feasible(base_tier, avg_load * 1.2, rni,
-                                         latency_target_s, pct):
+            # hizli eleme: izinli en buyuk gecici kademe bile peak'i tasimiyorsa atla
+            if tier_max_tps(max_temporary_tier(base), rni, latency_target_s, pct) < peak_load:
                 continue
-            sim_b = simulate_yearly(profile, base_tier, topo, rni,
-                                     latency_ms, latency_percentile,
-                                     cod_peak_tier=perm_tier)
-            if best_base_sim is None or sim_b["yearly_total"] < best_base_sim["yearly_total"]:
-                best_base_sim = sim_b
-        if best_base_sim is not None:
-            best_base_sim["strategy"] = "base_plus_cod"
-            best_base_sim["strategy_label"] = "Strateji B: Base kademe + On/Off CoD"
+            if "base_cod" in strategies:
+                s = simulate_yearly(profile, base, topo, rni, latency_ms,
+                                    latency_percentile, strategy="base_cod")
+                if s is not None:
+                    candidates.setdefault("base_cod", []).append(s)
+            if "tfp" in strategies:
+                corr = corridor_tier_for(base)
+                if corr is not None:
+                    s = simulate_yearly(profile, base, topo, rni, latency_ms,
+                                        latency_percentile, strategy="tfp",
+                                        corridor_tier=corr,
+                                        sw_price_per_msu_hour=sw_price)
+                    if s is not None:
+                        candidates.setdefault("tfp", []).append(s)
 
-        topo_candidates = [sim_perm]
-        if best_base_sim is not None:
-            topo_candidates.append(best_base_sim)
-        topo_best = min(topo_candidates, key=lambda s: s["yearly_total"])
+        for name, sims in candidates.items():
+            best = min(sims, key=lambda s: s["yearly_total"])
+            if (name not in best_by_strategy or
+                    best["yearly_total"] < best_by_strategy[name]["yearly_total"]):
+                best_by_strategy[name] = best
 
-        if best_overall is None or topo_best["yearly_total"] < best_overall["yearly_total"]:
-            alt_overall = best_overall
-            best_overall = topo_best
-            for c in topo_candidates:
-                if c is not topo_best:
-                    if alt_overall is None or c["yearly_total"] < alt_overall["yearly_total"]:
-                        alt_overall = c
-
-    if best_overall is None:
+    if not best_by_strategy:
         if verbose:
             print("HATA: hicbir feasible kombinasyon bulunamadi")
         return None
 
-    best_overall["alternative"] = alt_overall
+    for name, s in best_by_strategy.items():
+        s["strategy_label"] = STRATEGY_LABELS[name]
+    ranked = sorted(best_by_strategy.values(), key=lambda s: s["yearly_total"])
+    best_overall = ranked[0]
+    best_overall["alternatives"] = ranked[1:]
+    best_overall["alternative"] = ranked[1] if len(ranked) > 1 else None
+    best_overall["by_strategy"] = best_by_strategy
     if verbose:
         _print_yearly_summary(best_overall)
     return best_overall
@@ -892,35 +1051,33 @@ def _print_yearly_summary(sim):
     print("YILLIK SIMULASYON OZETI")
     print("=" * 70)
     print(f"Secilen strateji: {sim['strategy_label']}")
-    print(f"Topoloji:         {sim['topology']}")
-    print(f"Base kademe:      {sim['base_tier']}")
-    if sim['peak_tier']:
-        print(f"Peak (CoD) kademe: {sim['peak_tier']}")
-        print(f"On/Off CoD aktif: {sim['cod_days']} gun / 365")
-    else:
-        print(f"On/Off CoD:       yok (permanent peak kademe)")
-
-    util = sim["hourly_utilization"]
-    avg_util = sum(util) / len(util)
-    p50 = sorted(util)[len(util)//2]
-    max_u = max(util)
-    print(f"\nUtilization istatistikleri:")
-    print(f"  ortalama: {avg_util:.1%}  |  medyan: {p50:.1%}  |  maksimum: {max_u:.1%}")
-
-    print(f"\nYillik maliyet:")
-    print(f"  Yazilim (R4HA bazli):      ${sim['yearly_software']:>14,.0f}")
-    print(f"  Donanim + bakim + enerji:  ${sim['yearly_other']:>14,.0f}")
-    print(f"  On/Off CoD ek maliyeti:    ${sim['cod_cost_total']:>14,.0f}")
-    print(f"  {'TOPLAM:':<29} ${sim['yearly_total']:>14,.0f}")
-
-    if sim.get("alternative"):
-        alt = sim["alternative"]
-        savings = alt["yearly_total"] - sim["yearly_total"]
-        pct = (savings / alt["yearly_total"] * 100) if alt["yearly_total"] > 0 else 0
-        print(f"\nAlternatif strateji ({alt['strategy_label']}):")
-        print(f"  Yillik toplam: ${alt['yearly_total']:,.0f}")
-        print(f"  Tasarruf: ${savings:,.0f} ({pct:.1f}%)")
+    _print_strategy_detail(sim)
+    for alt in sim.get("alternatives", []):
+        diff = alt["yearly_total"] - sim["yearly_total"]
+        pct = diff / alt["yearly_total"] * 100 if alt["yearly_total"] > 0 else 0
+        print(f"\nAlternatif: {alt['strategy_label']}")
+        _print_strategy_detail(alt)
+        print(f"  -> secilen strateji bundan ${diff:,.0f} (%{pct:.1f}) ucuz")
     print()
+
+
+def _print_strategy_detail(sim):
+    print(f"  Topoloji:          {sim['topology']}")
+    print(f"  Base kademe:       {sim['base_tier']}  [{sim['feature']}]")
+    if sim.get("corridor_tier"):
+        print(f"  Corridor tavani:   {sim['corridor_tier']}")
+    if sim["peak_tier"]:
+        print(f"  CoD tepe kademe:   {sim['peak_tier']}  ({sim['cod_days']} gun / 365)")
+    util = sim["hourly_utilization"]
+    print(f"  Utilization (tavana gore): ort. {sum(util)/len(util):.1%}  maks. {max(util):.1%}")
+    sw_label = "consumption, MSU-saat" if sim["strategy"] == "tfp" else "R4HA"
+    print(f"  Yazilim ({sw_label}):".ljust(34) + f"${sim['yearly_software']:>13,.0f}")
+    print(f"  Donanim + bakim + enerji:".ljust(34) + f"${sim['yearly_other']:>13,.0f}")
+    if sim["corridor_cost_total"]:
+        print(f"  TFP corridor kullanimi:".ljust(34) + f"${sim['corridor_cost_total']:>13,.0f}")
+    if sim["cod_cost_total"]:
+        print(f"  On/Off CoD:".ljust(34) + f"${sim['cod_cost_total']:>13,.0f}")
+    print(f"  TOPLAM:".ljust(34) + f"${sim['yearly_total']:>13,.0f}")
 
 
 def export_yearly_csv(sim, filepath):
@@ -968,33 +1125,25 @@ def print_calibration():
     print("=" * 70)
     print("KALIBRASYON KONTROLU")
     print("=" * 70)
-    print(f"LSPR -> MIPS katsayisi   : {LSPR_TO_MIPS:.2f} MIPS / LSPR birimi [EPS+LSPR]")
-    print(f"MSU / MIPS orani         : {MSU_PER_MIPS:.4f} [EPS]")
+    n = {}
+    for t in Z16_TIERS:
+        n[t.series] = n.get(t.series, 0) + 1
+    derived = sum(1 for t in Z16_TIERS if t.pci_source != "LSPR")
+    print(f"Kademe tablosu : {len(Z16_TIERS)} kademe {dict(sorted(n.items()))}")
+    print(f"                 PCI kaynagi: {len(Z16_TIERS)-derived} LSPR, {derived} MSU'dan turetilmis")
     print()
-    print("CP-GUC KOPRUSU (z13 -> z16) [REDP + LSPR]:")
-    print(f"  z13 18 CP: {_Z13_18CP_TPS:,.0f} TPS -> "
-          f"{_Z13_TPS_PER_CP_18:,.1f} TPS/z13-CP")
-    print(f"  z16/z13 CP guc orani (718 vs 718) : {_CP_POWER_RATIO_18:.3f}")
-    print(f"  -> z16 18 CP TPS/CP esdegeri      : {_Z16_TPS_PER_CP_18:,.1f}")
+    print("KAPASITE KOPRUSU (z13 benchmark -> PCI basina TPS) [REDP + LSPR]:")
+    print(f"  2964-718: {_Z13_718_TPS:,.0f} TPS / {_Z13_718_PCI:,.0f} PCI = {_TPS_PER_PCI_718:.3f} TPS/PCI")
+    print(f"  2964-726: {_Z13_726_TPS:,.0f} TPS / {_Z13_726_PCI:,.0f} PCI = {_TPS_PER_PCI_726:.3f} TPS/PCI")
+    print(f"  TPS_PER_PCI (ortalama): {TPS_PER_PCI:.3f}  "
+          f"(iki nokta arasi fark %{100*(_TPS_PER_PCI_718-_TPS_PER_PCI_726)/TPS_PER_PCI:.1f})")
     print()
-    print(f"  z13 26 CP: {_Z13_26CP_TPS:,.0f} TPS -> "
-          f"{_Z13_TPS_PER_CP_26:,.1f} TPS/z13-CP")
-    print(f"  z16/z13 CP guc orani (726 vs 726) : {_CP_POWER_RATIO_26:.3f}")
-    print(f"  -> z16 26 CP TPS/CP esdegeri      : {_Z16_TPS_PER_CP_26:,.1f}")
-    print()
-    print(f"BASE_TPS_PER_CP (tam-hiz z16, avg RNI): {BASE_TPS_PER_CP:,.0f} TPS/CP")
-    print("  (18 ve 26 CP noktalarinin ortalamasi, sublinearite-aware)")
-    print()
-    print("Ornek z16 kademeleri (kapasite koprusu uygulanmis):")
-    for t in Z16_TIERS[:5]:
-        cp_eq = cp_equivalents(t)
-        max_tps = tier_max_tps(t, "average")
-        print(f"   {t}  | CPeq={cp_eq:.2f} | max TPS={max_tps:,.0f}")
-    print("   ...")
-    t = Z16_TIERS[-1]
-    cp_eq = cp_equivalents(t)
-    max_tps = tier_max_tps(t, "average")
-    print(f"   {t}  | CPeq={cp_eq:.2f} | max TPS={max_tps:,.0f}")
+    print("Ornek z16 kademeleri:")
+    for code in ["3931-401", "3931-604", "3931-701", "3931-718", "3931-726",
+                 "3931-739", "3931-7A0", "3931-7K0"]:
+        t = next(x for x in Z16_TIERS if x.model == code)
+        print(f"   {str(t):<45} | ham TPS={raw_tier_tps(t):>10,.0f} | "
+              f"%90'da={tier_max_tps(t, 'average'):>10,.0f} | PCI kaynagi={t.pci_source}")
 
 
 def run_demo():

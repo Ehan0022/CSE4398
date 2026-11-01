@@ -24,7 +24,6 @@ Model şu anda mainframe altyapısının compute katmanını ve yıllık simüla
 ### 1.3. Henüz Modele Eklenmemiş Bileşenler (Phase 2'de eklenecek)
 - CICS Transaction Server lisansı
 - Db2 for z/OS lisansı
-- IBM MQ for z/OS
 - DS8900F storage modeli (kapasite + IOPS)
 - Operasyon personeli (sysprog + DBA)
 - Stokastik arıza modeli ve Monte Carlo
@@ -143,23 +142,47 @@ REDP benchmark IBM'in "average RNI" olarak sınıflandırdığı iş yükünde �
 
 Mainframe dünyasında WLM (Workload Manager) zaten latency'yi percentile bazında ifade eder — örneğin bir CICS service class hedefi "işlerin %90'ı 0.8 saniye içinde". RMF SMF 72.3 ve SMF 110.1 kayıtlarıyla ölçülür. Modelimiz aynı percentile-tabanlı yaklaşımı kullanır.
 
-### 5.3. Formül
+### 5.3. Düzeltme Notu (2026-10-31)
 
-M/M/1 kuyruğunda percentile yanıt süresi:
+Önceki sürümde ortalama servis süresi E\[X\] = 1 / (kademenin toplam ham TPS'i) alınıyordu. Bu, bütün kademeyi tek bir çok hızlı sunucu sayar ve iki soruna yol açıyordu:
+- **Tutucu değil, iyimserdi.** Aynı utilization'da hızı c·μ olan tek sunuculu M/M/1, c sunuculu M/M/c'den *daha düşük* yanıt süresi verir. "M/M/1 tutucu üst sınırdır" iddiası bu kurulumla sağlanmıyordu.
+- **Latency girdisi etkisizdi ve ters çalışıyordu.** E\[X\] mikrosaniye mertebesinde çıktığından her makul hedefte tavan %95 sınırına yapışıyordu. Latency hedefi verilince tavan %90'dan %95'e çıkıyor ve sistem *ucuzluyordu* (50K TPS, avg RNI: latency'siz $109.520/ay, p99 < 50 ms ile $98.034/ay).
 
-R(p) = E\[X\] × (1 / (1 − rho)) × ln(1 / (1 − p))
+### 5.4. Formül
 
-Verilen latency hedefi için rho'yu (maksimum utilization) çözeriz:
+Sunucu = fiziksel CP. CP başına CPU servis süresi:
 
-rho_max = 1 − (E\[X\] / latency_target) × ln(1 / (1 − p))
+E\[X_cpu\] = c / raw_tps    (c = kademenin fiziksel CP sayısı)
 
-Burada E\[X\] = ortalama servis süresi = 1 / max_tps_raw (her kademe için ayrı). Daha hızlı kademe → daha küçük E\[X\] → daha yüksek utilization desteklenebilir.
+Alt-kapasite (4xx/5xx/6xx) CP'leri LSPR gereği daha yavaş olduğundan E\[X_cpu\] daha büyük çıkar. Bu gerçek bir mainframe etkisidir: aynı toplam kapasitede alt-kapasite kademesi daha uzun CPU süresi, dolayısıyla daha kötü yanıt süresi verir.
 
-### 5.4. Basitleştirmeler ve Sınırlamalar
-- M/M/1 modeli tutucu üst sınır verir; mainframe c paralel CP ile gerçekte M/M/c'ye daha yakındır. M/M/c daha gevşek (büyük) max utilization verir. Phase 2'de M/M/c'ye yükseltme yapılabilir.
-- Sadece CPU kuyruğundan kaynaklanan bekleme ve servis süresi modellenir; network ve disk I/O bekleme süreleri ihmal edilir. Mainframe için bunlar genelde küçüktür (hızlı iç fabric, paylaşımlı bellek), clustered tarafta eklenir.
-- HARD_UTILIZATION_CAP = 0.95: latency hedefi çok gevşek olsa bile, operasyonel risk için %95 üst sınır.
-- DEFAULT_UTILIZATION_CEILING = 0.90: kullanıcı latency hedefi vermediyse fallback.
+Tutucu kuyruk: c adet bağımsız M/M/1 kuyruğu, her birine λ/c yük. Paylaşımlı kuyruktan (M/M/c) daha kötü yanıt verir, yani gerçek bir üst sınırdır.
+
+R_cpu(p) = E\[X_cpu\] × 1/(1 − ρ) × ln(1/(1 − p))
+
+Sabit I/O gecikmesi (kuyruktan bağımsız):
+
+D_io = IOPS_PER_TX\[rni\] × IO_SERVICE_TIME    (low 5, average 10, high 20 I/O; 0.3 ms/I/O)
+
+Toplam ve çözüm:
+
+R(p) = D_io + R_cpu(p)
+
+ρ_max = min( 1 − E\[X_cpu\] · ln(1/(1−p)) / (hedef − D_io) , 0.90 )
+
+Hedef ≤ D_io ise ya da boş sistemdeki CPU süresi bile bütçeyi aşıyorsa kademe infeasible (ρ_max = 0).
+
+### 5.5. Basitleştirmeler ve Sınırlamalar
+- **Operasyonel tavan her zaman geçerli (0.90).** Latency hedefi tavanı yalnızca düşürebilir, asla yükseltemez. Daha sıkı SLA hiçbir zaman daha ucuz sonuç vermez. Eski HARD_UTILIZATION_CAP = 0.95 kaldırıldı.
+- IOPS_PER_TX ve IO_SERVICE_TIME = 0.3 ms \[ASSUME\]; DS8900F + FICON/zHPF için sektör aralığı ~0.1–0.5 ms (zHyperLink okumalarında ~0.02 ms). Tüm I/O'lar sıralı/senkron sayılır (tutucu; gerçekte bir kısmı paralel ve Db2 buffer pool'dan karşılanır).
+- Network (iç fabric), lock/latch beklemesi ve buffer pool isabet oranı modellenmez. Clustered taraf aynı yapıyı (aynı kuyruk ailesi + D_io + ağ gecikmesi) kullanmalıdır.
+
+### 5.6. Davranış (doğrulama)
+
+Latency hedefi 3–500 ms aralığında taranarak 15 senaryoda (3 RNI × 5 TPS) maliyetin hedef sıkılaştıkça hiç azalmadığı doğrulandı. Gözlenen davranış:
+- 50 ms ve üstü hedeflerde mainframe kademesi latency'siz durumla aynı. Yani tipik bankacılık SLA'larında (100–500 ms) CPU kuyruğu bağlayıcı değil.
+- Tek haneli ms hedeflerde tavan düşer ve model daha hızlı CP'li (7xx) kademelere kayar. Örnek: 10K TPS avg RNI, 20 ms hedefte 3931-408 yerine 3931-701.
+- D_io hedefe yaklaşınca infeasible olur (avg RNI'da 3 ms, high RNI'da 6 ms).
 
 ## 6. Availability Modeli — IBM Z Resiliency 4-Model
 
@@ -237,7 +260,7 @@ z/OS MSU bazlı aylık lisanslama (MLC) ile faturalanır. Bağımsız lisanslama
 
 SOFTWARE_COST_PER_MSU_MONTH = \$40 / MSU / ay
 
-Aylık yazılım maliyeti = tier.msu × \$40 × topology.software_premium. GDPS premium M3 için ×1.15, M4 için ×1.30. Önemli kural: ICF specialty engine olduğu için ek frame yazılım lisansını artırmaz \[CFCC\].
+Aylık yazılım maliyeti = faturalanan_MSU × \$40 × topology.software_premium. Sub-capacity fiyatlamada faturalanan MSU, o ayın R4HA tepesinde tüketilen MSU'dur: faturalanan_MSU = min(R4HA_yük / ham_TPS, 1) × tier.msu (kurulu kapasiteyle sınırlı). Statik modda yük sabit olduğundan R4HA = TPS. GDPS premium M3 için ×1.15, M4 için ×1.30. Önemli kural: ICF specialty engine olduğu için ek frame yazılım lisansını artırmaz \[CFCC\].
 
 ### 7.2. Donanım Amortismanı
 
@@ -269,7 +292,7 @@ Frame sayısıyla çarpılır. Elektrik fiyatı ABD ticari ortalaması; coğrafy
 
 ### 7.5. Toplam Aylık Maliyet
 
-total = software × software_premium + (hardware_amort + maintenance + energy) × n_frames
+total = faturalanan_MSU × \$40 × software_premium + (hardware_amort + maintenance + energy) × n_frames
 
 Yazılım kalemi capacity-MSU bazlı olduğu için frame sayısıyla çarpılmaz; donanım/bakım/enerji çarpılır. Bu yapı ICF kuralıyla \[CFCC\] tutarlıdır.
 
@@ -328,15 +351,21 @@ Model her olası base kademeyi deneyip Strateji B'nin en ucuzunu bulur, sonra St
 
 ### 8.5. Aylık Yazılım Maliyeti R4HA-Bağımlı
 
-Eğer bir ayda CoD aktifse, o ayın yazılım faturası R4HA peak'ine orantılı olarak base ve peak yazılım fiyatları arasında enterpolasyon yapılır. Bu, IBM'in kullanım-bazlı (kapasite değil) faturalandırma kuralının modelde temsilidir.
+Her ay, iki strateji için de, yazılım faturası o ayın R4HA tepesinde tüketilen MSU'ya göre kesilir (kurulu kapasiteyle sınırlı; CoD aktif aylarda kurulu kapasite peak kademedir). Bu, IBM'in sub-capacity MLC kuralının modeldeki karşılığıdır.
+
+*Düzeltme (2026-10-31):* Önceki sürümde R4HA indirimi yalnızca CoD olan aylarda uygulanıyor, Permanent strateji her ay tam kurulu MSU üzerinden faturalanıyordu. Bu, Base+CoD stratejisini haksız biçimde avantajlı gösteriyordu. Şimdi iki strateji arasındaki fark yalnızca donanım tarafındadır (kalıcı peak donanımı vs base donanımı + CoD günlük ücreti).
 
 ### 8.6. Doğrulama Örneği
 
-Retail bursty senaryosu (peak/avg ≈ 3.6×, 20 peak gün) için sonuç:
-- Strateji A (Permanent): yıllık ~\$5.08M
-- Strateji B (Base + CoD): yıllık ~\$3.23M, %36 tasarruf
+50K TPS ortalama yük, availability 0.999, average RNI:
 
-Steady OLTP senaryosu (peak/avg ≈ 1.7×) için iki strateji yakın, fark sadece ~\$10K. Bu, modelin doğru davrandığının kanıtı: peak/avg oranı arttıkça CoD avantajı keskinleşir.
+| Preset | Seçilen strateji | Yıllık toplam | Alternatife göre tasarruf |
+|---|---|---|---|
+| retail_bursty | Base + CoD (3931-708 → 3931-726, 20 gün) | ~\$3.04M | %31.8 |
+| batch_heavy | Base + CoD (3931-708 → 3931-626) | ~\$2.53M | %19.8 |
+| steady_oltp | Permanent (3931-526) | ~\$2.01M | %5.1 |
+
+Önceki sürümde retail_bursty tasarrufu %36 (\$5.08M → \$3.23M) çıkıyordu; farkın bir kısmı Permanent stratejiye R4HA uygulanmamasından geliyordu. Düzeltilmiş modelde de beklenen sıralama korunuyor: peak/avg oranı arttıkça CoD avantajı büyüyor.
 
 ### 8.7. Grafik-Hazır CSV Çıktısı
 
@@ -346,7 +375,7 @@ Steady OLTP senaryosu (peak/avg ≈ 1.7×) için iki strateji yakın, fark sadec
 
 ## 9. Kod Yapısı ve Kullanım
 
-Tüm model tek bir Python dosyasında: /home/claude/mainframe_model.py (yaklaşık 700 satır, sadece standard library). İki ana kullanım modu var:
+Tüm model tek bir Python dosyasında: mainframe_model.py (yaklaşık 1.200 satır, sadece standard library). İki ana kullanım modu var:
 
 ### 9.1. Statik Mod
 
@@ -398,7 +427,7 @@ Workload profile simülasyonu — yıllık maliyet, strateji karşılaştırmas�
 - ELECTRICITY_USD_PER_KWH (\$0.12) — ABD ticari ortalama, coğrafyaya göre değişir
 
 ### 11.2. Yapısal Basitleştirmeler
-- M/M/1 latency modeli M/M/c'ye yükseltilebilir — mainframe paralel CP yapısı için daha doğru
+- Per-CP M/M/1 latency modeli M/M/c'ye yükseltilebilir (daha az tutucu); iki tarafta aynı kuyruk ailesi kullanılmalı
 - Network ve disk I/O latency ihmal edildi — mainframe'de küçük ama clustered tarafa eklenecek
 - Yedek sistemler tam maliyetle sayılıyor (stand-by'da aslında daha az kaynak)
 - z16 LSPR tablosunun 128 kademesinden ~28 temsili kademe modele alındı — tamamı eklenebilir
@@ -408,7 +437,6 @@ Workload profile simülasyonu — yıllık maliyet, strateji karşılaştırmas�
 Mevcut model mainframe TCO'sunun yaklaşık %40-50'sini modeller. Phase 2'de eklenecek:
 - CICS Transaction Server lisansı (MSU bazlı)
 - Db2 for z/OS lisansı (MSU bazlı)
-- IBM MQ for z/OS
 - DS8900F storage modeli (kapasite TB + IOPS + maliyet)
 - Operasyon personeli (sysprog + DBA, kişi sayısı kapasiteyle ölçeklenir)
 
