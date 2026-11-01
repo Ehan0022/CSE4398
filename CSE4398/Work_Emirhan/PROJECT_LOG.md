@@ -335,3 +335,44 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - CPU_US_PER_SQL_READ (30 µs) en kritik profil varsayımı: 15–60 µs, 10K TPS'te maliyeti $349K–533K arasında oynatıyor. IRWW veya gerçek bir SMF 101 örneği ikinci çapa olur.
 - Parallel Sysplex ölçeklemesi (çok CEC, data sharing ek yükü).
 - Clustered tarafın oltp_rw bileşimini hangi ölçümle karşılayacağı (sysbench sonuçları).
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Personel ve aralık çıktısı — Plan adımı 3
+
+### 1. Araştırma
+- **Aksiyon:** Mainframe altyapı personeli için FTE oranları ve ücretler toplandı.
+- **FTE kaynakları:**
+  - IBM Eagle TCO ekibi, 17 müşteri: 5 FTE + her 625 MIPS için 1 FTE.
+  - Gartner ITKMD 2016 (CA/Broadcom yayını üzerinden): kurulu MIPS/FTE 152 → 268.
+  - Gartner (IBM 2007 sunumunda): ekip sabitken MIPS iki katına çıktı. IBM örneğinde 3.192 MIPS ≈ 4 FTE.
+- **Ücret kaynakları:** BLS OEWS Mayıs 2025 medyanları (DBA/mimar $126.760, sistem yöneticisi $99.130, güvenlik $129.180); Payscale ve Glassdoor mainframe aralıkları; yan hak IDC %28 ve BLS ECEC %30 (×1,43).
+- **Sebep:** Plan adımı 3. Emirhan'ın yönlendirmesi: kesin rakamlar yerine kaynaklı aralıklara odaklanılsın, çünkü final çıktı bir aralık olacak.
+
+### 2. Modele ekleme
+- **Personel:**
+  - FTE = max(taban, FTE_1000·(PCI/1000)^b) × topoloji çarpanı.
+  - low / mid / high = (4; 0,60; 3) / (5,5; 0,70; 4) / (7; 0,80; 5); yüklü maliyet $122K / $162K / $215K.
+  - Eğriler IBM Eagle (küçük kurulum) ile Gartner 2016 ortalamasını ve 2026'ya taşınmış eğilimini sarmalayacak şekilde kalibre edildi.
+  - Topoloji çarpanları: M2 1,05, M3 1,15, M4 1,25.
+  - Yıllık modda personel, tepe yükü taşıyan kademeye göre hesaplanıyor; stratejiden bağımsız.
+- **Aralık çıktısı:**
+  - `RANGE_PARAMETERS` 9 parametre içeriyor: personel, AWLC seviyesi, L4+ düşüşü, okuma/yazma SQL CPU, zIIP, donanım $/PCI, storage indirimi, BP isabeti.
+  - `solve_range`: tüm parametreler aynı anda low / mid / high; kademe yeniden optimize ediliyor.
+  - `range_tornado`: tek-parametre salınımı. CLI `--range`.
+  - `src/tools/range_curve.py`: maliyet/TPS aralığı ve `data/out/` CSV'si.
+- **Refaktör:** AWLC L4+ kademeleri `AWLC_UPPER_DECAY`'den hesaplanıyor (aralık için).
+- **Test:** `test_staff_and_ranges` eklendi (13/13 geçiyor).
+
+### 3. Etkileri
+- **10K TPS, oltp_rw:** mid $833K/ay ($83,3/TPS), aralık $26,2–288,5/TPS (köşeler). Mid'de personel 30,8 FTE, toplamın %50'si; yazılım %41.
+- **Tornado (10K TPS):** en büyük salınım personelde ($595K–1,32M), sonra okuma SQL CPU ($684K–1,10M), AWLC seviyesi ($663K–1,00M). Storage ve BP isabeti maliyeti neredeyse oynatmıyor.
+- **Eğri:** mid $/TPS 500 TPS'te 300,6'dan 150K TPS'te 38,3'e iniyor. Şekil üç senaryoda da aynı; crossover'ın yeri varsayımlara çok duyarlı → tezin çıktısı bir crossover bölgesi olmalı.
+- **Çapraz kontrol:** Gartner 2016 MIPS başı yıllık maliyet $3.057, eğilimle 2026'ya taşınınca ~$940. Model 10K TPS'te $553 / $851 / $1.426 / PCI / yıl veriyor (ISV yazılımı ve tesis hariç).
+- **Yıllık (10K ort.):** personel %51–56; strateji sıralaması değişmedi (steady C, retail B %0,1 farkla, batch C).
+- **Dokümantasyon:** v3 yeni §7.7 (Personel, savunmasıyla) ve §7.8 (Aralık Çıktısı); §1.2, 1.4, 2.2, 4.4.4, 5.5, 7, 7.1.6, 7.5, 7.6, 8.1, 8.7, 9.7, 9.8, 10, 11.5, 12 güncellendi.
+
+### 4. Açık noktalar
+- Aralıklar köşe değerleri; olasılıklı aralık için Monte Carlo (dağılım ve korelasyon) gerekli.
+- Personel ABD ücretleriyle; farklı pazar (Türkiye) için ayrı set.
+- Clustered tarafta aynı kapsam (tüm altyapı ekibi) ve aynı aralık yaklaşımı uygulanmalı.

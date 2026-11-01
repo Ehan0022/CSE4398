@@ -22,6 +22,8 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 - Kademe başına resmî MSU ile sub-capacity yazılım faturası: z/OS + CICS TS + Db2, AWLC kademeli kümülatif fiyat (Bölüm 7.1)
 - zIIP: MSU dışı kapasite payı ve zIIP motor donanımı (Bölüm 7.1.5)
 - Donanım amortismanı, bakım, enerji (Bölüm 7)
+- Altyapı personeli: kapasiteyle alt-doğrusal FTE eğrisi, düşük/orta/yüksek senaryo (Bölüm 7.7)
+- Aralık çıktısı: kaynaklı parametre aralıklarıyla low/mid/high toplam ve tek-parametre salınımı (Bölüm 7.8)
 - Storage katmanı: IBM DS8900F boyutlandırması (veri hacmi, IOPS, topolojiye bağlı kopya sayısı), maliyeti ve I/O gecikmesi; zHyperLink, zHPF/FICON, Metro/Global Mirror, Safeguarded Copy (Bölüm 8)
 - Yıllık simülasyon: 8.760 saatlik profil ve üç donanım edinim/fiyatlama stratejisi: Permanent, Base + On/Off CoD ve Tailored Fit Pricing (base + capacity corridor + CoD); On/Off CoD'nin resmî sınırları (Bölüm 9)
 
@@ -33,7 +35,7 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 
 ### 1.4. Henüz Modele Eklenmemiş Bileşenler
 
-GDPS'in ayrı kalem olarak modellenmesi, operasyon personeli, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
+GDPS'in ayrı kalem olarak modellenmesi, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
 
 ## 2. Modelin Girdi ve Çıktıları
 
@@ -57,7 +59,8 @@ Projenin 8 girdisinden rpo_seconds ve rto_minutes henüz modele bağlı değil (
 Statik mod (tek nokta sorgu):
 - Seçilen z16 kademesi (örn. 3931-436) ve topoloji (M1/M2/M3/M4)
 - Tam-hız CP eşdeğeri, utilization, dinamik utilization tavanı, tahmini percentile latency
-- Aylık maliyet dökümü: yazılım (z/OS + CICS TS + Db2) + donanım (zIIP dahil) + bakım + enerji + storage
+- Aylık maliyet dökümü: yazılım (z/OS + CICS TS + Db2) + donanım (zIIP dahil) + bakım + enerji + personel + storage
+- `--range` ile: toplamın low / mid / high sınırları ve tek-parametre salınımı (Bölüm 7.8)
 
 Yıllık mod (workload simülasyonu):
 - Seçilen strateji (Permanent, Base + On/Off CoD veya Tailored Fit Pricing) ve diğer iki stratejinin en iyi sonuçları
@@ -196,7 +199,7 @@ Varsayılan profil olarak oltp_rw seçildi, çünkü sysbench oltp_read_write x8
 
 - **Etki büyük:** varsayılan profil (w = 9,15) aynı TPS için ~9 kat daha fazla mainframe kapasitesi gerektirir. Örneğin 10K TPS'te faturalanan kademe 185 MSU'dan (REDP işlemi) 1.423 MSU'ya çıkar (Bölüm 7.6). Önceki sürümdeki "50K TPS" sonuçları, bugünkü birimle yaklaşık 5,5K oltp_rw TPS'e karşılık gelir.
 - **Tek sistem tavanı:** oltp_rw'de en büyük tek z16 ~187K TPS taşır; oltp_heavy'de ~104K. Gerçek kurulumlar bunun üstüne Parallel Sysplex data sharing ile birden fazla CEC'e ölçeklenir. Model bunu henüz içermez: M2–M4'teki ikinci frame yedek olarak sayılır, kapasite eklemez. Yüksek hacimli crossover analizi için bu bir sınırlamadır (Bölüm 12).
-- **En kritik varsayım:** CPU_US_PER_SQL_READ. 15–60 µs aralığı w'yi 6,7–14,0 aralığında, 10K TPS'te maliyeti $34,9–53,3/TPS aralığında oynatır (Bölüm 7.1.6 ve `src/tools/workload_sensitivity.py`). BP_HIT_RATIO yalnızca I/O'yu ve D_io'yu etkiler (0,90 → 0,46 ms; 0,99 → 0,11 ms), maliyeti etkilemez.
+- **En kritik varsayım:** CPU_US_PER_SQL_READ. 15–60 µs aralığı w'yi 6,7–14,0 aralığında, 10K TPS'te maliyeti $68,4–109,7/TPS aralığında oynatır (Bölüm 7.1.6 ve `src/tools/workload_sensitivity.py`). BP_HIT_RATIO yalnızca I/O'yu ve D_io'yu etkiler (0,90 → 0,46 ms; 0,99 → 0,11 ms), maliyeti etkilemez.
 - LSPR'nin Low/High RNI sütunları (cache/bellek yoğunluğu, ~±%10–15) ayrı bir etkidir ve modellenmez. Önceki RNI çarpanları (1,25 / 1,00 / 0,70) kaynaksız olduğu için kaldırıldı.
 
 ### 4.5. Akademik Notlar
@@ -247,10 +250,10 @@ Latency hedefi 3–500 ms aralığında, 3 profil (redp_light, oltp_rw, oltp_hea
 
 | p99 hedefi | Kademe | Aylık toplam |
 |---|---|---|
-| yok | 3931-516 | $416.750 |
-| 50 ms | 3931-706 | $417.811 |
-| 10 ms | 3931-708 | $435.955 |
-| 5 ms | 3931-714 | $487.048 |
+| yok | 3931-516 | $833.180 |
+| 50 ms | 3931-706 | $839.785 |
+| 10 ms | 3931-708 | $941.308 |
+| 5 ms | 3931-714 | $1.190.809 |
 | 2 ms | infeasible | |
 
 Latency'siz durumda model yavaş alt-kapasite CP'li 5xx kademesini seçer. Hedef sıkılaştıkça tam-hız CP'li 7xx kademelerine kayar. oltp_rw'de alt sınır ~2,4 ms'dir: en hızlı tek CP'de işlem başına CPU süresi ~0,46 ms, p99 çarpanı ln(100) ≈ 4,6 ve D_io 0,26 ms. Bu, işlem bileşiminin latency'yi de doğrudan belirlediğini gösterir.
@@ -323,7 +326,7 @@ Planlı indirim uygulandıktan sonra topolojilerin gerçek son-kullanıcı avail
 
 ## 7. Maliyet Modeli
 
-Aylık maliyet dört kalemden oluşur ve her kalemin veri güvenilirliği farklıdır.
+Aylık maliyet altı kalemden oluşur: yazılım, donanım, bakım, enerji, personel ve storage (Bölüm 8). Her kalemin veri güvenilirliği farklıdır; kesin fiyatı olmayan parametreler aralık olarak tanımlanır (Bölüm 7.8).
 
 ### 7.1. Yazılım Yığını (z/OS + CICS TS + Db2, AWLC kademeli)
 
@@ -395,22 +398,22 @@ Modelde:
 
 #### 7.1.6. Duyarlılık
 
-`python src/tools/software_sensitivity.py` (10K TPS, oltp_rw, %99,9, 20 TB):
+`python src/tools/software_sensitivity.py` (10K TPS, oltp_rw, %99,9, 20 TB; toplamlara personel ve storage dahil):
 
 | Parametre | Değer → aylık toplam ($/TPS/ay) |
 |---|---|
-| Eski doğrusal $40/MSU | $127.055 (12,71), yazılım payı %40 |
-| SW_PRICE_LEVEL_FACTOR | 0,5 → $246.766 (24,68) · 1,0 → $416.750 (41,68) · 1,5 → $586.734 (58,67) |
-| ZIIP_OFFLOAD_FRACTION | 0 → $438.536 (43,85, 3931-518) · 0,10 → $416.750 (41,68, 516) · 0,25 → $378.142 (37,81, 513) · 0,40 → $337.756 (33,78, 510) |
-| L4+ düşüş oranı, 10K TPS | ×1,0 → $464.296 (46,43) · ×0,8 → $416.750 (41,68) · ×0,7 → $395.736 (39,57) |
-| L4+ düşüş oranı, 100K TPS | ×1,0 → $3.669.535 (36,70) · ×0,8 → $2.091.656 (20,92) · ×0,7 → $1.626.046 (16,26) |
+| Eski doğrusal $40/MSU | $543.485 (54,35), yazılım payı %9 |
+| SW_PRICE_LEVEL_FACTOR | 0,5 → $663.196 (66,32) · 1,0 → $833.180 (83,32) · 1,5 → $1.003.164 (100,32) |
+| ZIIP_OFFLOAD_FRACTION | 0 → $883.545 (88,35, 3931-518) · 0,10 → $833.180 (83,32, 516) · 0,25 → $747.613 (74,76, 513) · 0,40 → $653.450 (65,34, 510) |
+| L4+ düşüş oranı, 10K TPS | ×1,0 → $880.726 (88,07) · ×0,8 → $833.180 (83,32) · ×0,7 → $812.165 (81,22) |
+| L4+ düşüş oranı, 100K TPS | ×1,0 → $5.739.267 (57,39) · ×0,8 → $4.161.387 (41,61) · ×0,7 → $3.695.778 (36,96) |
 
 Yorum:
 
-- Yazılım en büyük kalemdir: 10K TPS'te toplamın %82'si, 180K TPS'te %67'si. Bu yön, mainframe TCO literatüründe yazılımın en büyük kalem olarak raporlanmasıyla tutarlıdır. Ancak oran, donanım fiyatı ve personel henüz kaba ya da eksik olduğu için olduğundan yüksek görünmektedir.
-- Mutlak seviye toplamı yaklaşık ±%40 oynatır, ama maliyet/TPS eğrisinin **şeklini** değiştirmez. Crossover noktasının **yeri** bu parametreye duyarlıdır; varlığı ise değildir.
-- L4+ düşüş oranı, faturalanan MSU 575'i aştığında devreye girer. oltp_rw'de bu ~4K TPS'e karşılık gelir; yani gerçekçi işlemle bu varsayım çok daha erken bağlayıcı olur. 100K TPS'te (13.603 MSU) $/TPS'i 16,3–36,7 aralığında, yani 2 kattan fazla oynatır. Yüksek hacimli crossover analizinde en kritik yazılım varsayımı budur. Tezde böyle raporlanmalı ve gerçek bir AWLC fiyat tablosuyla daraltılmalıdır.
-- İş yükü profilinin CPU varsayımları (Bölüm 4.4.4) faturalanan MSU'yu, dolayısıyla yazılımı doğrudan belirler: CPU_US_PER_SQL_READ 15 → 60 µs, 10K TPS'te maliyeti $349K'dan $533K'ya taşır.
+- Yazılım, personelden sonra en büyük ikinci kalemdir: 10K TPS'te toplamın %41'i (Bölüm 7.8).
+- Mutlak seviye toplamı yaklaşık ±%20 oynatır, ama maliyet/TPS eğrisinin **şeklini** değiştirmez. Crossover noktasının **yeri** bu parametreye duyarlıdır; varlığı ise değildir.
+- L4+ düşüş oranı, faturalanan MSU 575'i aştığında devreye girer. oltp_rw'de bu ~4K TPS'e karşılık gelir. 100K TPS'te (13.603 MSU) toplamı $3,70M–5,74M aralığında oynatır. Yüksek hacimde en kritik yazılım varsayımı budur ve gerçek bir AWLC fiyat tablosuyla daraltılmalıdır.
+- Ağırlıklı zIIP kullanımı (f = 0,40) 10K TPS'te toplamı %22 düşürür; bu yüzden zIIP payı aralık çıktısına dahildir.
 
 ### 7.2. Donanım Amortismanı
 
@@ -446,31 +449,162 @@ Frame sayısıyla çarpılır. Elektrik fiyatı ABD ticari ortalaması; coğrafy
 
 ### 7.5. Toplam Aylık Maliyet
 
-total = yazılım(faturalanan_MSU) × software_premium + (hardware_amort + maintenance + energy) × n_frames + storage
+total = yazılım(faturalanan_MSU) × software_premium + (hardware_amort + maintenance + energy) × n_frames + personel + storage
 
 Yazılım kalemi kapasite-MSU bazlı olduğu için frame sayısıyla çarpılmaz; donanım, bakım ve enerji çarpılır [CFCC].
 
 ### 7.6. Maliyet / TPS Eğrisi (mevcut varsayımlarla)
 
-Statik mod, availability 0,999 (M1), 20 TB veri, f = 0,10. Ana sütunlar varsayılan oltp_rw profilidir; son sütun karşılaştırma için REDP işlemini verir:
+Statik mod, availability 0,999 (M1), 20 TB veri, mid senaryo, personel dahil. Ana sütunlar varsayılan oltp_rw profilidir; son sütun karşılaştırma için REDP işlemidir. Aynı eğrinin low/high aralığı Bölüm 7.8'dedir.
 
-| TPS | Kademe (oltp_rw) | Kademe MSU | Aylık toplam | Yazılım payı | $/TPS/ay | $/TPS/ay (redp_light) |
-|---|---|---|---|---|---|---|
-| 500 | 3931-403 | 100 | $87.373 | %80 | 174,75 | 71,18 |
-| 1.000 | 3931-405 | 158 | $116.657 | %83 | 116,66 | 43,48 |
-| 2.000 | 3931-410 | 295 | $168.169 | %85 | 84,08 | 29,62 |
-| 5.000 | 3931-429 | 720 | $279.981 | %84 | 56,00 | 18,06 |
-| 10.000 | 3931-516 | 1.423 | $416.750 | %82 | 41,68 | 12,63 |
-| 20.000 | 3931-621 | 2.758 | $621.089 | %77 | 31,05 | 9,26 |
-| 50.000 | 3931-739 | 6.768 | $1.167.096 | %72 | 23,34 | 6,20 |
-| 100.000 | 3931-792 | 13.603 | $2.091.656 | %69 | 20,92 | 4,61 |
-| 180.000 | 3931-7J1 | 24.321 | $3.562.411 | %67 | 19,79 | 3,61 |
+| TPS | Kademe (oltp_rw) | Kademe MSU | Aylık toplam | Yazılım payı | Personel payı | $/TPS/ay | $/TPS/ay (redp_light) |
+|---|---|---|---|---|---|---|---|
+| 500 | 3931-403 | 100 | $150.273 | %47 | %42 | 300,55 | 179,18 |
+| 1.000 | 3931-405 | 158 | $204.623 | %47 | %43 | 204,62 | 97,48 |
+| 5.000 | 3931-429 | 720 | $536.461 | %44 | %48 | 107,29 | 30,64 |
+| 10.000 | 3931-516 | 1.423 | $833.180 | %41 | %50 | 83,32 | 22,47 |
+| 50.000 | 3931-739 | 6.768 | $2.436.773 | %34 | %52 | 48,74 | 12,06 |
+| 100.000 | 3931-792 | 13.603 | $4.161.387 | %34 | %50 | 41,61 | 9,33 |
+| 150.000 | 3931-7F2 | 20.270 | $5.745.697 | %35 | %48 | 38,30 | 8,11 |
 
-- **Eğri bükülüyor.** AWLC'nin sabit taban ücreti ve MSU arttıkça düşen marjinal fiyatı yüzünden, oltp_rw'de 500'den 180K TPS'e maliyet/TPS ~9 kat düşer. Önceki sürümdeki doğrusal fiyatla eğri düzdü ($1,35–1,44/TPS). Bu, Değerlendirme #1'in "mainframe maliyet/TPS'i düz, çoklu crossover hipotezi zayıf" tehdidine kaynaklı bir mekanizmayla verilen cevaptır.
-- **Bükülme bölgesi, işlem tanımıyla kayar.** oltp_rw'de ölçek ekonomisinin çoğu ~20K TPS'e kadar gerçekleşir. Bunun üstünde faturalanan MSU L7 kademesine (1.976+) girer, marjinal fiyat sabitlenir ve eğri ~$20/TPS'e yaklaşır. REDP işleminde aynı bölge ~9 kat daha yüksek TPS'e kayar. Crossover noktasının yeri işlem bileşimine doğrudan bağlıdır.
+- **Eğri bükülüyor.** İki sabit taban var: AWLC'nin taban ücreti ve asgari personel ekibi. MSU arttıkça düşen marjinal yazılım fiyatı ve alt-doğrusal ekip büyümesi de buna ekleniyor. Sonuç olarak oltp_rw'de 500'den 150K TPS'e maliyet/TPS ~8 kat düşer. Bu, Değerlendirme #1'in "mainframe maliyet/TPS'i düz, çoklu crossover hipotezi zayıf" tehdidine kaynaklı mekanizmalarla verilen cevaptır.
+- **Bükülme bölgesi işlem tanımıyla kayar.** REDP işleminde aynı eğri ~9 kat daha yüksek TPS'e kayar. Crossover noktasının yeri işlem bileşimine doğrudan bağlıdır.
 - **Tek sistem tavanı.** oltp_rw'de ~187K TPS'in üstü tek z16 ile karşılanamaz (Bölüm 4.4.4).
 
-Kademe seçimi de değişti: aynı kapasiteyi daha düşük MSU ile veren kademe açıkça avantajlıdır (örn. 10K TPS'te alt-kapasite 3931-516). Bu davranış gerçek kapasite planlamasıyla uyumludur. Düşük hızlı CP'lerin latency etkisi ise yalnızca latency hedefi verildiğinde bağlayıcı olur (Bölüm 5.5).
+Kademe seçimi: aynı kapasiteyi daha düşük MSU ile veren kademe açıkça avantajlıdır (örn. 10K TPS'te alt-kapasite 3931-516). Düşük hızlı CP'lerin latency etkisi yalnızca latency hedefi verildiğinde bağlayıcı olur (Bölüm 5.5).
+
+### 7.7. Personel (Altyapı Ekibi)
+
+#### 7.7.1. Kalemin savunması
+
+Projenin araştırma boşluğu iddiası, mevcut karşılaştırmaların lisans, storage, DR ve **personeli** dışarıda bıraktığıdır (`project_justification.md`). Personel iki tarafta da var, ama ölçeklenme biçimi farklı: mainframe'de ekip kurulu kapasiteyle alt-doğrusal büyür, clustered tarafta sunucu ve düğüm sayısıyla daha doğrusal büyümesi beklenir. Bu fark crossover'ın yerini doğrudan etkileyebileceği için kalem modele girmeli. Uygulama geliştiricileri iki tarafta da aynı iş mantığını yazacağı için kapsam dışıdır. Model yalnızca altyapı ekibini sayar: z/OS ve CICS sistem programcıları, Db2 sistem DBA'ları, storage, otomasyon ve operasyon, kapasite ve performans, güvenlik (RACF).
+
+Kesin bir "doğru FTE sayısı" yoktur. Kaynaklar arasında 3 kata varan fark var. Bu yüzden kalem tek bir değer olarak değil, kaynaklarla sınırlanmış bir **aralık** (düşük / orta / yüksek) olarak modellenir.
+
+#### 7.7.2. Veri ve kaynaklar
+
+**FTE oranları**
+
+| Kaynak | Bulgu | Not |
+|---|---|---|
+| IBM Eagle TCO ekibi, 17 müşteri [IBM-EAGLE] | 5 FTE + her 625 MIPS için 1 FTE | Küçük/orta kurulumlar (grafik 0–3.000 MIPS); üretici kaynağı |
+| Gartner IT Key Metrics Data 2016 [GARTNER-ITKMD] | Kurulu MIPS / mainframe FTE: 152 → 268 (5 yılda) | Bağımsız; ortalama; yıllık ~%12 verimlilik artışı |
+| Gartner (IBM sunumunda) [IBM-TPF-2007] | Ekip MIPS iki katına çıkarken sabit kaldı (2001 → 2004) | Ölçek ekonomisinin yönü |
+| IBM örnek karşılaştırma [IBM-TPF-2007] | 3.192 MIPS ≈ 4 FTE (~790 MIPS/FTE) | Üretici kaynağı; alt sınıra yakın |
+
+**Ücret (2025 USD)**
+
+| Kaynak | Değer |
+|---|---|
+| BLS OEWS, Mayıs 2025 medyanları [BLS-OEWS] | DBA/mimar $126.760 · sistem yöneticisi $99.130 · güvenlik analisti $129.180 |
+| BLS OEWS, Mayıs 2023, DBA dağılımı | 25. yüzdelik $71.940 · medyan $101.510 · 75. yüzdelik $133.120 |
+| Mainframe ilan ve anketleri [MF-PAY] | Payscale sistem programcısı ~$90K (10–90. yüzdelik $49–130K); Glassdoor Db2 z/OS DBA $104–163K |
+| Yan hak çarpanı | IDC %28 [IDC-2016]; BLS ECEC'te maaş toplam işveren maliyetinin %70'i → ×1,43 [BLS-ECEC] |
+
+Karma brüt maaş $95K / $120K / $150K, yan hak çarpanı 1,28 / 1,35 / 1,43 alındı. Yüklü maliyet: **$122K / $162K / $215K / FTE / yıl**. Çapraz kontrol: IBM 2007 sunumundaki karşılaştırma ~$175K/FTE ima ediyor. CA'nın uzman danışman saati ($247/saat) dış kaynak fiyatıdır; aralığın dışında tutuldu.
+
+#### 7.7.3. Formül
+
+```
+FTE = max(taban, FTE_1000 × (PCI / 1000)^b) × topoloji_çarpanı
+aylık personel = FTE × yüklü_maliyet / 12
+```
+
+| Senaryo | FTE_1000 | b | Taban | Yüklü maliyet |
+|---|---|---|---|---|
+| low | 4,0 | 0,60 | 3 | $122K |
+| mid | 5,5 | 0,70 | 4 | $162K |
+| high | 7,0 | 0,80 | 5 | $215K |
+
+b < 1 olduğu için MIPS/FTE kapasiteyle artar (alt-doğrusal ölçek). Parametreler, eğrilerin kaynak çapalarını sarmalayacağı şekilde seçildi [ASSUME, kalibre]:
+
+| PCI | low FTE (MIPS/FTE) | mid FTE | high FTE | IBM Eagle | Gartner 2016 (268) |
+|---|---|---|---|---|---|
+| 1.000 | 4,0 (250) | 5,5 (182) | 7,0 (143) | 6,6 | 3,7 |
+| 3.000 | 7,7 (388) | 11,9 (253) | 16,9 (178) | 9,8 | 11,2 |
+| 11.743 (10K TPS, oltp_rw) | 17,5 (670) | 30,8 (381) | 50,2 (234) | 23,8 | 43,8 |
+| 20.000 | 24,1 (829) | 44,8 (447) | 76,9 (260) | 37,0 | 74,6 |
+| 57.733 (3931-739) | 45,6 (1.266) | 94,1 (614) | 179,6 (322) | 97,4 | 215,4 |
+
+- high, Gartner 2016 ortalamasını (~260 MIPS/FTE @20K) izler. Bu, 2016'dan beri verimlilik artışı olmadığı varsayımıdır.
+- low, Gartner eğilimini (yılda ~%12) 2026'ya taşır (~830 MIPS/FTE @20K) ve IBM'in ~790 MIPS/FTE örneğine yaklaşır.
+- mid ikisinin arasındadır ve küçük kurulumlarda IBM Eagle formülüne yakındır.
+- Taban (3/4/5 FTE): en küçük kurulumda bile sistem programcısı, DBA ve otomasyon için asgari ekip.
+
+Topoloji çarpanı: M1 1,00 · M2 1,05 (ikinci CEC, sysplex) · M3 1,15 (GDPS, iki site) · M4 1,25 [ASSUME]. Personel, birincil CEC'in kademesine göre hesaplanır; yedek frame'in kapasitesi ekip büyüklüğünü ikiye katlamaz. Yıllık modda personel, tepe yükü taşıyan (Permanent) kademeye göre hesaplanır. Böylece ekip büyüklüğü stratejiden bağımsızdır, çünkü ekip CoD günleri için işe alınıp bırakılmaz.
+
+#### 7.7.4. Etkisi
+
+- 10K TPS'te (oltp_rw, mid) personel 30,8 FTE, aylık $416K; toplamın %50'si. Yazılım %41, donanım + bakım + enerji %8, storage %1.
+- Personel küçük hacimde de büyüktür (500 TPS'te %42), çünkü taban ekip sabittir. Bu, mainframe'in düşük TPS'te pahalı olmasının ikinci kaynağıdır (birincisi AWLC taban ücreti).
+- Tek-parametre salınımında personel, toplamı en çok oynatan varsayımdır (Bölüm 7.8).
+
+#### 7.7.5. Sınırlamalar
+
+- FTE oranları kurulumun tamamı içindir (birden çok uygulama, batch dahil). Tek bir OLTP iş yüküne atanan pay daha düşük olabilir. Clustered tarafta da aynı kural (tüm altyapı ekibi) uygulanmalı.
+- Gartner verisi 2016 tarihli ve bir CA/Broadcom yayını üzerinden aktarıldı. IBM verileri üretici kaynağıdır.
+- Ücretler ABD içindir. Türkiye gibi farklı bir pazar için yüklü maliyet ayrı bir parametre seti gerektirir.
+- Dış kaynak (outsourcing) ve yönetilen hizmet modelleri kapsam dışıdır.
+
+### 7.8. Aralık Çıktısı ve Tek-Parametre Salınımı
+
+Kamuya açık kesin fiyatı olmayan parametreler tek bir değer yerine kaynaklı bir aralık olarak tanımlıdır (`RANGE_PARAMETERS`). **low** mainframe lehine (düşük maliyet), **high** aleyhine uçtur:
+
+| Parametre | low | mid | high | Dayanak |
+|---|---|---|---|---|
+| Personel senaryosu | low | mid | high | Bölüm 7.7 |
+| SW_PRICE_LEVEL_FACTOR | 0,5 | 1,0 | 1,5 | Bölüm 7.1.2 |
+| AWLC_UPPER_DECAY | 0,70 | 0,80 | 1,00 | Bölüm 7.1.2 |
+| CPU_US_PER_SQL_READ | 15 | 30 | 60 | Bölüm 4.4 |
+| CPU_US_PER_SQL_WRITE | 40 | 70 | 140 | Bölüm 4.4 |
+| ZIIP_OFFLOAD_FRACTION | 0,25 | 0,10 | 0 | Bölüm 7.1.5 |
+| HARDWARE_COST_PER_MIPS | $150 | $200 | $300 | Bölüm 7.2 |
+| STORAGE_DISCOUNT | 0,85 | 0,70 | 0,50 | Bölüm 8.1.4 |
+| BP_HIT_RATIO | 0,99 | 0,95 | 0,90 | Bölüm 4.4 |
+
+İki çıktı üretilir (`--range` ya da `solve_range` / `range_tornado`):
+
+1. **Dış sınırlar:** tüm parametreler aynı anda low, mid ya da high. Kademe her senaryoda yeniden optimize edilir. Bu köşe değerlerdir, olasılık aralığı **değildir**; bütün varsayımların aynı yöne sapması düşük olasılıklıdır. Olasılıklı aralık (Monte Carlo) yol haritasındadır.
+2. **Tek-parametre salınımı (tornado):** diğerleri mid'de iken her parametre tek tek low ve high'a çekilir.
+
+10K TPS, oltp_rw, %99,9, 20 TB:
+
+| Senaryo | Kademe | Aylık toplam | $/TPS/ay |
+|---|---|---|---|
+| low | 3931-428 | $262.411 | 26,24 |
+| mid | 3931-516 | $833.180 | 83,32 |
+| high | 3931-538 | $2.885.163 | 288,52 |
+
+| Parametre (diğerleri mid) | low ucu | high ucu |
+|---|---|---|
+| Personel | $595.032 | $1.316.618 |
+| Okuma SQL CPU | $683.680 | $1.097.022 |
+| AWLC mutlak seviye | $663.196 | $1.003.164 |
+| Yazma SQL CPU | $747.279 | $1.004.825 |
+| zIIP payı | $747.613 | $883.545 |
+| AWLC L4+ düşüşü | $812.165 | $880.726 |
+| Donanım $/PCI | $816.515 | $866.509 |
+| Storage indirimi | $829.529 | $838.049 |
+| Buffer pool isabeti | $833.180 | $833.180 (yalnızca I/O ve latency) |
+
+Maliyet/TPS eğrisinin aralığı (`python src/tools/range_curve.py`, CSV: `data/out/range_curve_<profil>.csv`):
+
+| TPS | low | mid | high | mid dökümü: yazılım / personel / donanım+bakım+enerji / storage |
+|---|---|---|---|---|
+| 500 | 128,25 | 300,55 | 653,13 | %47 / %42 / %7 / %5 |
+| 1.000 | 81,74 | 204,62 | 524,48 | %47 / %43 / %6 / %4 |
+| 5.000 | 35,02 | 107,29 | 330,85 | %44 / %48 / %7 / %1 |
+| 10.000 | 26,24 | 83,32 | 288,52 | %41 / %50 / %8 / %1 |
+| 50.000 | 13,11 | 48,74 | 231,88 | %34 / %52 / %13 / %0,3 |
+| 100.000 | 10,17 | 41,61 | infeasible | %35 / %50 / %16 / %0,2 |
+| 150.000 | 8,99 | 38,30 | infeasible | %35 / %48 / %17 / %0,1 |
+
+Yorum:
+
+- **Eğrinin şekli bütün senaryolarda aynıdır.** Maliyet/TPS, hacim arttıkça her senaryoda düşer. Crossover'ın varlığı varsayımlardan bağımsız, yeri ise varsayımlara çok duyarlıdır. Tezin ana çıktısı bu yüzden tek bir crossover noktası değil, bir crossover **bölgesi** olmalıdır.
+- **Belirsizliğin iki ana kaynağı** personel ve işlem başına CPU'dur (SQL maliyeti). İkisi de kamuya açık, kesin bir rakamla daraltılamıyor. Fiyat parametreleri (AWLC seviyesi) üçüncü sıradadır.
+- **high senaryosu 100K TPS'te infeasible'dır:** okuma SQL'i 60 µs olursa tek z16 bu yükü taşıyamaz (Parallel Sysplex ölçeklemesi gerekir, Bölüm 4.4.4).
+- **Kurulum başı çapraz kontrol:** Gartner ITKMD 2016'ya göre kurulu MIPS başına yıllık toplam mainframe maliyeti $5.517'den $3.057'ye düşmüş [GARTNER-ITKMD]. Aynı eğilim (yılda ~%11) sürerse 2026 için ~$940 eder. Model 10K TPS'te low/mid/high için $553 / $851 / $1.426 / PCI / yıl veriyor. Gartner rakamı ISV yazılımlarını ve tesis giderlerini de içerdiği için modelin bu değerin altında kalması beklenir. Bu bir doğrulama değil, büyüklük mertebesi kontrolüdür.
 
 ## 8. Storage Katmanı — IBM DS8900F
 
@@ -489,7 +623,7 @@ Projenin araştırma boşluğu iddiası, mevcut karşılaştırmaların "yalnız
 | I/O'nun CPU maliyeti | Kanal alt sistemi ve SAP'lerde | Host CPU'sunda (storage yığını, replikasyon) | x86 compute boyutu storage'a bağlı |
 | I/O gecikmesi | zHyperLink ~20 µs, zHPF ~90 µs | Yerel NVMe düşük; ağ üzerinden storage daha yüksek | Latency modelindeki D_io storage olmadan kalibre edilemez |
 
-Modelin sonuçları bu öngörüyü doğruluyor: 10K TPS'te (oltp_rw) storage, 20 TB veride toplamın %1,8'i iken 500 TB'ta %27'si, 2.000 TB'ta %60'ı (Bölüm 8.7). Compute sabit kalırken storage veri hacmiyle büyüdüğü için veri hacmi, TPS'ten bağımsız ikinci bir crossover ekseni oluşturuyor. Bu, Değerlendirme #1'de zayıf bulunan çoklu crossover hipotezini destekleyen ilk somut mekanizmadır.
+Modelin sonuçları bu öngörüyü doğruluyor: 10K TPS'te (oltp_rw, personel dahil) storage, 20 TB veride toplamın %0,9'u iken 500 TB'ta %16'sı, 2.000 TB'ta %43'ü (Bölüm 8.7). Compute sabit kalırken storage veri hacmiyle büyüdüğü için veri hacmi, TPS'ten bağımsız ikinci bir crossover ekseni oluşturuyor. Bu, Değerlendirme #1'de zayıf bulunan çoklu crossover hipotezini destekleyen ilk somut mekanizmadır.
 
 #### 8.1.2. Neden DS8900F ve neden tek alternatif
 
@@ -632,17 +766,17 @@ Statik mod, oltp_rw, 20 TB veri, varsayılan parametreler (AWLC kademeli yazıl�
 
 | Senaryo | Seçim | Storage | Storage / toplam |
 |---|---|---|---|
-| 10K TPS, %99,9 | M1, 3931-516 | 1× DS8910F-993, 76 TB ham, 58K IOPS, $7.496/ay | %1,8 |
-| 10K TPS, %99,999 | M2, 3931-516 | 2× DS8910F-993, $13.778/ay | %2,8 |
-| 10K TPS, %99,99999 | M4, 3931-516 | 4× DS8910F-993, $26.344/ay | %4,3 |
-| 60K TPS, %99,9 | M1, 3931-749 | 348K IOPS, 1× DS8910F-993, $7.496/ay | %0,6 |
-| 150K TPS, %99,9 | M1, 3931-7F2 | 870K IOPS (> 0,7 × 860K) → 1× DS8950F-996, $8.419/ay | %0,3 |
+| 10K TPS, %99,9 | M1, 3931-516 | 1× DS8910F-993, 76 TB ham, 58K IOPS, $7.496/ay | %0,9 |
+| 10K TPS, %99,999 | M2, 3931-516 | 2× DS8910F-993, $13.778/ay | %1,5 |
+| 10K TPS, %99,99999 | M4, 3931-516 | 4× DS8910F-993, $26.344/ay | %2,3 |
+| 60K TPS, %99,9 | M1, 3931-749 | 348K IOPS, 1× DS8910F-993, $7.496/ay | %0,3 |
+| 150K TPS, %99,9 | M1, 3931-7F2 | 870K IOPS (> 0,7 × 860K) → 1× DS8950F-996, $8.419/ay | %0,1 |
 
 Gerçekçi işlem tanımıyla aynı TPS daha az disk I/O'su (5,8/işlem) ama çok daha fazla CPU ister. Bu yüzden DS8950F'e geçiş ~104K TPS'e kaydı (önceden ~60K) ve storage'ın payı küçüldü.
 
-Veri hacmi ekseni (10K TPS, %99,9): 5 TB'ta storage toplamın %0,7'si, 100 TB'ta %7'si, 500 TB'ta %27'si, 2.000 TB'ta %60'ı. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Değerlendirme #3'te öngörülen ikinci crossover ekseni (veri hacmi) mainframe tarafında oluşuyor. Ancak gerçekçi yazılım ve işlem maliyetiyle eksenin belirginleştiği hacim yükseldi: storage'ın toplamın dörtte birini geçmesi artık ~500 TB'ı buluyor. Clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
+Veri hacmi ekseni (10K TPS, %99,9, personel dahil): 5 TB'ta storage toplamın %0,4'ü, 100 TB'ta %3,7'si, 500 TB'ta %16'sı, 2.000 TB'ta %43'ü. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Değerlendirme #3'te öngörülen ikinci crossover ekseni (veri hacmi) mainframe tarafında oluşuyor. Ancak gerçekçi yazılım ve işlem maliyetiyle eksenin belirginleştiği hacim yükseldi: storage'ın toplamın onda birini geçmesi ~300 TB'ı, beşte birini geçmesi ~700 TB'ı buluyor. Clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
 
-Yıllık mod (10K TPS ortalama, 20 TB): 1× DS8910F-993, yıllık ~$90K, toplamın %0,8–1,4'ü; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
+Yıllık mod (10K TPS ortalama, 20 TB): 1× DS8910F-993, yıllık ~$90K, toplamın %0,4–0,7'si; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
 
 ### 8.8. Duyarlılık
 
@@ -745,40 +879,40 @@ Yazılım (Software Consumption Solution) [TFP-SW]: R4HA yerine yıl boyunca tü
 
 ### 9.7. Doğrulama Örneği
 
-10K TPS ortalama yük, oltp_rw profili, availability 0,999 (M1), 20 TB veri, varsayılan parametreler. Toplamlara storage dahildir (her presette 1× DS8910F-993, yıllık ~$90K; storage üç stratejide aynıdır). Referans nokta 50K'dan 10K TPS'e indirildi: gerçekçi işlem tanımıyla 50K ortalama, retail_bursty'nin 3,5× tepesinde (175K) tek z16'nın tavanına (~187K) dayanıyor ve stratejiler arası farkı bu tavan belirliyordu.
+10K TPS ortalama yük, oltp_rw profili, availability 0,999 (M1), 20 TB veri, varsayılan parametreler. Toplamlara storage (her presette 1× DS8910F-993, yıllık ~$90K) ve mid senaryo personel dahildir. Personel tepe yükü taşıyan kademeye göre hesaplanır ve üç stratejide aynıdır: steady $7,06M, retail $12,22M, batch $9,90M. Referans nokta 50K'dan 10K TPS'e indirildi: gerçekçi işlem tanımıyla 50K ortalama, retail_bursty'nin 3,5× tepesinde (175K) tek z16'nın tavanına (~187K) dayanıyor ve stratejiler arası farkı bu tavan belirliyordu.
 
 | Preset | A: Permanent | B: Base + CoD | C: TFP | Kazanan, A'ya göre |
 |---|---|---|---|---|
-| steady_oltp | $6,645M (3931-529) | $6,675M (528 → 529, 261 gün CoD) | **$6,435M** (613 + corridor 617) | C, −%3,2 |
-| retail_bursty | $10,773M (3931-727) | **$9,534M** (619 → 727, 20 gün) | $9,555M (619 + corridor 625 → 727) | B, −%11,5 (C ile fark %0,2) |
-| batch_heavy | $8,773M (3931-630) | $8,045M (616 → 630, 30 gün) | **$7,981M** (522 + corridor 528 → 630) | C, −%9,0 |
+| steady_oltp | $13,703M (3931-529) | $13,733M (528 → 529, 261 gün CoD) | **$13,493M** (613 + corridor 617) | C, −%1,5 |
+| retail_bursty | $22,988M (3931-727) | **$21,750M** (619 → 727, 20 gün) | $21,770M (619 + corridor 625 → 727) | B, −%5,4 (C ile fark %0,1) |
+| batch_heavy | $18,672M (3931-630) | $17,944M (616 → 630, 30 gün) | **$17,879M** (522 + corridor 528 → 630) | C, −%4,2 |
 
 Yorum:
 
 - **Günlük dalgalanma corridor'un, seyrek mevsimsel tepeler CoD'nin alanıdır.** steady_oltp'de günlük tepe base'i neredeyse her gün aşar; B bunu 261 gün CoD ile karşılamak zorunda kalır ve A'dan pahalıya gelir, C ise bu tepeleri tüketim bazlı corridor'la ucuza emer. retail_bursty'de maliyeti 20 günlük büyük tepeler belirler; B ve C neredeyse eşittir ve kazanan corridor fiyat varsayımlarına göre değişir (Bölüm 9.8).
 - **%100 kuralı bağlayıcıdır.** Geçici kapasite, satın alınan MSU'nun en fazla iki katına çıkabilir. Bu yüzden tepe kademesi base'in alt sınırını belirler (örn. retail_bursty'de 621'e geçici olarak çıkabilmek için base 609). Sınır uygulanmadığında model resmî kurala göre ulaşılamayan konfigürasyonlar seçiyordu.
-- **Yazılım yıllık toplamın %72–84'üdür.** Donanım fiyatlama stratejisi (A/B/C) yalnızca kalan ~%15–25'i yeniden dağıtır. Bu yüzden stratejiler arası fark, doğrusal $40/MSU'lu önceki sürüme göre (%10–24) küçüldü (%3–12). Strateji seçimini asıl belirleyen, TFP-SW'nin yazılım faturasına getirdiği indirimdir (Bölüm 9.8). retail_bursty'de B ve C arasındaki fark %0,2'dir; varsayılanlarla B öne geçer.
+- **Personel yıllık toplamın %51–56'sı, yazılım %34–39'udur.** Donanım fiyatlama stratejisi (A/B/C) yalnızca kalan ~%10'u yeniden dağıtır. Bu yüzden stratejiler arası fark küçüktür (%1,5–5,4); doğrusal $40/MSU'lu önceki sürümde %10–24'tü. Strateji seçimini asıl belirleyen, TFP-SW'nin yazılım faturasına getirdiği indirimdir (Bölüm 9.8). retail_bursty'de B ve C arasındaki fark %0,1'dir; varsayılanlarla B öne geçer.
 - TFP'nin yazılım kalemi retail_bursty'de Permanent'ten %1 yüksek çıkar. Gelir-nötr kalibrasyon referans kademenin MSU/PCI oranını kullanır; TFP'de base ve corridor kademelerinin oranı biraz farklıdır. Bu bir model artefaktıdır ve sıralamayı yalnızca B/C neredeyse eşit olduğu bu durumda etkiler.
 
 ### 9.8. Duyarlılık Analizi (Fiyatlama Varsayımları)
 
-`python src/tools/pricing_sensitivity.py` kalibre edilmemiş fiyat parametrelerini tek tek tarar (10K ortalama TPS, oltp_rw, M1, 20 TB; storage dahil). Yıllık toplamlar, milyon USD; kazanan kalın:
+`python src/tools/pricing_sensitivity.py` kalibre edilmemiş fiyat parametrelerini tek tek tarar (10K ortalama TPS, oltp_rw, M1, 20 TB; storage ve mid personel dahil). Yıllık toplamlar, milyon USD; kazanan kalın:
 
 | Parametre (varsayılan) | Değer | steady_oltp A / B / C | retail_bursty A / B / C | batch_heavy A / B / C |
 |---|---|---|---|---|
-| CORRIDOR_PREMIUM (1,5) | 1,0 | 6,645 / 6,675 / **6,429** | 10,773 / **9,534** / 9,551 | 8,773 / 8,045 / **7,973** |
-| | 4,0 | 6,645 / 6,675 / **6,463** | 10,773 / **9,534** / 9,574 | 8,773 / 8,045 / **8,018** |
-| CORRIDOR_FRACTION (0,20) | 0,10 | 6,645 / 6,675 / **6,499** | 10,773 / **9,534** / 9,630 | 8,773 / **8,045** / 8,062 |
-| | 0,35 | 6,645 / 6,675 / **6,362** | 10,773 / 9,534 / **9,493** | 8,773 / 8,045 / **7,955** |
-| | 0,50 | 6,645 / 6,675 / **6,355** | 10,773 / 9,534 / **9,462** | 8,773 / 8,045 / **7,892** |
-| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 6,645 / 6,675 / **6,494** | 10,773 / **9,534** / 9,642 | 8,773 / 8,045 / **8,036** |
-| | 0,50 | 6,645 / 6,675 / **6,550** | 10,773 / **9,534** / 9,730 | 8,773 / **8,045** / 8,092 |
-| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 6,645 / 6,649 / **6,435** | 10,773 / **9,475** / 9,515 | 8,773 / 7,994 / **7,931** |
-| | 4,0 | 6,645 / 6,716 / **6,435** | 10,773 / 9,623 / **9,614** | 8,773 / 8,120 / **8,054** |
-| TFP_SW_DISCOUNT (0) | 0,05 | 6,645 / 6,675 / **6,173** | 10,773 / 9,534 / **9,161** | 8,773 / 8,045 / **7,646** |
-| | 0,10 | 6,645 / 6,675 / **5,911** | 10,773 / 9,534 / **8,768** | 8,773 / 8,045 / **7,312** |
+| CORRIDOR_PREMIUM (1,5) | 1,0 | 13,703 / 13,733 / **13,487** | 22,988 / **21,750** / 21,766 | 18,672 / 17,944 / **17,872** |
+| | 4,0 | 13,703 / 13,733 / **13,521** | 22,988 / **21,750** / 21,789 | 18,672 / 17,944 / **17,916** |
+| CORRIDOR_FRACTION (0,20) | 0,10 | 13,703 / 13,733 / **13,557** | 22,988 / **21,750** / 21,845 | 18,672 / **17,944** / 17,961 |
+| | 0,35 | 13,703 / 13,733 / **13,420** | 22,988 / 21,750 / **21,709** | 18,672 / 17,944 / **17,854** |
+| | 0,50 | 13,703 / 13,733 / **13,413** | 22,988 / 21,750 / **21,677** | 18,672 / 17,944 / **17,790** |
+| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 13,703 / 13,733 / **13,552** | 22,988 / **21,750** / 21,858 | 18,672 / 17,944 / **17,935** |
+| | 0,50 | 13,703 / 13,733 / **13,608** | 22,988 / **21,750** / 21,946 | 18,672 / **17,944** / 17,991 |
+| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 13,703 / 13,707 / **13,493** | 22,988 / **21,690** / 21,730 | 18,672 / 17,893 / **17,830** |
+| | 4,0 | 13,703 / 13,774 / **13,493** | 22,988 / 21,839 / **21,830** | 18,672 / 18,019 / **17,953** |
+| TFP_SW_DISCOUNT (0) | 0,05 | 13,703 / 13,733 / **13,231** | 22,988 / 21,750 / **21,377** | 18,672 / 17,944 / **17,545** |
+| | 0,10 | 13,703 / 13,733 / **12,969** | 22,988 / 21,750 / **20,984** | 18,672 / 17,944 / **17,211** |
 
-Sonuç: steady_oltp'de TFP'nin üstünlüğü tüm taranan aralıkta korunur. batch_heavy'de dar corridor (0,10) ya da yüksek corridor aboneliği (0,50) B'yi öne geçirir. retail_bursty'de varsayılanlarla B kazanır, ama fark %1'in altındadır; geniş corridor veya pahalı CoD C'yi öne geçirir. Donanım parametreleri (corridor, CoD) toplamları yalnızca %1–2 oynatırken, **TFP_SW_DISCOUNT'un %5'i** C'yi her presette açık ara öne geçirir. Yani yazılım gerçekçi fiyatlandığında strateji kararını donanım değil, IBM ile pazarlıkla belirlenen TFP-SW yazılım fiyatı verir. Gerçek sözleşme fiyatı olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemez ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
+Sonuç: steady_oltp'de TFP'nin üstünlüğü tüm taranan aralıkta korunur. batch_heavy'de dar corridor (0,10) ya da yüksek corridor aboneliği (0,50) B'yi öne geçirir. retail_bursty'de varsayılanlarla B kazanır, ama fark %1'in altındadır; geniş corridor veya pahalı CoD C'yi öne geçirir. Donanım parametreleri (corridor, CoD) toplamları yalnızca %1'in altında oynatırken, **TFP_SW_DISCOUNT'un %5'i** C'yi her presette açık ara öne geçirir. Yani yazılım gerçekçi fiyatlandığında strateji kararını donanım değil, IBM ile pazarlıkla belirlenen TFP-SW yazılım fiyatı verir. Gerçek sözleşme fiyatı olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemez ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
 
 ### 9.9. Grafik-Hazır CSV Çıktısı
 
@@ -799,6 +933,7 @@ Work_Emirhan/
   src/tools/storage_sensitivity.py     storage (DS8900F) duyarlılık analizi
   src/tools/software_sensitivity.py    yazılım yığını (AWLC + zIIP) duyarlılık analizi
   src/tools/workload_sensitivity.py    iş yükü profili (işlem bileşimi) duyarlılık analizi
+  src/tools/range_curve.py             maliyet/TPS eğrisinin low/mid/high aralığı + CSV (data/out/)
   data/raw/redp5320_workload_profile.csv  REDP-5320 benchmark işlem profili (kaynaklı)
   data/ds8900f_models.csv              DS8900F model kataloğu (kaynaklar dosya başlığında)
 ```
@@ -807,7 +942,7 @@ Work_Emirhan/
 
 python src/mainframe_model.py --tps 10000 --availability 0.999 --workload oltp_rw --latency-ms 200 --data-tb 20 --data-growth 0.15
 
-Özel işlem bileşimi: `--sql-reads 6 --sql-writes 2` (w ve I/O bileşimden hesaplanır).
+Özel işlem bileşimi: `--sql-reads 6 --sql-writes 2` (w ve I/O bileşimden hesaplanır). Aralık çıktısı: `--range` (low/mid/high toplam ve tek-parametre salınımı, Bölüm 7.8).
 
 ### 10.2. Yıllık Mod
 
@@ -820,7 +955,7 @@ python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000 --
 
 ### 10.4. Testler
 
-python src/test_mainframe_model.py — 12 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması, storage boyutlandırmasının (topolojiden kopya sayısı, IOPS'tan model, veri hacminden kapasite) ve zHyperLink / senkron replikasyonun D_io'ya etkisinin beklenen yönde olması. Ayrıca AWLC yazılım fonksiyonunun IBM örnek faturasını (265 MSU) ve Db2 referans eğrisini yeniden üretmesi, toplamın artan ama MSU başına fiyatın azalan olması, maliyet/TPS'in 5K → 500K TPS arasında en az 3 kat düşmesi, zIIP payı arttıkça faturalanan MSU'nun düşmesi ve zIIP sayısının 2:1 sınırına uyması test edilir. Ayrıca iş yükü profilleri test edilir: REDP profili köprüyü aynen korur (w = 1, zIIP yok); daha ağır bileşim daha yüksek w, I/O ve maliyet verir; özel bileşim beklenen yönde davranır. Latency testi üç profilde koşar; infeasible eşiği storage'tan gelen D_io'ya göre hesaplanır. Yıllık testler 10K ortalama TPS'te koşar.
+python src/test_mainframe_model.py — 13 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması, storage boyutlandırmasının (topolojiden kopya sayısı, IOPS'tan model, veri hacminden kapasite) ve zHyperLink / senkron replikasyonun D_io'ya etkisinin beklenen yönde olması. Ayrıca AWLC yazılım fonksiyonunun IBM örnek faturasını (265 MSU) ve Db2 referans eğrisini yeniden üretmesi, toplamın artan ama MSU başına fiyatın azalan olması, maliyet/TPS'in 5K → 500K TPS arasında en az 3 kat düşmesi, zIIP payı arttıkça faturalanan MSU'nun düşmesi ve zIIP sayısının 2:1 sınırına uyması test edilir. Ayrıca iş yükü profilleri test edilir: REDP profili köprüyü aynen korur (w = 1, zIIP yok); daha ağır bileşim daha yüksek w, I/O ve maliyet verir; özel bileşim beklenen yönde davranır. Latency testi üç profilde koşar; infeasible eşiği storage'tan gelen D_io'ya göre hesaplanır. Yıllık testler 10K ortalama TPS'te koşar. Personel ve aralık testi: MIPS/FTE kapasiteyle artar, senaryolar sıralıdır, M4 M1'den fazla FTE ister; solve_range low < mid < high verir, mid statik sonuçla aynıdır, parametreler çağrıdan sonra eski değerine döner ve her tornado ucu dış sınırlar içinde kalır.
 
 ## 11. Referanslar ve Kullanım Amaçları
 
@@ -873,6 +1008,13 @@ python src/test_mainframe_model.py — 12 test: latency monotonluğu, latency'ni
 - **[TU11] —** IBM Technology Update Pricing (z17 için TU11): AWLC indirimleri kademe bandına göre %12–42. Mutlak seviyenin aşağı yönlü gerekçesi.
 - **[ZIIP] —** IBM z16 zIIP kuralları (SG24-8950): zIIP MSU'ya sayılmaz, alt-kapasite modellerde tam hızda çalışır, zIIP:CP ≤ 2:1. Tipik offload aralığı (%10–25, Redress Compliance) doğrulanmamıştır, yalnızca aralık olarak kullanılır.
 - **\[LIC\] (kullanımdan kaldırıldı) —** Önceki sürümdeki $40/MSU/ay değerinin kaynağı (atonementlicensing.com). Metodolojisi açıklanmadığı ve IBM'in kendi örnek faturasıyla ~7–10 kat çeliştiği için bırakıldı.
+- **[IBM-EAGLE] —** IBM, "Mainframe skills: The myths and the reality" (v3, IBM Eagle TCO ekibi), slayt 5: 17 müşteri çalışmasından "5 FTE to start + 1 FTE for every 625 MIPS". https://public.dhe.ibm.com/software/os/systemz/pdf/Mainframe_skills_-_The_myths_and_the_reality_v3.pdf. Üretici kaynağı.
+- **[GARTNER-ITKMD] —** Gartner IT Key Metrics Data 2016, CA Technologies (Broadcom) "Why the Mainframe Should Be Part of Your Digital Business Ecosystem" üzerinden: kurulu MIPS/mainframe FTE 152 → 268, MIPS başına maliyet $5.517 → $3.057, mainframe FTE'leri BT FTE'lerinin %5,5'i. https://docs.broadcom.com/doc/why-the-mainframe-should-be-part-of-your-digital-business-ecosystem. İkincil aktarım.
+- **[IBM-TPF-2007] —** IBM, "A Fresh Look at the Mainframe: Mainframe Total Cost of Ownership Issues" (TPFUG 2007): Gartner'a göre ekip 2001 → 2004 sabitken MIPS iki katından fazla arttı; örnek karşılaştırmada 3.192 MIPS ≈ 4 FTE ($793K). https://public.dhe.ibm.com/software/htp/tpf/tpfug/tgs07/tgs07e.pdf
+- **[BLS-OEWS] —** U.S. Bureau of Labor Statistics, Occupational Outlook Handbook / OEWS, Mayıs 2025 medyanları (DBA ve mimarlar $126.760; ağ ve sistem yöneticileri $99.130; bilgi güvenliği analistleri $129.180) ve Mayıs 2023 DBA dağılımı (15-1242). https://www.bls.gov/ooh/computer-and-information-technology/
+- **[BLS-ECEC] —** BLS, Employer Costs for Employee Compensation, Haziran 2026: özel sektörde maaş toplam işveren maliyetinin %70,0'ı, yan haklar %30,0'ı. https://www.bls.gov/opub/ted/2026/compensation-costs-for-private-industry-workers-averaged-46-89-per-hour-worked-in-june-2026.htm
+- **[IDC-2016] —** IDC, "The Business Value of the Connected Mainframe for Digital Transformation" (2016, CA sponsorlu): yüklü maaş = maaş + %28 yan hak ve genel gider. https://docs.broadcom.com/doc/idc-the-business-value-of-connected-mainframe-for-digital-transformation
+- **[MF-PAY] —** Payscale, Mainframe Systems Programmer (23 profil, 2022 güncellemesi, ort. ~$90K, 10–90. yüzdelik $49–130K); Glassdoor, Db2 z/OS DBA (toplam ücret $104–163K, tek kayıt). Küçük örneklem; yalnızca aralık teyidi.
 - **\[PWR\] —** Aynı fiyat rehberi (electronics.alibaba) enerji ölçütleri. z15/z16 frame başına 20-40 kW; modelde POWER_KW_PER_SYSTEM = 30 kW (orta).
 
 ### 11.6. Teorik Temel
@@ -885,6 +1027,7 @@ python src/test_mainframe_model.py — 12 test: latency monotonluğu, latency'ni
 
 - İş yükü profili: CPU_US_PER_SQL_READ = 30 µs, CPU_US_PER_SQL_WRITE = 70 µs (tek saha), GETPAGES_PER_SQL_READ = 4, BP_HIT_RATIO = 0,95, LOG_SYNC_IO_PER_COMMIT = 1, ASYNC_WRITE_IO_PER_SQL_WRITE = 0,5; oltp_heavy bileşimi (Bölüm 4.4)
 - HARDWARE_COST_PER_MIPS = $200/PCI (doğrusal kestirim)
+- Personel: FTE eğrisi (FTE_1000, b, taban) ve yüklü maliyet için üç senaryo; topoloji çarpanları 1,00 / 1,05 / 1,15 / 1,25 (Bölüm 7.7)
 - Yazılım: SW_PRICE_LEVEL_FACTOR = 1,0 (2004 nominal), L4+ kademe düşüşü ×0,80, ürün katsayılarının 2004 oranlarını koruduğu varsayımı (Bölüm 7.1.6)
 - zIIP: ZIIP_OFFLOAD_FRACTION = 0,10, ZIIP_HW_PRICE_FACTOR = 0,25
 - GDPS yazılım primi (M3 ×1,15, M4 ×1,30)
@@ -911,6 +1054,7 @@ python src/test_mainframe_model.py — 12 test: latency monotonluğu, latency'ni
 - Maliyet yapısı: donanımda taban + drawer + kapasite başına artış (drawer özelliğini karar değişkeni yapar); gerçek bir AWLC fiyat tablosuyla L4+ kademelerin ve mutlak seviyenin kalibrasyonu; TFP-HW zIIP corridor'u
 - Availability: RPO/RTO bağlantısı, M4 düzeltmesi, DR frame için CBU
 - Storage: gerçek bir DS8900F teklifiyle indirim/lisans kalibrasyonu; TS7700 yedekleme; DS8000 G10
-- Personel ve GDPS ayrı kalem
+- GDPS ayrı kalem; personel için Türkiye gibi farklı pazarlara yüklü maliyet seti
+- Aralık çıktısının olasılıklı hali (Monte Carlo: parametre dağılımları ve korelasyon)
 - 5 yıllık ufuk + NPV, kümelenmiş peak dağılımı; TFP-SW büyüme fiyatı ve MSU taahhüdü
 - (Opsiyonel) z16 A02 rack-mount modelleri

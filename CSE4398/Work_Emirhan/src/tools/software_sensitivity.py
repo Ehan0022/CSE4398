@@ -66,19 +66,10 @@ def main():
         print(f"   f={v:<5} {with_attr('ZIIP_OFFLOAD_FRACTION', v, lambda: fmt(REF_TPS, run(REF_TPS)))}")
 
     print("\n5) L4+ kademe dusus orani (10K ve 100K TPS)")
-    base_levels = list(m.AWLC_LEVELS)
     for decay in [1.0, 0.8, 0.7]:
-        levels = base_levels[:5]
-        rate = base_levels[4][1]
-        for upper, _ in base_levels[5:]:
-            rate *= decay
-            levels.append((upper, rate))
-        m.AWLC_LEVELS = levels
-        try:
-            for tps in (REF_TPS, HIGH_TPS):
-                print(f"   x{decay:<4} {tps:>7}  {fmt(tps, run(tps))}")
-        finally:
-            m.AWLC_LEVELS = base_levels
+        for tps in (REF_TPS, HIGH_TPS):
+            print(f"   x{decay:<4} {tps:>7}  "
+                  f"{with_attr('AWLC_UPPER_DECAY', decay, lambda: fmt(tps, run(tps)))}")
 
     print("\n6) Availability -> GDPS yazilim premium'u (10K TPS)")
     for av in [0.999, 0.99999, 0.9999999]:

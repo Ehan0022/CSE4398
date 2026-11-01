@@ -208,6 +208,28 @@ def test_workload_profiles():
     assert c2.cpu_weight() > c1.cpu_weight() and c2.sync_io() > c1.sync_io()
 
 
+def test_staff_and_ranges():
+    """Personel alt-dogrusal (MIPS/FTE kapasiteyle artar), senaryolar sirali;
+    aralik ciktisi low <= mid <= high ve parametreler gecici degisir."""
+    small = next(t for t in m.Z16_TIERS if t.model == "3931-705")
+    big = next(t for t in m.Z16_TIERS if t.model == "3931-7A0")
+    for sc in ("low", "mid", "high"):
+        assert big.pci / m.staff_fte(big, None, sc) > small.pci / m.staff_fte(small, None, sc)
+    assert (m.staff_monthly_cost(small, None, "low") < m.staff_monthly_cost(small, None, "mid")
+            < m.staff_monthly_cost(small, None, "high"))
+    m1, m4 = m.TOPOLOGIES[0], m.TOPOLOGIES[3]
+    assert m.staff_fte(small, m4) > m.staff_fte(small, m1)
+    before = m.SW_PRICE_LEVEL_FACTOR
+    rng = m.solve_range(10000, data_tb=20)
+    assert m.SW_PRICE_LEVEL_FACTOR == before
+    t = [rng[k]["cost"]["total"] for k in m.RANGE_LEVELS]
+    assert t[0] < t[1] < t[2]
+    assert abs(t[1] - m.solve(10000, verbose=False, data_tb=20)[2]["total"]) < 1e-6
+    rows = m.range_tornado(10000, data_tb=20)
+    assert len(rows) == len(m.RANGE_PARAMETERS)
+    assert all(lo <= t[1] + 1e-6 <= hi + 2e-6 for _n, _d, lo, hi in rows)
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

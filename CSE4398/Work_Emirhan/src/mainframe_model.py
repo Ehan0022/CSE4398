@@ -24,7 +24,9 @@ Akis:
   6. Maliyet: yazilim yigini (z/OS + CICS TS + Db2) IBM AWLC kumulatif
      kademeli fiyatla, faturalanan (sub-capacity) MSU uzerinden; zIIP payi
      MSU'ya sayilmaz, zIIP motorlari donanima eklenir.
-  7. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir.
+     Altyapi personeli kapasiteyle alt-dogrusal FTE egrisinden (3 senaryo).
+  7. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir. Kesin
+     fiyati olmayan parametreler icin --range low/mid/high aralik verir.
   8. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
      Base + On/Off CoD, Tailored Fit Pricing (base + corridor + CoD). Gecici
      kapasite SC28-7025 sinirlarina tabidir (%100 kurali, drawer, alt-kapasite).
@@ -66,6 +68,9 @@ KAYNAK ETIKETLERI:
   [CATTERALL-2019/2012] = R. Catterall (IBM) Db2 blogu: CICS-Db2 islemi ~1.3 ms
                Db2 CPU; CICS'te tek INSERT ~68 us
   [SYSBENCH], [TPC-B] = profil bilesimleri (oltp_rw, tpcb_like)
+  [IBM-EAGLE] = IBM Eagle TCO: "5 FTE + her 625 MIPS icin 1 FTE" (17 musteri)
+  [GARTNER-ITKMD] = Gartner IT Key Metrics 2016: MIPS/FTE 152 -> 268
+  [BLS-OEWS], [BLS-ECEC] = BLS maas medyanlari (2025) ve yan hak payi (%30)
   [ZIIP]     = z16 zIIP kurallari (SG24-8950): MSU disi, tam hiz, zIIP:CP <= 2:1
   [PWR]      = Enerji: 20-40 kW/frame
   [ASSUME]   = Kalibre edilmemis varsayim
@@ -539,17 +544,27 @@ def find_feasible_topologies(availability_target):
 #   3) mutlak seviye SW_PRICE_LEVEL_FACTOR ile (1.0 = 2004 nominal liste),
 #      duyarlilik analizinde 0.5-1.5 araliginda taranir.
 AWLC_BASE_CHARGE = 3960.0              # USD/ay, ilk 3 MSU dahil [IBM-2004]
-AWLC_LEVELS = [                        # (kademe ust siniri MSU, marjinal USD/MSU/ay)
+AWLC_LEVELS_SOURCED = [                # (kademe ust siniri MSU, marjinal USD/MSU/ay)
     (3,     0.0),                      # Base (sabit ucrete dahil)
     (45,    208.0),                    # L0  [IBM-2004]
     (175,   88.0),                     # L1  [IBM-2004]
     (315,   66.0),                     # L2  [IBM-2004]
     (575,   50.0),                     # L3  [IBM-2004]
-    (875,   40.0),                     # L4  [ASSUME x0.80]
-    (1315,  32.0),                     # L5  [ASSUME x0.80]
-    (1975,  25.6),                     # L6  [ASSUME x0.80]
-    (float("inf"), 20.48),             # L7  [ASSUME x0.80, LONGPELA]
 ]
+AWLC_UPPER_BOUNDS = [875, 1315, 1975, float("inf")]   # L4..L7 sinirlari [AWLC]
+AWLC_UPPER_DECAY = 0.80                # L4+ kademe basina marjinal fiyat carpani
+                                       # [ASSUME, LONGPELA; aralik 0.70-1.00]
+
+
+def awlc_levels():
+    """Tam kademe listesi: kaynakli L0-L3 + L4..L7 icin AWLC_UPPER_DECAY ile
+    geometrik dusus (L4 = L3 x decay, ...)."""
+    levels = list(AWLC_LEVELS_SOURCED)
+    rate = levels[-1][1]
+    for upper in AWLC_UPPER_BOUNDS:
+        rate *= AWLC_UPPER_DECAY
+        levels.append((upper, rate))
+    return levels
 # IBM ornek faturasi (aylik, sub-capacity): urun -> (USD/ay, faturalanan MSU)
 SW_PRODUCT_ANCHORS = {
     "z/OS":    (75459.0, 265),         # [IBM-2004]
@@ -573,6 +588,53 @@ HOURS_PER_MONTH = 730.0
 
 # [PRICE] Ekonomik alt esik: <150 MIPS altinda mainframe mantikli degil.
 MAINFRAME_MIN_VIABLE_MIPS = 150.0      # [PRICE]
+
+
+# ------------------------------------------------------------------------------
+# PERSONEL (altyapi ekibi: z/OS ve CICS sistem programcilari, Db2 sistem DBA'lari,
+# storage, otomasyon/operasyon, kapasite/performans, guvenlik/RACF)
+# ------------------------------------------------------------------------------
+# Personel kurulu kapasiteyle ALT-DOGRUSAL olceklenir: kucuk kurulumlarda sabit
+# bir cekirdek ekip baskin, buyuk kurulumlarda MIPS/FTE artar [GARTNER-ITKMD].
+# Model: FTE = max(TABAN, FTE_1000 x (PCI/1000)^b) x topoloji carpani.
+# Capalar (Bolum 7.7):
+#   - IBM Eagle TCO ekibi, 17 musteri: "5 FTE + her 625 MIPS icin 1 FTE"
+#     (kucuk/orta kurulumlar, ~3.000 MIPS'e kadar) [IBM-EAGLE].
+#   - Gartner IT Key Metrics 2016: kurulu MIPS/FTE 152 -> 268 (5 yil, ortalama)
+#     [GARTNER-ITKMD]; yillik ~%12 verimlilik artisi.
+#   - IBM ornek karsilastirmasi: 3.192 MIPS'i ~4 FTE yonetiyor (~790 MIPS/FTE)
+#     [IBM-TPF-2007]; uretici kaynagi, alt sinira yakin.
+# Uc senaryo (dusuk / orta / yuksek), 20.000 PCI'da MIPS/FTE: ~830 / ~450 / ~260.
+STAFF_SCENARIOS = {
+    #            FTE_1000, b,    taban, yuklu maliyet USD/yil
+    "low":  dict(fte_1000=4.0, exp=0.60, floor=3.0, loaded=122000.0),
+    "mid":  dict(fte_1000=5.5, exp=0.70, floor=4.0, loaded=162000.0),
+    "high": dict(fte_1000=7.0, exp=0.80, floor=5.0, loaded=215000.0),
+}
+# Yuklu maliyet = brut maas x yan hak carpani. Brut maas: BLS OEWS Mayis 2025
+# medyanlari (DBA/mimar $126.760, sistem yoneticisi $99.130, guvenlik $129.180)
+# ve mainframe ilanlari/anketleri (Payscale ~$90K, Glassdoor Db2 z/OS DBA
+# $104-163K) -> karma brut $95K / $120K / $150K. Yan hak carpani: IDC %28
+# [IDC-2016], BLS ECEC'te maas toplam maliyetin %70'i -> x1.43 [BLS-ECEC];
+# 1.28 / 1.35 / 1.43.
+STAFF_SCENARIO = "mid"
+# DR ve sysplex karmasikligi: ikinci CEC, GDPS, ikinci site operasyonu [ASSUME]
+STAFF_TOPOLOGY_FACTOR = {"M1": 1.00, "M2": 1.05, "M3": 1.15, "M4": 1.25}
+
+
+def staff_fte(tier, topology=None, scenario=None):
+    """Kademeyi (birincil CEC kapasitesi) isletmek icin gereken altyapi FTE'si."""
+    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
+    fte = max(p["floor"], p["fte_1000"] * (tier.pci / 1000.0) ** p["exp"])
+    if topology is not None:
+        fte *= STAFF_TOPOLOGY_FACTOR.get(topology.code, 1.0)
+    return fte
+
+
+def staff_monthly_cost(tier, topology=None, scenario=None):
+    """Altyapi personelinin AYLIK yuklu maliyeti (USD)."""
+    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
+    return staff_fte(tier, topology, scenario) * p["loaded"] / 12.0
 
 
 # ------------------------------------------------------------------------------
@@ -821,8 +883,9 @@ def _awlc_reference_curve(msu):
     if msu <= 0:
         return 0.0
     cost = AWLC_BASE_CHARGE
-    lower = AWLC_LEVELS[0][0]           # ilk 3 MSU sabit ucrete dahil
-    for upper, rate in AWLC_LEVELS[1:]:
+    levels = awlc_levels()
+    lower = levels[0][0]                # ilk 3 MSU sabit ucrete dahil
+    for upper, rate in levels[1:]:
         if msu <= lower:
             break
         cost += (min(msu, upper) - lower) * rate
@@ -864,6 +927,8 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
       - hardware:     tam fiyat x cost_multiplier (frame sayisi)
       - maintenance:  hardware'a oranli
       - energy:       frame sayisi x kW x elektrik
+      - staff:        altyapi personeli, birincil kademenin PCI'sina gore
+                      alt-dogrusal (STAFF_SCENARIOS), topoloji carpaniyla
     """
     msu = tier.msu if billed_msu is None else billed_msu
     # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
@@ -877,12 +942,14 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     energy = POWER_KW_PER_SYSTEM * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
 
     mult = topology.cost_multiplier
+    staff = staff_monthly_cost(tier, topology)
     return {
         "software": software,                       # GDPS premium varsa zaten cikti
         "hardware_amort": hw_monthly * mult,        # frame sayisi kadar
         "maintenance": maint_monthly * mult,
         "energy": energy * mult,
-        "total": software + (hw_monthly + maint_monthly + energy) * mult,
+        "staff": staff,                             # birincil CEC kapasitesine gore
+        "total": software + (hw_monthly + maint_monthly + energy) * mult + staff,
     }
 
 
@@ -996,6 +1063,8 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
               f"({topo.n_frames} frame; {ziip_engines(tier, workload)} zIIP, "
               f"f={ziip_fraction(workload):.2f})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
+        print(f"       personel: ${cost['staff']:,.0f}  "
+              f"({staff_fte(tier, topo):.1f} FTE, senaryo={STAFF_SCENARIO})")
         print(f"       enerji:   ${cost['energy']:,.0f}")
         sp = cost["storage_plan"]
         print(f"       storage:  ${cost['storage']:,.0f}  ({describe_storage(sp)})")
@@ -1230,7 +1299,7 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
                     latency_ms=None, latency_percentile=99,
                     strategy="permanent", corridor_tier=None,
                     feature_max_cps=None, sw_price_per_msu_hour=None,
-                    storage_monthly=0.0):
+                    storage_monthly=0.0, staff_monthly=0.0):
     """Bir yillik saat-saat simulasyon ve maliyet.
 
     strategy:
@@ -1335,7 +1404,8 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
     yearly_software = sum(monthly_software)
     yearly_other = sum(monthly_other)
     yearly_storage = 12.0 * storage_monthly
-    yearly_total = (yearly_software + yearly_other + yearly_storage +
+    yearly_staff = 12.0 * staff_monthly
+    yearly_total = (yearly_software + yearly_other + yearly_storage + yearly_staff +
                     cod_cost_total + corridor_cost_total)
 
     return {
@@ -1353,6 +1423,7 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
         "yearly_software": yearly_software,
         "yearly_other": yearly_other,
         "yearly_storage": yearly_storage,
+        "yearly_staff": yearly_staff,
         "yearly_total": yearly_total,
         "base_tier": tier,
         "corridor_tier": corridor_tier if strategy == "tfp" else None,
@@ -1428,9 +1499,11 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
             continue
         splan = storage_plan(peak_load, workload, topo, data_tb, data_growth)
         st_m = splan["monthly_total"]
+        # personel tepe yuku tasiyan kademeye gore: stratejiden bagimsiz
+        stf_m = staff_monthly_cost(perm_tier, topo)
         sim_perm = simulate_yearly(profile, perm_tier, topo, workload, latency_ms,
                                    latency_percentile, strategy="permanent",
-                                   storage_monthly=st_m)
+                                   storage_monthly=st_m, staff_monthly=stf_m)
         sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, workload)
 
         candidates = {"permanent": [sim_perm]} if "permanent" in strategies else {}
@@ -1447,7 +1520,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
             if "base_cod" in strategies:
                 s = simulate_yearly(profile, base, topo, workload, latency_ms,
                                     latency_percentile, strategy="base_cod",
-                                    storage_monthly=st_m)
+                                    storage_monthly=st_m, staff_monthly=stf_m)
                 if s is not None:
                     candidates.setdefault("base_cod", []).append(s)
             if "tfp" in strategies:
@@ -1457,7 +1530,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
                                         latency_percentile, strategy="tfp",
                                         corridor_tier=corr,
                                         sw_price_per_msu_hour=sw_price,
-                                        storage_monthly=st_m)
+                                        storage_monthly=st_m, staff_monthly=stf_m)
                     if s is not None:
                         candidates.setdefault("tfp", []).append(s)
 
@@ -1515,6 +1588,8 @@ def _print_strategy_detail(sim):
     if sim.get("yearly_storage"):
         print(f"  Storage (DS8900F):".ljust(34) + f"${sim['yearly_storage']:>13,.0f}"
               f"  [{describe_storage(sim['storage_plan'])}]")
+    if sim.get("yearly_staff"):
+        print(f"  Personel ({STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
     if sim["corridor_cost_total"]:
         print(f"  TFP corridor kullanimi:".ljust(34) + f"${sim['corridor_cost_total']:>13,.0f}")
     if sim["cod_cost_total"]:
@@ -1562,6 +1637,108 @@ def export_yearly_csv(sim, filepath):
 
 import argparse
 import sys
+
+
+# ------------------------------------------------------------------------------
+# ARALIK (RANGE) CIKTISI
+# ------------------------------------------------------------------------------
+# Kamuya acik kesin fiyat olmayan parametreler tek bir deger yerine kaynakli bir
+# araliktir. "low" mainframe lehine (dusuk maliyet), "high" aleyhine ucu verir.
+#   - solve_range: tum parametreler ayni anda low / mid / high -> toplam
+#     maliyetin dis sinirlari (koseler; olasilik araligi DEGIL).
+#   - range_tornado: digerleri mid'de iken her parametreyi tek tek low/high'a
+#     cekip toplamdaki salinimi olcer -> hangi varsayim sonucu en cok oynatir.
+# Her kademe secimi senaryo icinde yeniden optimize edilir.
+RANGE_PARAMETERS = [
+    # (degisken, low, mid, high, aciklama)
+    ("STAFF_SCENARIO", "low", "mid", "high", "Personel FTE egrisi + yuklu maliyet"),
+    ("SW_PRICE_LEVEL_FACTOR", 0.5, 1.0, 1.5, "AWLC mutlak fiyat seviyesi (2004 = 1.0)"),
+    ("AWLC_UPPER_DECAY", 0.70, 0.80, 1.00, "AWLC L4+ kademe dusus orani"),
+    ("CPU_US_PER_SQL_READ", 15.0, 30.0, 60.0, "Okuma SQL CPU, us (is yuku agirligi)"),
+    ("CPU_US_PER_SQL_WRITE", 40.0, 70.0, 140.0, "Yazma SQL CPU, us (is yuku agirligi)"),
+    ("ZIIP_OFFLOAD_FRACTION", 0.25, 0.10, 0.0, "zIIP'e kayan CPU payi"),
+    ("HARDWARE_COST_PER_MIPS", 150.0, 200.0, 300.0, "Donanim USD/PCI"),
+    ("STORAGE_DISCOUNT", 0.85, 0.70, 0.50, "DS8900F liste fiyati indirimi"),
+    ("BP_HIT_RATIO", 0.99, 0.95, 0.90, "Db2 buffer pool isabeti (I/O)"),
+]
+RANGE_LEVELS = ("low", "mid", "high")
+
+
+class use_values:
+    """Modul degiskenlerini gecici olarak degistiren baglam yoneticisi."""
+    def __init__(self, values):
+        self.values, self.old = values, {}
+
+    def __enter__(self):
+        g = globals()
+        for k, v in self.values.items():
+            self.old[k] = g[k]
+            g[k] = v
+        return self
+
+    def __exit__(self, *exc):
+        globals().update(self.old)
+        return False
+
+
+def scenario_values(level):
+    """RANGE_PARAMETERS'in tumu icin low / mid / high degerleri."""
+    i = RANGE_LEVELS.index(level)
+    return {name: vals[i] for name, *vals, _desc in
+            [(r[0], r[1], r[2], r[3], r[4]) for r in RANGE_PARAMETERS]}
+
+
+def solve_range(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+                latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None):
+    """Toplam aylik maliyetin low / mid / high dis sinirlari. Donus:
+    {level: {"tier", "topology", "cost"}} ya da senaryo infeasible ise None."""
+    out = {}
+    for level in RANGE_LEVELS:
+        with use_values(scenario_values(level)):
+            r = solve(tps, availability, workload, latency_ms, latency_percentile,
+                      verbose=False, data_tb=data_tb, data_growth=data_growth)
+        out[level] = None if r is None else {"tier": r[0], "topology": r[1], "cost": r[2]}
+    return out
+
+
+def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+                  latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None):
+    """Tek-parametre salinimi: [(degisken, aciklama, low_toplam, high_toplam)],
+    salinim buyuklugune gore sirali. Digerleri mid'de."""
+    mid = scenario_values("mid")
+    rows = []
+    for name, lo, _m, hi, desc in RANGE_PARAMETERS:
+        totals = []
+        for v in (lo, hi):
+            vals = dict(mid)
+            vals[name] = v
+            with use_values(vals):
+                r = solve(tps, availability, workload, latency_ms, latency_percentile,
+                          verbose=False, data_tb=data_tb, data_growth=data_growth)
+            totals.append(None if r is None else r[2]["total"])
+        rows.append((name, desc, totals[0], totals[1]))
+    rows.sort(key=lambda r: -abs((r[3] or 0) - (r[2] or 0)))
+    return rows
+
+
+def print_range(tps, **kw):
+    rng = solve_range(tps, **kw)
+    print(f"\nARALIK (aylik toplam, {tps:,.0f} TPS):")
+    for level in RANGE_LEVELS:
+        x = rng[level]
+        if x is None:
+            print(f"  {level:<5} infeasible")
+            continue
+        c = x["cost"]
+        print(f"  {level:<5} ${c['total']:>12,.0f}  (${c['total'] / tps:,.2f}/TPS)  "
+              f"{x['topology'].code} {x['tier'].model}  yazilim ${c['software']:,.0f}  "
+              f"personel ${c['staff']:,.0f}")
+    print("  Tek-parametre salinimi (digerleri mid):")
+    for name, desc, lo, hi in range_tornado(tps, **kw):
+        if lo is None or hi is None:
+            print(f"    {desc:<42} infeasible ucu var")
+            continue
+        print(f"    {desc:<42} ${lo:>12,.0f} .. ${hi:>12,.0f}")
 
 
 def print_calibration():
@@ -1659,6 +1836,9 @@ Ornekler:
     parser.add_argument("--workload", choices=list(WORKLOAD_PROFILES),
                         default=DEFAULT_WORKLOAD,
                         help=f"Is yuku profili (varsayilan: {DEFAULT_WORKLOAD})")
+    parser.add_argument("--range", action="store_true",
+                        help="(STATIK) Kaynakli araliklarla low/mid/high toplam ve "
+                             "tek-parametre salinimi")
     parser.add_argument("--sql-reads", type=float, default=None,
                         help="Ozel profil: islem basina okuma SQL sayisi")
     parser.add_argument("--sql-writes", type=float, default=None,
@@ -1735,6 +1915,10 @@ Ornekler:
                    latency_percentile=args.latency_percentile,
                    data_tb=args.data_tb,
                    data_growth=args.data_growth)
+    if args.range:
+        print_range(args.tps, availability=args.availability, workload=args.workload,
+                    latency_ms=args.latency_ms, latency_percentile=args.latency_percentile,
+                    data_tb=args.data_tb, data_growth=args.data_growth)
     if result is None:
         print("Tek z16 frame bu is yukunu karsilayamiyor.")
         sys.exit(1)
