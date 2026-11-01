@@ -1,16 +1,77 @@
 # Mainframe (Scale-Up) Modelinin Detaylı Dokümantasyonu — v3
 
-*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, yazılım yığını (AWLC: z/OS, CICS TS, Db2) ve zIIP, storage (DS8900F), yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
+*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, iş yükü profili, yazılım yığını (AWLC: z/OS, CICS TS, Db2) ve zIIP, altyapı personeli, aralık çıktısı, storage (DS8900F), yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
 
-Bu doküman mainframe modelinin **güncel halini** anlatır: hangi veri hangi kaynaktan alındı, nasıl işlendi, modele nasıl girdi. Değişikliklerin tarihçesi ve gerekçeleri `PROJECT_LOG.md` dosyasındadır. Önceki sürüm (`mainframe_model_documentation_v2.md`) tarihsel kayıt olarak değiştirilmeden tutulur.
+Bu doküman mainframe modelinin **güncel halini** anlatır: hangi veri hangi kaynaktan alındı, nasıl işlendi, modele nasıl girdi. İlk kez okuyorsanız Bölüm 0'dan (okuma kılavuzu, baştan sona örnek ve sözlük) başlayın. Değişikliklerin tarihçesi ve gerekçeleri `PROJECT_LOG.md` dosyasındadır. Önceki sürüm (`mainframe_model_documentation_v2.md`) tarihsel kayıt olarak değiştirilmeden tutulur.
 
 Etiketler: **[ASSUME]** kalibre edilmemiş varsayım · **[DERIVED]** resmî veriden hesaplanmış, doğrulaması belirtilmiş değer · **(doğrulanmalı)** kaynakla henüz teyit edilmemiş bilgi.
+
+## 0. Okuma Kılavuzu
+
+Bu bölüm dokümanı ilk kez okuyan biri için yazıldı. Önce modelin bir sorguyu baştan sona nasıl işlediğini (0.1), sonra gerçek sayılarla tek bir örneği (0.2), en sonda da dokümanda geçen mainframe terimlerini (0.3) verir. Ayrıntılar ilgili bölümlerdedir.
+
+### 0.1. Model bir sorguyu nasıl işler
+
+Model iki modda çalışır. **Statik mod** tek bir yük noktası için "hangi makine, ayda ne kadar" sorusunu cevaplar. **Yıllık mod** aynı soruyu 8.760 saatlik bir trafik profili üzerinde, üç farklı donanım edinim stratejisiyle sorar (Bölüm 9). Statik moddaki akış:
+
+1. **İş yükünü tanımla (Bölüm 4.4).** Kullanıcı TPS'i ve işlemin bileşimini (okuma ve yazma SQL sayısı) verir. Bileşimden işlemin CPU ağırlığı *w*, işlem başına senkron I/O ve IOPS hesaplanır. *w*, bir işlemin kapasite köprüsündeki benchmark işleminden kaç kat ağır olduğunu söyler.
+2. **Kademelerin kapasitesini hesapla (Bölüm 3–4).** z16 A01'in 317 kademesinin her birinin göreli kapasitesi (PCI) IBM tablolarından gelir. Kapasite köprüsü PCI'yi saniyedeki benchmark işlemine çevirir (PCI başına 7,94); *w* ile bölününce o iş yükü için kademenin TPS kapasitesi çıkar.
+3. **Availability'ye göre topolojileri ele (Bölüm 6).** Dört topolojiden (M1–M4) yalnızca bağımsız ölçüme dayalı alt sınırı hedefi karşılayanlar aday kalır. Topoloji frame sayısını, yazılım primini, storage kopya sayısını ve personel çarpanını belirler.
+4. **Latency'ye göre kademeleri ele (Bölüm 5).** Her kademe için hedef percentile latency'yi karşılayan en yüksek kullanım oranı hesaplanır (en fazla %90). Kademe, yükü bu oranın altında taşıyabiliyorsa feasible'dır. Latency CPU kuyruğundan ve storage'tan gelen sabit I/O gecikmesinden oluşur.
+5. **Storage'ı boyutlandır (Bölüm 8).** Veri hacmi ve IOPS ihtiyacından DS8900F dizi modeli ve sayısı seçilir. I/O gecikmesi adım 4'e geri beslenir.
+6. **Maliyeti hesapla ve en ucuzu seç (Bölüm 7).** Her feasible (topoloji, kademe) çifti için altı kalem toplanır: yazılım (yükün tükettiği MSU üzerinden AWLC), donanım amortismanı, bakım, enerji, personel ve storage. En düşük aylık toplam seçilir.
+7. **Aralığı ver (Bölüm 7.8).** Kesin fiyatı olmayan dokuz parametre düşük, orta ve yüksek değerlere çekilir; adım 1–6 her biri için yeniden çözülür. Sonuç tek bir sayı değil, low / mid / high aralığı ve her parametrenin bu aralığa katkısıdır.
+
+### 0.2. Baştan sona bir örnek
+
+Sorgu: 10.000 TPS, varsayılan `oltp_rw` profili, availability ≥ %99,9, p99 latency < 200 ms, 20 TB veri.
+
+```
+python src/mainframe_model.py --tps 10000 --availability 0.999 --latency-ms 200 --data-tb 20 --range
+```
+
+| Adım | Ne hesaplanır | Sonuç |
+|---|---|---|
+| 1. İş yükü | CPU = 85,9 + 30 × 14 okuma + 70 × 4 yazma = 785,9 µs; w = 785,9 / 85,9 | w = 9,15; 3,8 senkron I/O ve 5,8 IOPS / işlem |
+| 2. Kapasite | 7,939 / 9,15 / (1 − 0,10 zIIP payı) | PCI başına 0,96 işlem/s |
+| 3. Availability | M1'in alt sınırı %99,99 ≥ %99,9 | Dört topoloji de aday; en ucuz olan M1 (tek frame) |
+| 4. Latency | 3931-516 (16 CP, 11.743 PCI) ham 11.323 TPS, %90 tavanla 10.190 TPS taşır | Kullanım %88,3; tahmini p99 56 ms |
+| 5. Storage | 20 TB × büyüme × ek yük → 76 TB ham; 10K × 5,8 = 58K IOPS | 1× DS8910F-993; I/O başına 69 µs, D_io 0,26 ms |
+| 6. Maliyet | Faturalanan MSU = 10.000 / 11.323 ham TPS × 1.423 kademe MSU'su = 1.257 (sub-capacity); diğer kalemler | Aylık $833.180 = TPS başına $83,32 |
+| 7. Aralık | Dokuz parametre low / mid / high | TPS başına $26,24 / $83,32 / $288,52 |
+
+Adım 6'nın dökümü (aylık): yazılım $339.968 (z/OS + CICS TS + Db2), personel $416.430 (30,8 FTE), donanım amortismanı $41.021 (1 zIIP dahil), bakım $25.638, storage $7.496, enerji $2.628. Personel ve yazılım birlikte toplamın %91'idir. Bu yüzden mainframe tarafının sonucunu en çok bu iki kalemin varsayımları belirler. Aralığa en çok katkı yapan parametreler sırasıyla personel eğrisi, okuma SQL'inin CPU maliyeti ve AWLC fiyat seviyesidir (Bölüm 7.8).
+
+### 0.3. Sözlük
+
+| Terim | Anlamı | Modeldeki yeri |
+|---|---|---|
+| CEC / CPC / frame | Tek bir fiziksel mainframe (Central Electronic Complex) | Topoloji frame sayısını belirler (Bölüm 6.7) |
+| CP (GP) | Genel amaçlı işlemci; z/OS işi burada çalışır ve yazılım faturasına sayılır | Kademe = CP sayısı + hız seviyesi (Bölüm 3) |
+| Kademe (capacity setting) | Model kodu 3931-*abc*: ilk hane hız seviyesi (4/5/6 alt-kapasite, 7 tam hız), son iki hane CP sayısı (99'un üstü harfle: 7A0 = 100, 7K0 = 200). Örnek: 3931-516 = 16 CP, 5 hız seviyesi | 317 kademe (Bölüm 3) |
+| PCI | Processor Capacity Index; IBM'in göreli kapasite ölçüsü. Pratikte MIPS ile aynı anlamda kullanılır | Kapasite köprüsünün girdisi (Bölüm 4) |
+| LSPR | Large Systems Performance Reference; IBM'in kademeler arası kapasite oranları | PCI değerlerinin kaynağı (Bölüm 3.2) |
+| MSU | Million Service Units; IBM'in yazılım faturası için kullandığı kapasite birimi | Yazılım maliyeti MSU'ya bağlıdır (Bölüm 7.1) |
+| MLC / AWLC | Monthly License Charge: z/OS, CICS, Db2 gibi ürünlerin aylık lisans ücreti. AWLC, z16'da kullanılan, MSU arttıkça birim fiyatı kademe kademe düşen MLC türü | Bölüm 7.1 |
+| R4HA | Rolling 4-Hour Average; ayın en yüksek 4 saatlik ortalama MSU tüketimi. Sub-capacity fiyatlamada fatura buna göre kesilir | Yıllık mod (Bölüm 9.3) |
+| zIIP | Bazı Db2/Java işlerini CP'den alan, yazılım faturasına sayılmayan ve daha ucuz specialty işlemci | f parametresi (Bölüm 7.1.5) |
+| ICF / CF | Internal Coupling Facility: sysplex üyelerinin ortak kilit ve önbellek yapısını tutan specialty işlemci | M1–M2 topolojileri (Bölüm 6.2) |
+| Sysplex / Parallel Sysplex | Birden çok z/OS sisteminin tek sistem gibi çalıştığı küme yapısı | Topolojiler; çok-frame ölçekleme modellenmedi (Bölüm 12.2) |
+| GDPS | IBM'in sysplex ve disk replikasyonunu otomatik yöneten felaket kurtarma çözümü | M3–M4 yazılım primi (Bölüm 6.7) |
+| CoD / On/Off CoD | Capacity on Demand: kurulu ama kapalı kapasiteyi günlük ücretle geçici açma | Strateji B (Bölüm 9.6) |
+| CBU | Capacity BackUp: DR frame'inde yalnızca felakette açılan yedek kapasite | Henüz modelde yok (Bölüm 12) |
+| TFP | Tailored Fit Pricing: donanımda tüketim bazlı corridor (TFP-HW), yazılımda tüketilen MSU-saat fiyatı (TFP-SW) | Strateji C (Bölüm 9.4, 9.6) |
+| w | İşlemin CPU ağırlığı, benchmark işlemine göre (REDP = 1) | Bölüm 4.4 |
+| f | zIIP'e kayan CPU payı | Bölüm 7.1.5 |
+| D_io | İşlem başına toplam senkron I/O gecikmesi | Bölüm 5.3, 8.6 |
+| FTE | Tam zamanlı eşdeğer çalışan sayısı | Personel (Bölüm 7.7) |
+| low / mid / high | Aralık senaryoları; "low" her parametrenin mainframe lehine ucu | Bölüm 7.8 |
 
 ## 1. Modelin Amacı ve Kapsamı
 
 ### 1.1. Cevaplanan Soru
 
-Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, availability hedefi) için, bu iş yükünü karşılayan minimum maliyetli feasible IBM z16 A01 konfigürasyonu hangisidir ve aylık/yıllık maliyeti nedir?
+Verilen bir iş yükü (throughput, iş yükü profili yani işlemin okuma/yazma bileşimi, latency hedefi, availability hedefi, veri hacmi) için, bu iş yükünü karşılayan minimum maliyetli feasible IBM z16 A01 konfigürasyonu hangisidir ve aylık/yıllık maliyeti nedir?
 
 ### 1.2. Mevcut Kapsam
 
@@ -35,7 +96,7 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 
 ### 1.4. Henüz Modele Eklenmemiş Bileşenler
 
-GDPS'in ayrı kalem olarak modellenmesi, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
+GDPS'in ayrı kalem olarak modellenmesi, CBU (DR kapasitesi), RPO/RTO girdilerinin bağlanması, yedekleme için sanal teyp (TS7700), 5 yıllık NPV ufku, tek CEC'in ötesine Parallel Sysplex ölçeklemesi, stokastik arıza modeli. Bkz. Bölüm 12.
 
 ## 2. Modelin Girdi ve Çıktıları
 
@@ -43,21 +104,23 @@ GDPS'in ayrı kalem olarak modellenmesi, CBU (DR kapasitesi), yedekleme için sa
 
 | **Parametre** | **Açıklama** | **Tipik aralık** |
 |---|---|---|
-| tps | Saniyedeki işlem sayısı | 1.000 – 1.500.000 |
-| workload | İş yükü profili: işlemin bileşimi (Bölüm 4.4) | redp_light / tpcb_like / oltp_rw (varsayılan) / oltp_heavy, ya da --sql-reads / --sql-writes |
+| tps | Saniyedeki işlem sayısı | 500 – ~187.000 (oltp_rw'de tek z16 tavanı; redp_light'ta ~1,5M) |
+| workload | İş yükü profili: işlemin bileşimi (Bölüm 4.4) | redp_light / tpcb_like / oltp_rw (varsayılan) / oltp_heavy |
+| sql_reads + sql_writes | Özel bileşim: işlem başına okuma ve yazma SQL sayısı (`--sql-reads`, `--sql-writes`); verilirse hazır profilin yerine geçer | ör. 6 + 2 |
 | latency_ms + percentile | Hedef latency | ör. p99 < 200 ms |
 | availability | Hedef uptime | 0.999 – 0.99999999 |
 | [yıllık] preset | Workload preset adı | steady_oltp / retail_bursty / batch_heavy |
 | [yıllık] avg_tps + peak_ratio + peak_days | Custom workload tanımı | ör. 10K TPS, 3.5×, 20 gün |
 | data_tb | Mantıksal Db2 veri hacmi (indeksler dahil), TB | 1 – 5.000 (varsayılan 20) |
 | data_growth | Yıllık veri büyümesi | 0 – 0,5 (varsayılan 0,15) |
+| range | Aralık çıktısı (`--range`): kaynaklı parametre aralıklarıyla low / mid / high (Bölüm 7.8) | açık / kapalı |
 
 Projenin 8 girdisinden rpo_seconds ve rto_minutes henüz modele bağlı değil (DR adımıyla gelecek). IOPS kullanıcıya sorulmaz; TPS × iş yükü profilinin bileşiminden türetilir.
 
 ### 2.2. Çıktılar
 
 Statik mod (tek nokta sorgu):
-- Seçilen z16 kademesi (örn. 3931-436) ve topoloji (M1/M2/M3/M4)
+- Seçilen z16 kademesi (örn. 10K TPS oltp_rw'de 3931-516) ve topoloji (M1/M2/M3/M4)
 - Tam-hız CP eşdeğeri, utilization, dinamik utilization tavanı, tahmini percentile latency
 - Aylık maliyet dökümü: yazılım (z/OS + CICS TS + Db2) + donanım (zIIP dahil) + bakım + enerji + personel + storage
 - `--range` ile: toplamın low / mid / high sınırları ve tek-parametre salınımı (Bölüm 7.8)
@@ -65,7 +128,7 @@ Statik mod (tek nokta sorgu):
 Yıllık mod (workload simülasyonu):
 - Seçilen strateji (Permanent, Base + On/Off CoD veya Tailored Fit Pricing) ve diğer iki stratejinin en iyi sonuçları
 - Base kademe, drawer özelliği, corridor tavanı, CoD tepe kademesi ve CoD gün sayısı
-- Yıllık maliyet dökümü: yazılım (R4HA veya consumption), donanım + bakım + enerji, corridor kullanımı, On/Off CoD
+- Yıllık maliyet dökümü: yazılım (R4HA veya consumption), donanım + bakım + enerji, corridor kullanımı, On/Off CoD, personel (tepe kademeye göre, stratejiden bağımsız) ve storage
 - Utilization istatistikleri
 - CSV: 8.760 satır saatlik + 12 satır aylık
 
@@ -197,7 +260,7 @@ Varsayılan profil olarak oltp_rw seçildi, çünkü sysbench oltp_read_write x8
 
 #### 4.4.4. Etkisi ve sınırlamalar
 
-- **Etki büyük:** varsayılan profil (w = 9,15) aynı TPS için ~9 kat daha fazla mainframe kapasitesi gerektirir. Örneğin 10K TPS'te faturalanan kademe 185 MSU'dan (REDP işlemi) 1.423 MSU'ya çıkar (Bölüm 7.6). Önceki sürümdeki "50K TPS" sonuçları, bugünkü birimle yaklaşık 5,5K oltp_rw TPS'e karşılık gelir.
+- **Etki büyük:** varsayılan profil (w = 9,15) aynı TPS için ~9 kat daha fazla mainframe kapasitesi gerektirir. Örneğin 10K TPS'te seçilen kademenin MSU'su 185'ten (REDP işlemi) 1.423'e çıkar (Bölüm 7.6). Önceki sürümdeki "50K TPS" sonuçları, bugünkü birimle yaklaşık 5,5K oltp_rw TPS'e karşılık gelir.
 - **Tek sistem tavanı:** oltp_rw'de en büyük tek z16 ~187K TPS taşır; oltp_heavy'de ~104K. Gerçek kurulumlar bunun üstüne Parallel Sysplex data sharing ile birden fazla CEC'e ölçeklenir. Model bunu henüz içermez: M2–M4'teki ikinci frame yedek olarak sayılır, kapasite eklemez. Yüksek hacimli crossover analizi için bu bir sınırlamadır (Bölüm 12).
 - **En kritik varsayım:** CPU_US_PER_SQL_READ. 15–60 µs aralığı w'yi 6,7–14,0 aralığında, 10K TPS'te maliyeti $68,4–109,7/TPS aralığında oynatır (Bölüm 7.1.6 ve `src/tools/workload_sensitivity.py`). BP_HIT_RATIO yalnızca I/O'yu ve D_io'yu etkiler (0,90 → 0,46 ms; 0,99 → 0,11 ms), maliyeti etkilemez.
 - LSPR'nin Low/High RNI sütunları (cache/bellek yoğunluğu, ~±%10–15) ayrı bir etkidir ve modellenmez. Önceki RNI çarpanları (1,25 / 1,00 / 0,70) kaynaksız olduğu için kaldırıldı.
@@ -319,10 +382,16 @@ Planlı indirim uygulandıktan sonra topolojilerin gerçek son-kullanıcı avail
 - M4: %99.99999 – %99.999999 (planlı dahil zaten)
 
 ### 6.7. Topoloji'nin Maliyete Etkisi
-- M1: 1 frame, cost_multiplier = 1.0, software_premium = 1.0
-- M2: 2 frame, cost_multiplier = 2.0, software_premium = 1.0 (ICF specialty engine, lisans etkisiz \[CFCC\])
-- M3: 2 frame, cost_multiplier = 2.0, software_premium = 1.15 (GDPS Metro/Global) — \[ASSUME\]
-- M4: 2 site, cost_multiplier = 2.0, software_premium = 1.30 (GDPS CA) — \[ASSUME\]
+Topoloji dört maliyet kalemini birden etkiler:
+
+| Topoloji | Frame (donanım, bakım, enerji çarpanı) | Yazılım primi | Storage kopyası (Bölüm 8.4) | Personel çarpanı (Bölüm 7.7) |
+|---|---|---|---|---|
+| M1 | 1 | ×1,00 | 1 | ×1,00 |
+| M2 | 2 | ×1,00 (ICF specialty engine, lisans etkisiz [CFCC]) | 2 | ×1,05 |
+| M3 | 2 | ×1,15 (GDPS Metro/Global) [ASSUME] | 4 | ×1,15 |
+| M4 | 2 (iki site) | ×1,30 (GDPS CA) [ASSUME] | 4 | ×1,25 |
+
+İkinci frame tam kapasite ve tam fiyatla sayılır; yalnızca failover içindir ve kapasite eklemez. Gerçekte DR frame'i çoğunlukla CBU ile daha ucuz alınır; bu, availability adımında modellenecektir (Bölüm 12).
 
 ## 7. Maliyet Modeli
 
@@ -394,7 +463,7 @@ Modelde:
 - Kapasite: GP kademesi 1/(1 − f) kat daha fazla transaction taşır (`raw_tier_tps`). Aynı TPS için daha küçük GP kademesi ve daha az faturalanan MSU gerekir. CoD/corridor hesabındaki tüketilen PCI de (1 − f) ile ölçeklenir.
 - Donanım: zIIP sayısı = ⌈kademe.PCI × f/(1 − f) / 2.253⌉, en fazla 2 × CP. 2.253, tek tam-hız motorun (3931-701) PCI'sidir. zIIP bedeli = n × 2.253 × HARDWARE_COST_PER_MIPS × ZIIP_HW_PRICE_FACTOR (0,25 [ASSUME]). Bedel donanıma eklenir, amortisman ve bakım ona göre işler.
 - Basitleştirme: zIIP'te çalışan payın latency'ye etkisi ayrıca modellenmez; per-CP servis süresi GP'deki işe göre hesaplanır.
-- Kapsam notu: köprü benchmark'ı (REDP-5320, CICS/COBOL) zIIP kullanmaz. f, iş yükü profiline özgü bir ek parametredir ve REDP-5320 profil adımında (yol haritası) daraltılmalıdır.
+- Kapsam notu: köprü benchmark'ı (REDP-5320, CICS/COBOL) zIIP kullanmaz. Bu yüzden f yalnızca Db2 içeren profillere (tpcb_like, oltp_rw, oltp_heavy ve özel bileşim) uygulanır; redp_light'ta f = 0'dır (Bölüm 4.4). f'nin kendisi hâlâ kaynakla daraltılmamış bir varsayımdır.
 
 #### 7.1.6. Duyarlılık
 
@@ -946,7 +1015,7 @@ python src/mainframe_model.py --tps 10000 --availability 0.999 --workload oltp_r
 
 ### 10.2. Yıllık Mod
 
-python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000 --availability 0.999 --csv out
+python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000 --availability 0.999 --csv out
 
 ### 10.3. Yardımcı Modlar
 

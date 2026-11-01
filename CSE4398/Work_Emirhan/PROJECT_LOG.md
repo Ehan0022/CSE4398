@@ -376,3 +376,13 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Aralıklar köşe değerleri; olasılıklı aralık için Monte Carlo (dağılım ve korelasyon) gerekli.
 - Personel ABD ücretleriyle; farklı pazar (Türkiye) için ayrı set.
 - Clustered tarafta aynı kapsam (tüm altyapı ekibi) ve aynı aralık yaklaşımı uygulanmalı.
+
+## 2026-11-01 — Oturum 2 (devam): Dokümantasyonun sıfırdan okunabilirlik denetimi
+
+- **Eylem:** v3 dokümanı, modeli hiç bilmeyen bir okur gözüyle baştan sona okundu. Başa **Bölüm 0 (Okuma Kılavuzu)** eklendi:
+  - 0.1: bir sorgunun 7 adımlık akışı (iş yükü → kapasite → availability → latency → storage → maliyet → aralık), her adımın bölüm referansıyla.
+  - 0.2: 10K TPS oltp_rw örneğinin her adımdaki gerçek sayıları (w 9,15 → 3931-516 → faturalanan 1.257 MSU → $833K/ay → $26–289/TPS) ve aylık döküm.
+  - 0.3: 22 terimlik sözlük (CEC, CP, kademe kodu, PCI, LSPR, MSU, MLC/AWLC, R4HA, zIIP, ICF, sysplex, GDPS, CoD, CBU, TFP, w, f, D_io, FTE, low/mid/high).
+- **Eylem:** önceki adımlardan kalan eski ifadeler düzeltildi: §1.1 ("işlem karmaşıklığı" → iş yükü profili), §1.4 (eksik bileşenler listesi), §2.1 (TPS aralığı tek z16 tavanına göre; özel bileşim ve `--range` girdileri), §2.2 (örnek kademe 3931-516; yıllık çıktıda personel ve storage), §4.4.4 (kademe MSU'su ile faturalanan MSU ayrımı), §6.7 (topolojinin dört maliyet kalemine etkisi tek tabloda), §7.1.5 (f yalnızca Db2 profillerinde), §10.2 (yıllık örnek 10K TPS).
+- **Gerekçe:** Danışman ve jüri dokümanı tek başına okuyacak; model adım adım büyüdüğü için kavramlar ilk geçtikleri yerde tanımlanmamıştı ve bazı örnekler eski birim ve kademelerle kalmıştı.
+- **Etki:** Model ve sonuçlar değişmedi (13/13 test). Doküman artık yukarıdan aşağı okunduğunda tanımsız terim veya eski sayı içermiyor.
