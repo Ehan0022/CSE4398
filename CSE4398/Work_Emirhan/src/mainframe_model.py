@@ -16,8 +16,10 @@ Akis:
      zaten bu olcege gomulu).
   3. Latency hedefi varsa per-CP M/M/1 + sabit I/O gecikmesinden dinamik
      utilization tavani; operasyonel %90 tavan her zaman gecerli.
-  4. Availability hedefini karsilayan topolojiler (M1-M4) filtrelenir
-     (ITIC alt siniri + planli kesinti duzeltmesi).
+  4. Availability, RPO ve RTO hedeflerini karsilayan topolojiler (M1-M4)
+     filtrelenir. Availability olay tabanlidir: saha olayi sikligi x
+     topolojinin kurtarma suresi + planli kesinti. DR frame'i CBU ile,
+     GDPS sabit aylik kalem olarak fiyatlanir.
   5. Storage (IBM DS8900F): veri hacmi, IOPS ve topolojiye bagli kopya
      sayisindan boyutlandirma ve maliyet; I/O gecikmesi (D_io) storage
      yolundan (zHyperLink, zHPF/FICON, senkron Metro Mirror) hesaplanir.
@@ -46,9 +48,13 @@ KAYNAK ETIKETLERI:
                (200 tam-hiz + 117 alt-kapasite, ilk 39 CP icin)
   [REDP]     = IBM Redpaper REDP-5320 "CICS TS V5.3 Benchmark on IBM z13"
                (18 CP -> 174000 TPS ; 26 CP -> 227000 TPS)
-  [REDBOOK]  = IBM Resiliency Redbook SG24-8446, Table 1-4 + Section 2
-  [ITIC]     = ITIC Global Server Reliability Surveys 2020-2024
-  [PRECISELY]= Precisely HA Definition: total downtime'in %90'i planned
+  [SG24-8446]= IBM Z Resiliency Redbook: desenler, genel RTO/RPO araliklari
+  [SG24-6374]= IBM GDPS Redbook, Tablo 1-1 (DR seceneklerinin RPO/RTO'su)
+  [GDPS-2026]= S. Cook (IBM GDPS Dev.), VM Workshop 2026: GDPS RPO/RTO degerleri
+  [GDPS-CA-2021] = IBM GDPS CA sunumu: planli kesinti 4 saat -> <30 sn
+  [CBU]      = SC28-7025 CBU bolumu: test/aktivasyon kurallari, DR yazilim kurali
+  [UPTIME-2025], [UPTIME-2022] = Uptime Institute Annual Outage Analysis
+  [ITIC-2023]= ITIC sunucu donanim guvenilirligi (yalnizca D_cpc terimi)
   [QUEUE]    = Kuyruk teorisi (per-CP M/M/1); WLM/RMF percentile metodolojisiyle uyumlu
   [CFCC]     = Coupling Facility / ICF: specialty engine, yazilim lisansini etkilemez
   [R4HA]     = IBM MLC sub-capacity: aylik en yuksek 4-saatlik kayan ortalama
@@ -388,146 +394,219 @@ def expected_latency_at(tier, workload, tps, percentile, topology=None):
     return io_delay_seconds(workload, topology) + ex * (1.0 / (1.0 - rho)) * ln_term
 
 # ------------------------------------------------------------------------------
-# AVAILABILITY MODELI — IBM Z Resiliency Models (Redbook SG24-8446)
+# AVAILABILITY MODELI — OLAY TABANLI, KURTARMA SURESINE BAGLI
 # ------------------------------------------------------------------------------
-# IBM'in resmi 4-model availability cercevesi. Bizim simulasyonumuzda Model 1
-# (sysplex'siz tek frame) gercek dunya production'da bulunmadigindan, Model 1'i
-# "single-frame sysplex (icinde ICF)" olarak ele aliyoruz - bu hala tek hardware
-# frame ama icinde sysplex var (rolling IPL ile planli kesintilerde fayda).
+# Hizmetin yillik kesintisi, kesinti doguran olaylarin sikligi ile topolojinin
+# bu olaylardan kurtarma suresinin carpimidir:
 #
-# Her topoloji icin iki availability rakami:
-#   hw_low:  ITIC bagimsiz endustri olcumu (gercek musteri raporlari)
-#            [ITIC] = Information Technology Intelligence Consulting,
-#                     2020-2024 Global Server Reliability Surveys
-#   hw_high: IBM Redbook resmi tasarim hedefi
-#            [REDBOOK] = IBM Resiliency Redbook SG24-8446, Table 1-4 + Sec 2
+#   D(topo) = lam_saha x [(1-p_uzun) x min(d_kisa, T_rec) + p_uzun x min(d_uzun, T_rec)]
+#           + lam_planli x T_planli(topo)
+#           + D_cpc (yalnizca tek CPC'li topolojide)
+#   A(topo) = 1 - D / 8760 saat
 #
-# Bu rakamlar HARDWARE-ONLY (planned outage haric). Gercek end-user
-# availability'si planned maintenance nedeniyle daha dusuk olur.
+#   lam_saha, d_kisa, d_uzun, p_uzun : veri merkezi duzeyinde hizmet kesintisi
+#       (guc, ag/BT, insan hatasi) sikligi ve suresi  [UPTIME-2025, UPTIME-2022]
+#   T_rec  : hizmetin alternatif CPC/sitede geri gelme suresi (RTO)
+#            [GDPS-2026, SG24-8446, SG24-6374]; M1'de alternatif site yok (T = sonsuz)
+#   T_planli: kesinti gerektiren planli islem (POR, nesil gecisi) basina hizmet
+#            kesintisi; sysplex icinde rolling IPL z/OS bakimini maskeler [ASSUME]
+#   D_cpc  : CPC donaniminin kendi plansiz kesintisi [ITIC-2023]; yilda 0,03-3 sn,
+#            pratikte ihmal edilebilir oldugu gostermek icin modelde tutulur.
 #
-# PLANNED OUTAGE INDIRIMI [PRECISELY]:
-# Endustri verisi: toplam downtime'in ~%90'i planned outage'lardan kaynaklanir.
-# Kaynak: Precisely HA Definition (precisely.com/glossary/high-availability-ha)
-# Formul: total_downtime = hardware_downtime / 0.10 = hardware_downtime x 10
-#         total_availability = 1 - 10 x (1 - hw_availability)
-#
-# Istisna: Model 4 (GDPS Continuous Availability) tanim geregi planned outage'i
-# da maskeler [REDBOOK], bu yuzden onun rakamlari planned dahil zaten.
-# ------------------------------------------------------------------------------
+# Onceki surumdeki "ITIC + x10 planli kesinti" yaklasimi birakildi: ITIC
+# rakamlari sunucu donaniminin kesintisini olcer (z16: yilda 31,56 ms), hizmetin
+# degil; SG24-8446 ise desenlere "nine" degeri atamaz. Her parametre low / mid /
+# high aralik olarak tanimlidir; "low" mainframe lehine (az kesinti) uctur.
+
+SITE_EVENT_SCENARIOS = {
+    # rate: olay/yil; d_short_h / d_long_h: saat; p_long: uzun olay payi
+    #  [UPTIME-2025] operatorlerin %53'u son 3 yilda kesinti bildirdi -> ~0,25/yil
+    #  (ust uc); ciddi/agir pay %9 -> alt uc. [UPTIME-2022] kamuya yansiyan
+    #  kesintilerin >24 saat suren payi %8 (2017) -> ~%30 (2021).
+    "low":  {"rate": 0.05, "d_short_h": 1.0, "p_long": 0.08, "d_long_h": 24.0},
+    "mid":  {"rate": 0.15, "d_short_h": 2.0, "p_long": 0.15, "d_long_h": 48.0},
+    "high": {"rate": 0.25, "d_short_h": 4.0, "p_long": 0.30, "d_long_h": 72.0},
+}
+# Saha olayinda hizmetin geri gelme suresi, dakika (M1: alternatif site yok)
+RECOVERY_MINUTES = {
+    "M2": {"low": 60.0, "mid": 120.0, "high": 240.0},   # [SG24-6374 T1-1: depolama
+          # replikasyonuyla "one or more hours"; SG24-8446: <2 saat GDPS ister]
+    "M3": {"low": 2.0, "mid": 30.0, "high": 60.0},      # [GDPS-2026] GDPS Metro / MGM:
+          # cok-siteli is yukunde ~2 dk, tek siteli is yukunde <1 saat
+    "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-2026] GDPS CA: 20-30 sn;
+          # portfoy slaydi <60 sn
+}
+PLANNED_EVENTS_PER_YEAR = {"low": 0.25, "mid": 0.5, "high": 1.0}   # [ASSUME] kesinti
+          # gerektiren CPC duzeyi planli islem (POR, nesil gecisi, kapasite disi upgrade)
+PLANNED_OUTAGE_MINUTES = {                                        # olay basina kesinti
+    "M1": {"low": 120.0, "mid": 240.0, "high": 480.0},  # [ASSUME] tek CPC durur
+    "M2": {"low": 15.0, "mid": 30.0, "high": 60.0},     # [ASSUME] planli, elle gecis
+    "M3": {"low": 2.0, "mid": 10.0, "high": 30.0},      # [ASSUME] GDPS planli site gecisi
+    "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-CA-2021] planli kesinti
+          # "4 saatten 30 saniyenin altina" (banka ornegi)
+}
+CPC_HW_DOWNTIME_SECONDS = {"low": 0.0316, "mid": 0.315, "high": 3.15}  # [ITIC-2023]
+          # z16 9 nine / IBM ortalamasi 8 nine / z13-z15 7 nine
+SITE_EVENT_LEVEL = "mid"    # aralik parametreleri (RANGE_PARAMETERS)
+RECOVERY_LEVEL = "mid"
+PLANNED_LEVEL = "mid"
+HOURS_PER_YEAR = 8760.0
+
 
 class Topology:
-    """Bir mainframe availability topolojisi."""
-    def __init__(self, code, name, n_frames, hw_low, hw_high,
-                 masks_planned, cost_multiplier, software_premium=1.0,
+    """Bir mainframe availability topolojisi (IBM Z Resiliency desenlerine eslenir)."""
+    def __init__(self, code, name, n_frames, pattern, gdps=None, rpo_seconds=0.0,
                  description="", storage_copies=1, sync_replication=False):
         self.code = code                # 'M1', 'M2', 'M3', 'M4'
         self.name = name
-        self.n_frames = n_frames        # ana frame sayisi (donanim carpani)
-        self.hw_low = hw_low            # ITIC bagimsiz alt sinir (HW-only)
-        self.hw_high = hw_high          # Redbook tasarim hedefi (HW-only)
-        self.masks_planned = masks_planned  # planned outage'i da maskeler mi?
-        self.cost_multiplier = cost_multiplier  # frame sayisi + ek donanim
-        self.software_premium = software_premium  # GDPS gibi ek yazilim
+        self.n_frames = n_frames        # birincil + DR (CBU) frame sayisi
+        self.pattern = pattern          # SG24-8446 deseni
+        self.gdps = gdps                # GDPS teklifi (None, "metro_global", "ca")
+        self.rpo_seconds = rpo_seconds  # saha felaketinde tutucu RPO  [GDPS-2026]
         self.description = description
         self.storage_copies = storage_copies      # DS8900F veri kopyasi (dizi) sayisi
         self.sync_replication = sync_replication  # senkron Metro Mirror var mi
+        # Yazilim primi yok: DR (CBU) makinesinin IBM yazilim faturasi yalnizca
+        # kalici kapasitesine gore kesilir [CBU]; GDPS ayri kalemdir (gdps_monthly_cost).
+        self.software_premium = 1.0
 
-    def effective_availability_low(self):
-        """%90 planned outage kuralini uygula (Model 4 haric)."""
-        if self.masks_planned:
-            return self.hw_low  # GDPS CA zaten planned'i de maskeler
-        # total_downtime = hardware_downtime / 0.10
-        hw_downtime = 1.0 - self.hw_low
-        total_downtime = hw_downtime * 10.0
-        return max(0.0, 1.0 - total_downtime)
+    @property
+    def cost_multiplier(self):
+        """Donanim amortismani ve bakim carpani: birincil frame + DR frame'leri.
+        DR frame'i CBU ile alinir: fiziksel donanim kurulu, kapasitenin kucuk bir
+        kismi kalici, geri kalani CBU kaydi [CBU]. Bedeli tam frame'in
+        DR_FRAME_COST_FRACTION'i kadar [ASSUME]; 1.0 = CBU'suz tam ayna."""
+        return 1.0 + (self.n_frames - 1) * DR_FRAME_COST_FRACTION
 
-    def effective_availability_high(self):
-        """Vendor iddiasinin planned-dahil halı."""
-        if self.masks_planned:
-            return self.hw_high
-        hw_downtime = 1.0 - self.hw_high
-        total_downtime = hw_downtime * 10.0
-        return max(0.0, 1.0 - total_downtime)
+    def recovery_minutes(self, level=None):
+        """Saha olayinda hizmetin geri gelme suresi (dk); M1'de sonsuz."""
+        r = RECOVERY_MINUTES.get(self.code)
+        return float("inf") if r is None else r[level or RECOVERY_LEVEL]
+
+    @property
+    def rto_minutes(self):
+        """RTO kisitinda kullanilan deger. M1: alternatif site yok; yedekten geri
+        donus SG24-8446'nin GDPS'siz DR araliginin (2-72 saat) ust ucu."""
+        r = self.recovery_minutes()
+        return 72 * 60.0 if r == float("inf") else r
+
+    def annual_downtime_hours(self, site=None, recovery=None, planned=None):
+        """Yillik beklenen hizmet kesintisi (saat), olay tabanli."""
+        s = SITE_EVENT_SCENARIOS[site or SITE_EVENT_LEVEL]
+        t_rec = self.recovery_minutes(recovery) / 60.0
+        unplanned = s["rate"] * ((1 - s["p_long"]) * min(s["d_short_h"], t_rec)
+                                 + s["p_long"] * min(s["d_long_h"], t_rec))
+        p = planned or PLANNED_LEVEL
+        planned_h = PLANNED_EVENTS_PER_YEAR[p] * PLANNED_OUTAGE_MINUTES[self.code][p] / 60.0
+        hw = (CPC_HW_DOWNTIME_SECONDS[site or SITE_EVENT_LEVEL] / 3600.0
+              if self.n_frames == 1 else 0.0)
+        return unplanned + planned_h + hw
+
+    def availability(self, site=None, recovery=None, planned=None):
+        return 1.0 - self.annual_downtime_hours(site, recovery, planned) / HOURS_PER_YEAR
+
+    def availability_range(self):
+        """(en kotu, en iyi): tum availability parametreleri high / low ucunda."""
+        return (self.availability("high", "high", "high"),
+                self.availability("low", "low", "low"))
 
     def __repr__(self):
         return f"{self.code}: {self.name}"
 
 
-# IBM Z Resiliency Model topolojileri:
+# IBM Z Resiliency desenleri [SG24-8446]: Reliable base / Failover capable /
+# Fault tolerant / Adaptive continuity. Saf tek-imaj (sysplex'siz) production
+# disinda birakildi; M1 tek CPC uzerinde sysplex'tir (rolling IPL).
 TOPOLOGIES = [
     Topology(
         code="M1",
         name="Single-frame sysplex (ICF)",
         n_frames=1,
-        # ITIC: 2020'de %83 musteri 5-6 nine basardi (tek-frame deployment'lar
-        # bu kategoride agirlikli). Tek-frame icin alt sinir 5 nine.
-        hw_low=0.99999,           # [ITIC 2020-2021]
-        hw_high=0.999999,         # [REDBOOK] Sec 2: tek frame RAS hedef ~6 nine
-        masks_planned=False,
-        cost_multiplier=1.0,      # 1 frame
-        software_premium=1.0,     # ICF specialty engine, lisans etkisiz [CFCC]
-        description="Tek mainframe + icindeki ICF ile sysplex. "
-                    "Tek hardware riski; planli kesintide rolling IPL faydasi.",
+        pattern="Reliable base",
+        gdps=None,
+        rpo_seconds=86400.0,      # [ASSUME] uzak kopya yok: gunluk saha disi yedek
+        description="Tek mainframe + icindeki ICF ile sysplex. Tek site; saha "
+                    "olayinda hizmet olay suresince durur.",
         storage_copies=1, sync_replication=False,   # tek DS8900F
     ),
     Topology(
         code="M2",
         name="Multi-frame failover (peer sysplex)",
         n_frames=2,
-        # ITIC 2023: z13/z14/z15 ortalamasi 7-8 nine; cogu M2/M3 deployment.
-        # M2 alt sinirini 7 nine olarak aliyoruz.
-        hw_low=0.9999999,         # [ITIC 2023] 7 nine
-        hw_high=0.99999999,       # [REDBOOK] Model 2-3 hedef ~8 nine
-        masks_planned=False,
-        cost_multiplier=2.0,      # 2 frame
-        software_premium=1.0,     # ICF her frame'de, lisans etkisiz
-        description="Iki ayri mainframe, ICF ile peer coupling, "
-                    "sync/async remote copy. Bir frame coker, digeri devralir.",
+        pattern="Failover capable",
+        gdps=None,
+        rpo_seconds=0.0,          # Metro Mirror senkron
+        description="Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; "
+                    "gecis otomasyonsuz, elle (saatler).",
         storage_copies=2, sync_replication=True,    # Metro Mirror cifti (HyperSwap)
     ),
     Topology(
         code="M3",
         name="Fault-tolerant + GDPS Metro/Global",
         n_frames=2,
-        # ITIC 2024 z16: %96 musteri 9 nine basardi. M3/M4 dahil rakam.
-        # M3 alt siniri 8 nine.
-        hw_low=0.99999999,        # [ITIC 2024 z16] 8 nine
-        hw_high=0.999999999,      # [REDBOOK] Model 3 hedef ~9 nine
-        masks_planned=False,      # planli outage hala maskelenmiyor
-        cost_multiplier=2.0,      # 2 frame
-        software_premium=1.15,    # [ASSUME] GDPS Metro/Global lisans +%15
-        description="2 frame + GDPS Metro/Global otomasyonu + HyperSwap. "
-                    "RTO <1 saat. Planlanmamis outage'a otomatik tepki.",
+        pattern="Fault tolerant",
+        gdps="metro_global",
+        rpo_seconds=5.0,          # [GDPS-2026] metro 0; bolgesel felakette GM "2-5 sn"
+        description="Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu "
+                    "ve HyperSwap. RTO dakikalar - <1 saat.",
         storage_copies=4, sync_replication=True,    # H1+H2 (Metro) + H3+J3 (Global Mirror) [GDPS]
     ),
     Topology(
         code="M4",
         name="GDPS Continuous Availability (geo-redundant)",
         n_frames=2,
-        # ITIC 2024 z16 en yuksek deployment'lar 9 nine; Redbook M4 tasarim 7 nine
-        # NOT: M4 planned outage'i da maskeler, hardware rakamı zaten planned dahil
-        hw_low=0.9999999,         # [REDBOOK] Model 4 tasarim 7 nine (planned dahil)
-        hw_high=0.99999999,       # [ITIC 2024] z16 ileri deployment 8 nine
-        masks_planned=True,       # planned outage'i da maskeler [REDBOOK]
-        cost_multiplier=2.0,      # 2 ayri site, ikinci site tam mainframe
-        software_premium=1.30,    # [ASSUME] GDPS CA premium lisans +%30
-        description="Iki coğrafi site, GDPS Continuous Availability. "
-                    "Hem planned hem unplanned outage maskelenir. RTO 1-2 dakika.",
+        pattern="Adaptive continuity",
+        gdps="ca",
+        rpo_seconds=5.0,          # [GDPS-2026] GDPS CA: RPO 0-5 sn
+        description="Iki cografi site, GDPS Continuous Availability. Plansiz ve "
+                    "planli gecis saniyeler (20-60 sn).",
         storage_copies=4, sync_replication=True,    # her sitede Metro Mirror cifti [GDPS]
     ),
 ]
 
 
-def find_feasible_topologies(availability_target):
+def find_feasible_topologies(availability_target, rpo_seconds=None, rto_minutes=None):
     """
-    Hedef uptime'i karsilayan topolojileri dondurur (en ucuzdan en pahaliya).
-    Feasibility: low (ITIC bagimsiz) availability hedefi karsilamali.
+    Hedef uptime'i ve (verilmisse) RPO / RTO hedeflerini karsilayan topolojiler.
+    Feasibility: gecerli senaryo (varsayilan mid) availability'si hedefi
+    karsilamali; topolojinin
+    saha felaketindeki tutucu RPO / RTO degeri hedefi asmamali.
     """
     feasible = []
     for topo in TOPOLOGIES:
-        if topo.effective_availability_low() >= availability_target:
-            feasible.append(topo)
+        if topo.availability() < availability_target:
+            continue
+        if rpo_seconds is not None and topo.rpo_seconds > rpo_seconds:
+            continue
+        if rto_minutes is not None and topo.rto_minutes > rto_minutes:
+            continue
+        feasible.append(topo)
     return feasible
+
+
+# ------------------------------------------------------------------------------
+# DR KAPASITESI (CBU) VE GDPS
+# ------------------------------------------------------------------------------
+# [CBU] SC28-7025: CBU kaydi kurulu ama kapali PU'lari yalnizca LICCC ile acar;
+# donanim onceden kurulu olmalidir. Kayit 1-5 yillik, yil basina bir 10 gunluk
+# ucretsiz test, tek bir 90 gunluk gercek aktivasyon. "Software charges for the
+# designated CBU machine are based on its permanent configuration": DR
+# makinesinin yazilim faturasi kalici kapasitesine gore kesilir. CBU fiyati
+# yayimlanmaz -> DR frame bedeli tam frame'in orani olarak bir aralik.
+DR_FRAME_COST_FRACTION = 0.50   # [ASSUME] aralik 0.30-1.00 (1.00 = CBU'suz tam ayna)
+
+# [GDPS] GDPS, lisansli otomasyon kodu + IBM hizmetlerinden olusan bir tekliftir;
+# fiyati MSU'ya degil, otomatiklestirdigi sistem/sysplex/site kapsamina baglidir
+# ve yayimlanmaz. Bu yuzden kapasiteden bagimsiz sabit aylik kalem. Orta degerler
+# onceki surumdeki yazilim priminin (M3 x1.15, M4 x1.30) 10K TPS referans
+# noktasindaki karsiligina esitlendi; seviye GDPS_COST_LEVEL ile taranir.
+GDPS_MONTHLY_BASE = {"metro_global": 50000.0, "ca": 100000.0}   # USD/ay [ASSUME]
+GDPS_COST_LEVEL = 1.0           # [ASSUME] aralik 0.5-2.0
+
+
+def gdps_monthly_cost(topology):
+    """Topolojinin GDPS teklifinin aylik bedeli (kapasiteden bagimsiz)."""
+    return GDPS_MONTHLY_BASE.get(topology.gdps, 0.0) * GDPS_COST_LEVEL
 
 # ------------------------------------------------------------------------------
 # BOLUM 5 — MALIYET PARAMETRELERI
@@ -916,23 +995,24 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
-      - software:     software_monthly_cost(billed_msu) x software_premium
-                      (AWLC kademeli z/OS + CICS TS + Db2; GDPS premium)
+      - software:     software_monthly_cost(billed_msu)
+                      (AWLC kademeli z/OS + CICS TS + Db2)
                       billed_msu verilmezse kademenin tam kurulu MSU'su
                       (full-capacity fiyatlama) kullanilir. Sub-capacity
                       fiyatlamada billed_msu = aylik R4HA tepesinde tuketilen
                       MSU'dur (bkz. consumed_msu).
-                      ICF specialty engine oldugundan ek frame'ler software
-                      premium'a girmez; sadece GDPS yazilimi premium ekler.
-      - hardware:     tam fiyat x cost_multiplier (frame sayisi)
+                      DR (CBU) frame'inin yazilimi kalici kapasitesine gore
+                      faturalanir; bu modelde ihmal edilir [CBU].
+      - hardware:     tam fiyat x cost_multiplier (1 + DR frame x DR_FRAME_COST_FRACTION)
       - maintenance:  hardware'a oranli
       - energy:       frame sayisi x kW x elektrik
+      - gdps:         GDPS teklifinin sabit aylik bedeli (M3, M4)
       - staff:        altyapi personeli, birincil kademenin PCI'sina gore
                       alt-dogrusal (STAFF_SCENARIOS), topoloji carpaniyla
     """
     msu = tier.msu if billed_msu is None else billed_msu
     # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
-    software = software_monthly_cost(msu) * topology.software_premium
+    software = software_monthly_cost(msu)
     # Donanim amortismani - frame carpani  [PRICE/ASSUME]; zIIP motorlari dahil
     hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS + ziip_hw_purchase(tier, workload)
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
@@ -943,19 +1023,22 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
 
     mult = topology.cost_multiplier
     staff = staff_monthly_cost(tier, topology)
+    gdps = gdps_monthly_cost(topology)
     return {
-        "software": software,                       # GDPS premium varsa zaten cikti
-        "hardware_amort": hw_monthly * mult,        # frame sayisi kadar
+        "software": software,
+        "hardware_amort": hw_monthly * mult,        # birincil + DR (CBU) frame
         "maintenance": maint_monthly * mult,
-        "energy": energy * mult,
+        "energy": energy * topology.n_frames,       # DR frame de acik
+        "gdps": gdps,                               # sabit, kapasiteden bagimsiz
         "staff": staff,                             # birincil CEC kapasitesine gore
-        "total": software + (hw_monthly + maint_monthly + energy) * mult + staff,
+        "total": (software + (hw_monthly + maint_monthly) * mult
+                  + energy * topology.n_frames + gdps + staff),
     }
 
 
 def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=None, latency_percentile=99, verbose=True,
-          data_tb=None, data_growth=None):
+          data_tb=None, data_growth=None, rpo_seconds=None, rto_minutes=None):
     """
     Verilen girdi icin minimum maliyetli feasible (z16 kademesi + topoloji)
     kombinasyonunu bulur.
@@ -967,9 +1050,11 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
       latency_ms          : Hedef latency milisaniye olarak (None ise %90 sabit tavan)
       latency_percentile  : Hedef percentile (orn. 99 -> p99 latency hedefi)
       data_tb, data_growth: Mantiksal veri hacmi (TB) ve yillik buyume (storage)
+      rpo_seconds, rto_minutes: Saha felaketinde kabul edilen en fazla veri kaybi
+                          ve kurtarma suresi (None = kisit yok)
 
     Akis:
-      1. Hedef availability'yi karsilayan topolojileri filtrele [ITIC low]
+      1. Availability / RPO / RTO hedeflerini karsilayan topolojileri filtrele
       2. Latency hedefini de hesaba katarak her kademe icin max utilization hesapla
       3. Her topoloji icin: kapasiteyi karsilayan kademeleri aday yap
       4. Tum topoloji+kademe kombinasyonlari arasinda EN UCUZ olani sec
@@ -978,8 +1063,8 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     percentile_frac = latency_percentile / 100.0
 
-    # 1. Feasible topolojiler (effective_availability_low >= hedef)
-    feasible_topos = find_feasible_topologies(availability)
+    # 1. Feasible topolojiler (olay tabanli availability >= hedef, RPO/RTO)
+    feasible_topos = find_feasible_topologies(availability, rpo_seconds, rto_minutes)
 
     if verbose:
         wp = get_workload(workload)
@@ -994,12 +1079,15 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         print(f"     is yuku profili: {wp}")
         print(f"     -> {TPS_PER_PCI / wp.cpu_weight():.2f} islem / s / PCI (zIIP payi "
               f"f={ziip_fraction(wp):.2f} haric)")
-        print(f"  -> Feasible topolojiler (ITIC low + planned indirimi):")
+        if rpo_seconds is not None or rto_minutes is not None:
+            print(f"         RPO hedefi: {rpo_seconds if rpo_seconds is not None else '-'} s | "
+                  f"RTO hedefi: {rto_minutes if rto_minutes is not None else '-'} dk")
+        print(f"  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):")
         for t in feasible_topos:
-            eff_low = t.effective_availability_low()
-            eff_high = t.effective_availability_high()
-            print(f"       {t.code}: effective availability "
-                  f"{eff_low:.6%} (low) - {eff_high:.6%} (high)")
+            worst, best = t.availability_range()
+            print(f"       {t.code}: availability {t.availability():.5%} "
+                  f"(aralik {worst:.5%} - {best:.5%}) | "
+                  f"RPO {t.rpo_seconds:g} s, RTO {t.rto_minutes:g} dk")
 
     if not feasible_topos:
         if verbose:
@@ -1045,9 +1133,11 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
 
         print(f"  -> SECILEN TOPOLOJI: {topo}")
         print(f"     {topo.description}")
-        print(f"     effective availability: {topo.effective_availability_low():.6%} "
-              f"(low) - {topo.effective_availability_high():.6%} (high)")
-        print(f"  -> SECILEN KADEME: {tier} (her frame'de)")
+        worst, best = topo.availability_range()
+        print(f"     availability: {topo.availability():.5%} "
+              f"({topo.annual_downtime_hours():.2f} saat/yil kesinti; "
+              f"aralik {worst:.5%} - {best:.5%})")
+        print(f"  -> SECILEN KADEME: {tier} (birincil frame)")
         print(f"     tam-hiz CP esdegeri: {cp_eq:.2f}")
         print(f"     dinamik utilization tavani: %{rho_max*100:.1f} "
               f"(latency hedefinden turetildi)")
@@ -1058,10 +1148,14 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         print(f"     utilization: {util:.1%}  (x{topo.n_frames} frame)")
         print(f"     AYLIK maliyet: ${cost['total']:,.0f}")
         print(f"       yazilim:  ${cost['software']:,.0f}  "
-              f"(z/OS + CICS TS + Db2, AWLC kademeli; premium x{topo.software_premium})")
+              f"(z/OS + CICS TS + Db2, AWLC kademeli)")
+        dr = (f" + {topo.n_frames - 1} DR frame (CBU, x{DR_FRAME_COST_FRACTION:.2f})"
+              if topo.n_frames > 1 else "")
         print(f"       donanim:  ${cost['hardware_amort']:,.0f}  "
-              f"({topo.n_frames} frame; {ziip_engines(tier, workload)} zIIP, "
+              f"(1 frame{dr}; {ziip_engines(tier, workload)} zIIP, "
               f"f={ziip_fraction(workload):.2f})")
+        if cost["gdps"]:
+            print(f"       GDPS:     ${cost['gdps']:,.0f}  ({topo.gdps})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
         print(f"       personel: ${cost['staff']:,.0f}  "
               f"({staff_fte(tier, topo):.1f} FTE, senaryo={STAFF_SCENARIO})")
@@ -1163,7 +1257,7 @@ WORKLOAD_PRESETS = {
 }
 
 
-def generate_hourly_profile(preset_name=None, yearly_avg_tps=50000,
+def generate_hourly_profile(preset_name=None, yearly_avg_tps=10000,
                              peak_avg_ratio=None, peak_days=None):
     """8760 saatlik deterministik TPS profili."""
     if preset_name is not None:
@@ -1312,9 +1406,9 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
     aktive edilir (CoD 24 saatlik periyotla faturalanir [COD]). Yuk
     izinli en buyuk gecici kademeyi de asarsa None doner (strateji infeasible).
 
-    Gecici kapasite ucretleri tek frame icin hesaplanir: coklu-frame
-    topolojilerde ikinci frame yalnizca failover icindir ve onun gecici
-    kapasitesi CBU'nun konusudur (yol haritasi M5).
+    Gecici kapasite ucretleri birincil frame icin hesaplanir: coklu-frame
+    topolojilerde DR frame'i yalnizca failover icindir ve felaketteki
+    kapasitesi CBU kaydidir (DR_FRAME_COST_FRACTION).
     """
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     pct = latency_percentile / 100.0
@@ -1360,7 +1454,7 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
     # --- permanent donanim (her frame) ---------------------------------------
     base_cost = monthly_cost(tier, topology, workload=workload)
     base_other_monthly = (base_cost["hardware_amort"] + base_cost["maintenance"] +
-                          base_cost["energy"])
+                          base_cost["energy"] + base_cost["gdps"])
     monthly_other = [base_other_monthly] * 12
 
     # --- On/Off CoD: gun basina, aktif gecici kapasite (always-on'un ustu) ----
@@ -1390,8 +1484,7 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
             mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], workload)
                      for h in hours)
             msu_hours += mh
-            monthly_software.append(mh * (sw_price_per_msu_hour or 0.0)
-                                    * topology.software_premium)
+            monthly_software.append(mh * (sw_price_per_msu_hour or 0.0))
         else:
             # ayin en buyuk aktif kademesi faturalanabilir tavandir
             cap_tier = max((day_tier[min(h // 24, DAYS - 1)] for h in hours),
@@ -1450,16 +1543,17 @@ def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, work
     konfigurasyondaki R4HA faturasi; fiyat bu faturayi ayni yilin tuketilen
     MSU-saatine bolerek bulunur (gelir-notr), sonra TFP_SW_DISCOUNT uygulanir."""
     msu_hours = sum(consumed_msu(reference_tier, load, workload) for load in profile)
-    base_sw = reference_sim["yearly_software"] / reference_sim["topology"].software_premium
+    base_sw = reference_sim["yearly_software"]
     return base_sw / msu_hours * (1.0 - TFP_SW_DISCOUNT)
 
 
-def solve_yearly(preset_name=None, yearly_avg_tps=50000,
+def solve_yearly(preset_name=None, yearly_avg_tps=10000,
                  peak_avg_ratio=None, peak_days=None,
                  availability=0.999, workload=DEFAULT_WORKLOAD,
                  latency_ms=None, latency_percentile=99,
                  strategies=("permanent", "base_cod", "tfp"),
-                 verbose=True, data_tb=None, data_growth=None):
+                 verbose=True, data_tb=None, data_growth=None,
+                 rpo_seconds=None, rto_minutes=None):
     """Yillik simulasyon + strateji karsilastirmasi. En ucuz strateji, diger
     stratejilerin en iyi sonuclari 'alternatives' listesinde doner."""
     profile = generate_hourly_profile(preset_name=preset_name,
@@ -1469,7 +1563,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
     peak_load = max(profile)
     avg_load = sum(profile) / len(profile)
 
-    feasible_topos = find_feasible_topologies(availability)
+    feasible_topos = find_feasible_topologies(availability, rpo_seconds, rto_minutes)
     if not feasible_topos:
         if verbose:
             print("HATA: hicbir topoloji bu availability hedefini saglayamiyor")
@@ -1660,6 +1754,11 @@ RANGE_PARAMETERS = [
     ("HARDWARE_COST_PER_MIPS", 150.0, 200.0, 300.0, "Donanim USD/PCI"),
     ("STORAGE_DISCOUNT", 0.85, 0.70, 0.50, "DS8900F liste fiyati indirimi"),
     ("BP_HIT_RATIO", 0.99, 0.95, 0.90, "Db2 buffer pool isabeti (I/O)"),
+    ("DR_FRAME_COST_FRACTION", 0.30, 0.50, 1.00, "DR frame bedeli (CBU; 1 = tam ayna)"),
+    ("GDPS_COST_LEVEL", 0.5, 1.0, 2.0, "GDPS sabit bedel seviyesi"),
+    ("SITE_EVENT_LEVEL", "low", "mid", "high", "Saha olayi sikligi ve suresi"),
+    ("RECOVERY_LEVEL", "low", "mid", "high", "Kurtarma suresi (RTO)"),
+    ("PLANNED_LEVEL", "low", "mid", "high", "Planli kesinti sikligi ve suresi"),
 ]
 RANGE_LEVELS = ("low", "mid", "high")
 
@@ -1689,20 +1788,23 @@ def scenario_values(level):
 
 
 def solve_range(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
-                latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None):
+                latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+                rpo_seconds=None, rto_minutes=None):
     """Toplam aylik maliyetin low / mid / high dis sinirlari. Donus:
     {level: {"tier", "topology", "cost"}} ya da senaryo infeasible ise None."""
     out = {}
     for level in RANGE_LEVELS:
         with use_values(scenario_values(level)):
             r = solve(tps, availability, workload, latency_ms, latency_percentile,
-                      verbose=False, data_tb=data_tb, data_growth=data_growth)
+                      verbose=False, data_tb=data_tb, data_growth=data_growth,
+                          rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
         out[level] = None if r is None else {"tier": r[0], "topology": r[1], "cost": r[2]}
     return out
 
 
 def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
-                  latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None):
+                  latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+                  rpo_seconds=None, rto_minutes=None):
     """Tek-parametre salinimi: [(degisken, aciklama, low_toplam, high_toplam)],
     salinim buyuklugune gore sirali. Digerleri mid'de."""
     mid = scenario_values("mid")
@@ -1714,7 +1816,8 @@ def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
             vals[name] = v
             with use_values(vals):
                 r = solve(tps, availability, workload, latency_ms, latency_percentile,
-                          verbose=False, data_tb=data_tb, data_growth=data_growth)
+                          verbose=False, data_tb=data_tb, data_growth=data_growth,
+                          rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
             totals.append(None if r is None else r[2]["total"])
         rows.append((name, desc, totals[0], totals[1]))
     rows.sort(key=lambda r: -abs((r[3] or 0) - (r[2] or 0)))
@@ -1771,22 +1874,25 @@ def run_demo():
     print("DEMO SENARYOLAR")
     print("=" * 70)
     print("\n[A] Orta yuk OLTP (latency hedefi yok, %90 sabit tavan):")
-    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD)
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD)
     print("[B] Ayni yuk, p99 < 200 ms latency hedefi:")
-    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD,
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
-    print("[C] Ayni yuk, sikilastirilmis p99 < 50 ms (trading-seviyesi):")
-    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD,
-          latency_ms=50, latency_percentile=99)
+    print("[C] Ayni yuk, sikilastirilmis p99 < 10 ms:")
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
+          latency_ms=10, latency_percentile=99)
     print("[D] Yuksek yuk + yuksek uptime + p99 < 500 ms:")
-    solve(tps=150000, availability=0.99999, workload=DEFAULT_WORKLOAD,
+    solve(tps=100000, availability=0.99999, workload=DEFAULT_WORKLOAD,
           latency_ms=500, latency_percentile=99)
     print("[E] Agir islemler (oltp_heavy) + p99 < 200 ms:")
-    solve(tps=50000, availability=0.999, workload="oltp_heavy",
+    solve(tps=10000, availability=0.999, workload="oltp_heavy",
           latency_ms=200, latency_percentile=99)
     print("[F] Cok dusuk yuk:")
     solve(tps=2000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
+    print("[G] Felaket kurtarma hedefi: RPO <= 5 s, RTO <= 60 dk:")
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
+          rpo_seconds=5, rto_minutes=60)
 
 
 if __name__ == "__main__":
@@ -1796,13 +1902,15 @@ if __name__ == "__main__":
         epilog="""
 Ornekler:
   Statik (tek nokta):
-    python mainframe_model.py --tps 50000
-    python mainframe_model.py --tps 80000 --availability 0.9993 --workload high --latency-ms 200
+    python mainframe_model.py --tps 10000
+    python mainframe_model.py --tps 10000 --availability 0.99999 --latency-ms 200 --range
+    python mainframe_model.py --tps 10000 --rpo-seconds 0 --rto-minutes 60
+    python mainframe_model.py --tps 10000 --sql-reads 6 --sql-writes 2
 
   Yillik simulasyon (workload profile + CoD karsilastirmasi):
-    python mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000
-    python mainframe_model.py --yearly --preset steady_oltp --avg-tps 30000 --availability 0.99999
-    python mainframe_model.py --yearly --avg-tps 40000 --peak-ratio 3 --peak-days 25 --csv out
+    python mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000
+    python mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000 --availability 0.99999
+    python mainframe_model.py --yearly --avg-tps 8000 --peak-ratio 3 --peak-days 25 --csv out
 
   Diger:
     python mainframe_model.py --demo
@@ -1820,8 +1928,8 @@ Ornekler:
                         choices=list(WORKLOAD_PRESETS.keys()),
                         default=None,
                         help="(YILLIK) Workload preset: steady_oltp / retail_bursty / batch_heavy")
-    parser.add_argument("--avg-tps", type=float, default=50000,
-                        help="(YILLIK) Yillik ortalama TPS (varsayilan: 50000)")
+    parser.add_argument("--avg-tps", type=float, default=10000,
+                        help="(YILLIK) Yillik ortalama TPS (varsayilan: 10000)")
     parser.add_argument("--peak-ratio", type=float, default=None,
                         help="(YILLIK) Peak/avg orani; preset'i override eder")
     parser.add_argument("--peak-days", type=int, default=None,
@@ -1843,6 +1951,10 @@ Ornekler:
                         help="Ozel profil: islem basina okuma SQL sayisi")
     parser.add_argument("--sql-writes", type=float, default=None,
                         help="Ozel profil: islem basina yazma SQL sayisi")
+    parser.add_argument("--rpo-seconds", type=float, default=None,
+                        help="Saha felaketinde kabul edilen en fazla veri kaybi, saniye")
+    parser.add_argument("--rto-minutes", type=float, default=None,
+                        help="Saha felaketinde kabul edilen en fazla kurtarma suresi, dakika")
     parser.add_argument("--latency-ms", type=float, default=None,
                         help="Hedef latency milisaniye (orn: 200)")
     parser.add_argument("--latency-percentile", type=int, default=99,
@@ -1892,6 +2004,8 @@ Ornekler:
             latency_percentile=args.latency_percentile,
             data_tb=args.data_tb,
             data_growth=args.data_growth,
+            rpo_seconds=args.rpo_seconds,
+            rto_minutes=args.rto_minutes,
         )
         if result is None:
             sys.exit(1)
@@ -1914,11 +2028,14 @@ Ornekler:
                    latency_ms=args.latency_ms,
                    latency_percentile=args.latency_percentile,
                    data_tb=args.data_tb,
-                   data_growth=args.data_growth)
+                   data_growth=args.data_growth,
+                   rpo_seconds=args.rpo_seconds,
+                   rto_minutes=args.rto_minutes)
     if args.range:
         print_range(args.tps, availability=args.availability, workload=args.workload,
                     latency_ms=args.latency_ms, latency_percentile=args.latency_percentile,
-                    data_tb=args.data_tb, data_growth=args.data_growth)
+                    data_tb=args.data_tb, data_growth=args.data_growth,
+                    rpo_seconds=args.rpo_seconds, rto_minutes=args.rto_minutes)
     if result is None:
         print("Tek z16 frame bu is yukunu karsilayamiyor.")
         sys.exit(1)

@@ -230,6 +230,39 @@ def test_staff_and_ranges():
     assert all(lo <= t[1] + 1e-6 <= hi + 2e-6 for _n, _d, lo, hi in rows)
 
 
+def test_availability_rpo_rto_cbu_gdps():
+    """Olay tabanli availability: daha hizli kurtarma daha az kesinti; senaryolar
+    sirali. RPO/RTO kisiti topolojiyi secer. CBU DR frame'i ucuzlatir; GDPS
+    kapasiteden bagimsiz sabit kalemdir ve yazilima prim eklenmez."""
+    m1, m2, m3, m4 = m.TOPOLOGIES
+    d = [t.annual_downtime_hours() for t in m.TOPOLOGIES]
+    assert d[0] > d[1] > d[2] > d[3]
+    for t in m.TOPOLOGIES:
+        worst, best = t.availability_range()
+        assert worst < t.availability() < best
+    # CPC donanim kesintisi (ITIC) toplamin binde birinden az
+    assert m.CPC_HW_DOWNTIME_SECONDS["mid"] / 3600 < 1e-3 * d[0]
+    # RPO / RTO kisitlari
+    pick = lambda **kw: m.solve(10000, 0.999, verbose=False, data_tb=20, **kw)[1].code
+    assert pick() == "M1"
+    assert pick(rpo_seconds=0) == "M2"
+    assert pick(rto_minutes=60) == "M3"
+    assert pick(rto_minutes=1) == "M4"
+    assert m.solve(10000, 0.999, verbose=False, rpo_seconds=0, rto_minutes=60) is None
+    # CBU: DR frame bedeli orana bagli; 1.0 = tam ayna
+    tier = next(t for t in m.Z16_TIERS if t.model == "3931-516")
+    hw1 = m.monthly_cost(tier, m1)["hardware_amort"]
+    with m.use_values({"DR_FRAME_COST_FRACTION": 1.0}):
+        assert abs(m.monthly_cost(tier, m2)["hardware_amort"] - 2 * hw1) < 1e-6
+    with m.use_values({"DR_FRAME_COST_FRACTION": 0.5}):
+        assert abs(m.monthly_cost(tier, m2)["hardware_amort"] - 1.5 * hw1) < 1e-6
+    # GDPS: sabit kalem, yazilim primi yok
+    big = next(t for t in m.Z16_TIERS if t.model == "3931-7A0")
+    assert m.monthly_cost(tier, m3)["gdps"] == m.monthly_cost(big, m3)["gdps"] > 0
+    assert m.monthly_cost(tier, m1)["gdps"] == 0
+    assert m.monthly_cost(tier, m4)["software"] == m.monthly_cost(tier, m1)["software"]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_") and callable(fn):

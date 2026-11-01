@@ -386,3 +386,68 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - **Eylem:** önceki adımlardan kalan eski ifadeler düzeltildi: §1.1 ("işlem karmaşıklığı" → iş yükü profili), §1.4 (eksik bileşenler listesi), §2.1 (TPS aralığı tek z16 tavanına göre; özel bileşim ve `--range` girdileri), §2.2 (örnek kademe 3931-516; yıllık çıktıda personel ve storage), §4.4.4 (kademe MSU'su ile faturalanan MSU ayrımı), §6.7 (topolojinin dört maliyet kalemine etkisi tek tabloda), §7.1.5 (f yalnızca Db2 profillerinde), §10.2 (yıllık örnek 10K TPS).
 - **Gerekçe:** Danışman ve jüri dokümanı tek başına okuyacak; model adım adım büyüdüğü için kavramlar ilk geçtikleri yerde tanımlanmamıştı ve bazı örnekler eski birim ve kademelerle kalmıştı.
 - **Etki:** Model ve sonuçlar değişmedi (13/13 test). Doküman artık yukarıdan aşağı okunduğunda tanımsız terim veya eski sayı içermiyor.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Olay tabanlı availability, RPO/RTO, CBU ve GDPS — Plan adımı 4
+
+### 1. Araştırma ve bulgular
+- **SG24-8446 topolojilere "nine" vermiyor.** Güncel baskıda yalnızca dört desen (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıkları var. DR'de RTO 2–72 saat; 2 saatin altı GDPS ister. Önceki sürümdeki "M1 ~6 … M4 ~10 nine" tasarım hedefleri kaynaksızdı.
+- **ITIC rakamları sunucu donanımının kesintisi.** z16 için 9 nine, yılda 31,56 ms; Lenovo x86 da 8 nine. Hizmet kesintisini belirlemiyor.
+- **GDPS RPO/RTO:** IBM GDPS geliştirme ekibinin VM Workshop Haziran 2026 sunumu:
+  - Metro: RPO 0, RTO ~2 dk ile < 1 saat arası.
+  - Global ve Metro Global: RPO 2–5 sn, RTO < 1 saat.
+  - CA: RPO 0–5 sn, RTO 20–60 sn.
+- **CBU (SC28-7025):** Kayıt LICCC ile açılır ve donanım önceden kurulu olmalı. Kayıt 1–5 yıllık; her yıl için bir 10 günlük test hakkı ve tek bir 90 günlük gerçek aktivasyon içerir. DR makinesinin yazılım faturası kalıcı kapasiteye göre kesiliyor. Fiyat yayımlanmıyor.
+- **GDPS fiyatı:** MSU'ya değil, otomatikleştirilen kapsama bağlı; rakam yayımlanmıyor.
+- **Saha olayları:** Uptime 2025'e göre operatörlerin %53'ü son 3 yılda kesinti yaşadı (yılda ~0,25 olay) ve olayların %9'u ciddi. Uptime 2022'ye göre kamuya yansıyan kesintilerin %8 ile %30'u 24 saatten uzun sürüyor.
+
+### 2. Karar
+- Emirhan karar kartında **"Olay tabanlı, RTO'ya bağlı"** seçeneğini seçti.
+- Önceki "ITIC + ×10 planlı kesinti" yaklaşımı bırakıldı.
+
+### 3. Aksiyon
+- **Availability:** Yıllık kesinti = λ_saha × [(1 − p_uzun) × min(d_kısa, T_rec) + p_uzun × min(d_uzun, T_rec)] + λ_planlı × T_planlı + D_cpc (yalnızca M1).
+  - Tüm parametreler low/mid/high.
+  - Feasibility geçerli senaryoyla yapılıyor (varsayılan mid). Aralık senaryoları topolojiyi yeniden seçiyor.
+- **RPO/RTO:** `--rpo-seconds` ve `--rto-minutes` girdileri eklendi; projenin 8 girdisinin tamamı artık bağlı.
+  - RPO: M1 24 saat, M2 0, M3 5 sn, M4 5 sn.
+  - RTO: M1 72 saat, M2 2 saat, M3 30 dk, M4 30 sn.
+- **CBU:** DR frame'i tam frame'in `DR_FRAME_COST_FRACTION` oranıyla fiyatlanıyor: 0,50, aralık 0,30–1,00. Enerji tam sayılıyor. Yazılım primi kaldırıldı.
+- **GDPS:** Kapasiteden bağımsız, sabit aylık kalem: M3 $50K, M4 $100K. Orta değerler eski primin 10K TPS'teki karşılığı. `GDPS_COST_LEVEL` 0,5–2,0.
+- **Aralık:** Aralık çıktısına 5 yeni parametre eklendi: DR frame, GDPS, saha olayı, kurtarma süresi, planlı kesinti. Toplam 14 parametre.
+- **Araç ve testler:** `src/tools/availability_sensitivity.py` eklendi. `test_availability_rpo_rto_cbu_gdps` testi eklendi; testler 14/14. Demo ve CLI örnekleri 10K TPS'e çekildi; epilog'daki geçersiz `--workload high` düzeltildi.
+- **Dokümantasyon (v3):**
+  - §6 baştan yazıldı: savunma, topolojiler, formül, parametre tablosu, sonuçlar, RPO/RTO, maliyete etki, geçerlilik tehditleri.
+  - §0, 1.2, 1.4, 2.1, 2.2, 7, 7.1.3, 7.5, 7.8, 8, 9.6, 10, 11.2 ve 12 güncellendi.
+
+### 4. Etkiler
+- **Availability (mid):**
+
+  | Topoloji | Yıllık kesinti | Availability |
+  |---|---|---|
+  | M1 | 3,3 saat | %99,962 |
+  | M2 | 0,55 saat | %99,994 |
+  | M3 | 0,16 saat | %99,998 |
+  | M4 | ~20 sn | %99,99994 |
+
+  M1'in kesintisinin çoğu planlı. CPC donanım arızası hiçbir topolojide belirleyici değil.
+- **10K TPS, varsayılan (%99,9):** Mid sonuç değişmedi ($83,32/TPS). Aralığın üst ucu $288,52'den $317,58'e çıktı, çünkü high senaryoda M1 %99,84'e düşüyor ve model M2'ye geçiyor.
+- **Availability hedefinin maliyeti (10K TPS, mid):**
+
+  | Hedef | Topoloji | $/TPS |
+  |---|---|---|
+  | %99,99 | M2 | $89,6 |
+  | %99,995 | M3 | $100,1 |
+  | %99,999 | M4 | $109,2 |
+
+  %99,9'dan %99,999'a çıkış maliyeti +%31 artırıyor: GDPS, personel, DR frame ve storage. Yazılım değişmiyor.
+- **RPO/RTO (10K TPS):** RPO 0 → M2; RTO ≤ 60 dk → M3; RTO ≤ 1 dk → M4. RPO 0 ve RTO ≤ 60 dk birlikte infeasible, çünkü GDPS Metro ayrı bir topoloji olarak modellenmedi.
+- **Yıllık mod (10K ortalama, %99,9):** Değişmedi. %99,999'da steady_oltp M4 + TFP ile $17,24M.
+
+### 5. Açık noktalar
+- Planlı kesinti sıklığı kaynaksız ve M1'i en çok bu parametre belirliyor. Gerçek bir değişiklik kaydıyla kalibre edilmeli.
+- CBU ve GDPS fiyatları varsayım.
+- GDPS Metro ayrı topoloji olarak eklenmeli.
+- Kesinti dağılımı (SLA ihlali olasılığı) yok.
+- Clustered taraf aynı denklemi kendi kurtarma süreleriyle kullanmalı; saha olayı parametreleri iki tarafta ortak.
