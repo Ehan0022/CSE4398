@@ -98,6 +98,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 1 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_01.md` | Mainframe compute modeli düzeltildi; ortak birim ve crossover hipotezi kritik tehdit; clustered taraf yok |
 | 2 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_02_mainframe.md` | Mainframe özel inceleme; kapasite köprüsünde sublinearite çift sayımı bulundu (TPS ~%29 eksik); maliyet eğrisi için taban fiyat + kademeli MLC + zIIP + CBU gerekli; M1–M8 yol haritası |
 | 3 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` | Compute katmanı sağlam (kademeler, köprü, CoD/TFP); storage dahil edilmeli (shared-disk vs shared-nothing, DR, CPU, latency asimetrisi); en büyük eksik yazılım yığını ve kademeli MLC; öncelik sırası |
+| 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
 
 ---
 
@@ -241,3 +242,22 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - GDPS kopya sayılarının GDPS Redbook'tan doğrulanması; uzun mesafe DR hattı maliyeti (storage ağı kapsam dışı kararı GDPS adımında yeniden ele alınmalı).
 - IOPS_PER_TX'in REDP-5320 iş yükü profiliyle kalibrasyonu.
 - TS7700 yedekleme, drive katmanı (Tier 0/1), DS8000 G10.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Storage katmanının savunması ve Değerlendirme #4
+
+### 1. Savunma
+- **Aksiyon:** v3 dokümanına "8.1. Katmanın Savunması" eklendi (mevcut storage alt bölümleri 8.2–8.9 olarak yeniden numaralandı). İçerik: storage'ın TCO'ya neden dahil olduğu (birbirini götürmeme koşulu ve modelin doğruladığı veri hacmi ekseni), neden tek alternatif olarak DS8900F, her modelleme kararının alternatifi ve gerekçesi, her varsayımın dayanağı, taranan aralığı ve kalibrasyon yolu, geçerlilik tehditleri, clustered tarafla eşleştirme.
+- **Sebep:** Emirhan'ın isteği: katmanın detaylı savunması model dokümanında olsun. Önceden gerekçeler Değerlendirme #3 ve v3'ün farklı bölümlerine dağılmıştı.
+
+### 2. Değerlendirme #4
+- **Aksiyon:** `evaluations/2026-11-01_degerlendirme_04_mainframe.md` yazıldı.
+- **Ana bulgular:**
+  - Storage katmanı kaynak kalitesi ve mainframe'e özgü mekanizmalar açısından sağlam. Availability'yi veri yolu üzerinden maliyet ve latency'ye bağlıyor.
+  - Storage veri hacmine bağlı sabit bir maliyet gibi davrandığı için maliyet/TPS eğrisi düşük TPS'te büküldü ($6,45/TPS @2K → $1,38 @500K, 20 TB sabit). Bu sabit veri hacmi varsayımına bağlı; tezde böyle sunulmalı.
+  - Yeni tutarsızlık: storage dizileri üretici tepe IOPS'unun %100'üne göre boyutlanıyor; compute'taki %90 tavana karşılık storage'da tavan yok.
+  - IOPS_PER_TX artık latency'yi, storage IOPS'unu ve dizi modelini birlikte belirliyor; REDP-5320 iş yükü profili öne çekilmeli.
+  - Eşit derinlik: yazılım yığını ve personel olmadan clustered tarafa geçmek karşılaştırmayı mainframe lehine yanlı yapar.
+  - Kod tek dosyada ~1.500 satır; clustered tarafa geçmeden ortak parçalar ayrı modüle taşınmalı.
+- **Önerilen sıra:** storage IOPS tavanı → yazılım yığını (kademeli MLC, CICS, Db2, zIIP) ve paralel REDP-5320 profili → personel → CBU + GDPS → ortak modül ayrımı, 5 yıllık NPV.

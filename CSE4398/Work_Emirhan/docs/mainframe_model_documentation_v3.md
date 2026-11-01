@@ -171,7 +171,7 @@ Tutucu kuyruk: c adet bağımsız M/M/1 kuyruğu, her birine λ/c yük. Paylaş�
 
 R_cpu(p) = E[X_cpu] × 1/(1 − ρ) × ln(1/(1 − p))
 
-Sabit I/O gecikmesi: D_io = IOPS_PER_TX[rni] × t_io (low 5, average 10, high 20 I/O). t_io, storage katmanından gelir (Bölüm 8.5): okuma/yazma oranı, DS8900F önbellek isabeti, zHyperLink ve zHPF/FICON servis süreleri, senkron replikasyonun mesafe gecikmesi. Varsayılanlarla t_io M1'de 69 µs, senkron kopyalı topolojilerde (M2–M4) 129 µs; average RNI'da D_io sırasıyla 0,69 ms ve 1,29 ms.
+Sabit I/O gecikmesi: D_io = IOPS_PER_TX[rni] × t_io (low 5, average 10, high 20 I/O). t_io, storage katmanından gelir (Bölüm 8.6): okuma/yazma oranı, DS8900F önbellek isabeti, zHyperLink ve zHPF/FICON servis süreleri, senkron replikasyonun mesafe gecikmesi. Varsayılanlarla t_io M1'de 69 µs, senkron kopyalı topolojilerde (M2–M4) 129 µs; average RNI'da D_io sırasıyla 0,69 ms ve 1,29 ms.
 
 R(p) = D_io + R_cpu(p)
 
@@ -327,7 +327,76 @@ Statik mod, availability 0.999, average RNI:
 
 ## 8. Storage Katmanı — IBM DS8900F
 
-### 8.1. Neden Bu Dizi ve Mainframe'e Özgü Yapı
+### 8.1. Katmanın Savunması
+
+Bu bölüm storage katmanının neden bu şekilde modellendiğini savunur: katmanın TCO'ya neden dahil edildiğini, neden tek alternatif olarak DS8900F'in seçildiğini, her modelleme kararının gerekçesini ve alternatifini, her varsayımın dayanağını ve geçerlilik tehditlerini. Teknik tanım Bölüm 8.2–8.9'dadır.
+
+#### 8.1.1. Storage neden TCO'ya dahil
+
+Projenin araştırma boşluğu iddiası, mevcut karşılaştırmaların "yalnızca compute'u kapsadığı; lisans, storage, DR ve personeli dışarıda bıraktığı"dır (`project_justification.md`). Storage'ı dışarıda bırakmak bu iddiayla doğrudan çelişir. Ancak bir kalemi dahil etmenin akademik gerekçesi yalnızca "tam yığın" iddiası olamaz; kalemin karşılaştırmanın sonucunu değiştirebiliyor olması gerekir. Bir maliyet kalemi iki tarafta aynı büyüklükteyse farkı ve dolayısıyla crossover noktalarını değiştirmez; projenin storage ağını kapsam dışı bırakma gerekçesi budur. Storage için bu koşul sağlanmaz (ayrıntı: Değerlendirme #3, Bölüm 1):
+
+| Boyut | Mainframe | Clustered x86 | Neden birbirini götürmez |
+|---|---|---|---|
+| Veri kopyası | Shared-disk; site başına tek kopya | Shared-nothing DB'lerde veri DB tarafından 2–3 kez çoğaltılır | Aynı veri için ham kapasite farklı |
+| DR replikasyonu | Storage katmanında (Metro/Global Mirror) | Çoğunlukla DB katmanında | Storage yoksa mainframe DR maliyetinin bir kısmı kaybolur, x86'nınki DB'de kalır: asimetrik hata |
+| I/O'nun CPU maliyeti | Kanal alt sistemi ve SAP'lerde | Host CPU'sunda (storage yığını, replikasyon) | x86 compute boyutu storage'a bağlı |
+| I/O gecikmesi | zHyperLink ~20 µs, zHPF ~90 µs | Yerel NVMe düşük; ağ üzerinden storage daha yüksek | Latency modelindeki D_io storage olmadan kalibre edilemez |
+
+Modelin sonuçları bu öngörüyü doğruluyor: 50K TPS'te storage, 20 TB veride toplamın %9'u iken 500 TB'ta %68'i (Bölüm 8.7). Compute sabit kalırken storage veri hacmiyle büyüdüğü için veri hacmi, TPS'ten bağımsız ikinci bir crossover ekseni oluşturuyor. Bu, Değerlendirme #1'de zayıf bulunan çoklu crossover hipotezini destekleyen ilk somut mekanizmadır.
+
+#### 8.1.2. Neden DS8900F ve neden tek alternatif
+
+- **Nesil uyumu:** DS8900F, z15 ile duyurulan ve z16 ile eşleşen nesildir. Kademe tablosu z16 A01 olduğu için storage da aynı nesilden seçildi.
+- **Temsil gücü:** IDC'ye göre IBM mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TT-2019]. Model tipik bir z16 kurulumunu temsil etmeli.
+- **Mainframe'e özgü yetenekler:** zHyperLink, z16 ile DS8000 arasında tanımlıdır [REDP-5554]; IBM dışı dizilerde bu bağlantının bulunmadığını biliyoruz (doğrulanmalı). Modelin mainframe'e özgü gecikme avantajını temsil edebilmesi için bu dizi gerekli.
+- **Veri erişilebilirliği:** IBM'in Product Guide'ı model, kapasite, güç ve lisans yapısını açık yayımlıyor; FICON destekli rakip dizilerin (Dell PowerMax, Hitachi VSP 5000) mainframe yapılandırmaları için karşılaştırılabilir açık veri bulunmadı.
+- **Tek alternatif kuralı:** Proje Phase 1'de her katmanda tek alternatif kullanıyor (`project_context_restore_v4.md`, 4.7); mainframe tarafı "tek yığın" olarak tanımlı. Rakip dizileri eklemek kombinasyon sayısını büyütür ama karşılaştırmanın sorusunu (mainframe mi clustered mi) değiştirmez.
+- **Kapsam dışı modeller:** DS8980F (998) yayımlanmış IOPS ve fiyatı olmadığı için; ardılı DS8000 G10 z16 ile aynı nesil olmadığı ve veri bulunmadığı için.
+
+#### 8.1.3. Modelleme kararları
+
+| Karar | Alternatif | Seçilme gerekçesi | Sonuca etkisi |
+|---|---|---|---|
+| Kopya sayısı DR topolojisinden türetilir (M1 1, M2 2, M3/M4 4) | Kullanıcı girdisi | Proje kararı: replikasyon kullanıcıya sorulmaz, availability/RPO'dan türetilir (`project_context_restore_v4.md`, 4.7). Kopya sayıları GDPS mimarisinden | Yüksek availability storage maliyetini 2–4 katına çıkarır; availability ile storage maliyeti arasında açık bir bağ kurar |
+| Her kopya ayrı dizi ve birincilin IOPS'una göre boyutlanır | İkincil diziyi küçük boyutlamak | HyperSwap ve failover'da ikincil dizi birincilin tüm yükünü devralır; küçük ikincil gerçek bir failover'ı karşılamaz | Tutucu (maliyeti yukarı çeker) |
+| IOPS = tepe TPS × IOPS/işlem (RNI'ya bağlı) | Kullanıcı IOPS girdisi | Proje kararı: kullanıcıya IOPS sorulmaz, RNI üzerinden iki tarafa da taşınır | IOPS_PER_TX hem model seçimini hem D_io'yu belirler (Bölüm 8.1.5) |
+| Kopya başına en ucuz model; dizi sayısı = max(kapasite, IOPS ihtiyacı) | Sabit model | Kapasite ve IOPS iki ayrı darboğazdır; az veri + yüksek TPS IOPS ile, çok veri + düşük TPS kapasiteyle boyutlanır | 90K TPS'te IOPS darboğazı DS8950F'e geçişi zorlar |
+| Fiyat = (flash + kontrolcü liste fiyatı) × (1 − indirim) | Bileşen başına ayrı indirim | Yayımlanmış tek fiyat noktaları liste fiyatlarıdır; tek indirim oranı varsayımı tek bir parametrede toplar ve duyarlılık analizine açık tutar | Tüm belirsizlik tek parametrede (Bölüm 8.8) |
+| Lisans = donanım capex'ine oran | TB başına fiyat | Lisans yapısı (BF, z-synergy, Copy Services; TB kademeli) resmî, fiyatı yayımlanmıyor; TB kademe granülaritesi fiyatın kendisini vermiyor | Varsayılanla storage capex'inin %20'si |
+| Enerji tepe güçle | Tipik güç | Yalnızca tepe güç yayımlanıyor [REDP-5554] | Tutucu; storage enerjisi toplamda küçük |
+| 3 yıllık planlama ufku | 1 yıl veya amortisman süresi (5 yıl) | Dizi büyümeye göre boyutlanır ama 5 yıl boyunca boş kapasite taşımak gerçekçi değil; kapasite planlamada yaygın orta ufuk | %15 büyümede kapasite ×1,52 |
+| I/O başına sabit gecikme (kuyruk yok) | Dizi kuyruğu (M/M/c) | PAV/HyperPAV/SuperPAV aynı hacme paralel I/O sağlar; dizi tepe IOPS'unun altında çalıştığı sürece kuyruk etkisi küçüktür | Dizi tepe IOPS'a yakın çalışırsa iyimser (Bölüm 8.1.5) |
+| Mainframe'de storage için ek CPU yükü yok | Host CPU yükü eklemek | I/O kanal alt sistemi ve SAP'lerde işlenir; kapasite köprüsündeki CICS benchmark'ı z/OS I/O'sunun CPU maliyetini zaten içerir. Eklemek çift sayım olur | x86 tarafında aynı kalem açıkça eklenmeli (asimetri bilinçli) |
+| Global Mirror ve uzak site replikasyonu latency'ye eklenmez | Eklemek | Asenkron replikasyon yazmanın tamamlanmasını beklemez; etkisi RPO'dadır, latency'de değil | RPO bağlantısı DR adımında |
+
+#### 8.1.4. Varsayımlar ve dayanakları
+
+| Parametre | Değer | Dayanak | Taranan aralık | Kalibrasyon yolu |
+|---|---|---|---|---|
+| STORAGE_DISCOUNT | 0,70 | Kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VENDORBENCH]; IBM liste fiyatlarının yüksekliği (flash $8,62/GB) | 0,50–0,85 | Gerçek DS8900F teklifi veya kamu ihale kaydı |
+| Lisans oranları | 0,15 + 0,10 | Yapı resmî, fiyat yok | 0,05–0,30 | IBM teklifi |
+| DB_OVERHEAD_FACTOR | 1,5 | Db2 log, image copy, work alanı, sistem hacimleri | 1,2–2,0 | Db2 kapasite planlama kılavuzu |
+| RAID_USABLE_FRACTION | 0,75 | RAID 6 (6+P+Q) | sabit | DS8900F Architecture Redbook |
+| SAFEGUARDED_RESERVE | 0,25 | Değişim hızına ve saklanan kopya sayısına bağlı | sabit | Safeguarded Copy Redbook |
+| HOST_COMPRESSION_RATIO | 1,0 | Tutucu: sıkıştırma yok | 1,0–2,5 | Db2 sıkıştırma oranları |
+| Okuma payı / önbellek isabeti / zHyperLink payı | 0,70 / 0,90 / 0,80 | Tipik OLTP okuma ağırlığı; büyük DS8900F önbelleği; Db2 senkron okumalarının zHyperLink'e uygunluğu | zHyperLink açık/kapalı | REDP-5320 iş yükü profili, RMF/SMF verisi |
+| t_miss | 300 µs | Önceki modelin I/O süresi; flash arka uç + FICON | sabit | DS8900F performans raporları |
+| Metro Mirror mesafesi | 20 km | Metro mesafe DR için tipik | 10–100 km | Senaryoya bağlı girdi |
+| IOPS_PER_TX | 5 / 10 / 20 | Proje kararı | RNI ile | REDP-5320 iş yükü profili |
+
+#### 8.1.5. Geçerlilik tehditleri
+
+- **İç geçerlilik (fiyat):** Storage maliyetinin mutlak düzeyi büyük ölçüde indirim oranına bağlı; 0,50–0,85 aralığında yaklaşık 3 kat değişiyor. Bu yüzden storage'lı sonuçlar tek bir nokta olarak değil, indirim aralığıyla birlikte raporlanmalı. Göreli sonuçlar (veri hacmiyle doğrusal büyüme, topolojiyle kopya sayısı, IOPS ile model geçişi) indirim oranından bağımsızdır.
+- **Yapı geçerliliği (IOPS_PER_TX):** İşlem başına 10 fiziksel I/O, Db2 buffer pool'ları düşünüldüğünde büyük olasılıkla yüksek. Bu hem D_io'yu hem dizi seçimini yukarı çeker. REDP-5320 iş yükü profiliyle kalibre edilene kadar storage'ın IOPS tarafı tutucu kabul edilmeli.
+- **Yapı geçerliliği (IOPS tavanı):** Dizi sayısı üretici tepe IOPS'unun %100'üne göre hesaplanıyor. Tepe değer önbellek isabetli küçük blok ölçümüdür; compute tarafındaki %90 operasyonel tavana karşılık storage'da bir tavan yok. Bu iyimser bir yaklaşımdır ve compute ile tutarlı hale getirilmelidir.
+- **Dış geçerlilik:** Tek üretici, 2019–2022 fiyatları, ABD liste fiyatları. Mainframe storage pazarının yaklaşık yarısını temsil eder; diğer yarı (PowerMax, VSP) farklı fiyatlanabilir.
+- **Sonuç geçerliliği:** Storage'ın toplam içindeki payı varsayılan veri hacmine (20 TB) bağlı. Tezde storage payı tek bir yüzde olarak değil, veri hacmi ekseninde bir eğri olarak sunulmalı.
+
+#### 8.1.6. Clustered tarafla eşleştirme
+
+Storage, iki tarafın da aynı girdileri kullandığı ortak bir arayüzdür: `data_tb`, `data_growth`, RNI'dan IOPS ve (DR adımıyla) RPO. Clustered tarafın aynı arayüze bağlanırken eklemesi gerekenler: DB mimarisine bağlı kopya sayısı (replication factor), storage yığınının host CPU yükü, ağ üzerinden storage gecikmesi, kendi $/TB ve bakım parametreleri. Mainframe tarafında bu kalemlerin olmaması bilinçli bir asimetridir ve yukarıdaki kararlarla gerekçelendirilmiştir; iki taraf aynı derinlikte, farklı mekanizmalarla modellenir (eşit derinlik ilkesi, `project_context_restore_v4.md`, 3.7).
+
+### 8.2. Mainframe'e Özgü Yapı
 
 Mainframe tarafının storage'ı sabittir: IBM DS8900F (z15/z16 ile aynı nesil, tamamen flash). Projenin "mainframe tarafı tek yığın" ilkesine uyar. IDC'ye göre IBM, mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TT-2019]. DS8000'in ardılı DS8000 G10 bu modelin kapsamı dışındadır (z16 ile eşleşen nesil DS8900F; doğrulanmalı: G10'un çıkış tarihi).
 
@@ -335,7 +404,7 @@ Modelin yakaladığı mainframe'e özgü özellikler:
 
 | Özellik | Ne yapar | Modeldeki etkisi |
 |---|---|---|
-| Shared-disk (Db2 data sharing) | Tüm Db2 üyeleri aynı diske erişir; site başına verinin tek kopyası | Kopya sayısını yalnızca DR topolojisi belirler (Bölüm 8.3) |
+| Shared-disk (Db2 data sharing) | Tüm Db2 üyeleri aynı diske erişir; site başına verinin tek kopyası | Kopya sayısını yalnızca DR topolojisi belirler (Bölüm 8.4) |
 | Storage tabanlı replikasyon | Metro Mirror (senkron), Global Mirror (asenkron + journal), GDPS yönetir | Kopya başına ayrı dizi; senkron kopya yazma gecikmesine mesafe ekler |
 | zHyperLink | z16 ile DS8900F arasında senkron, < 20 µs (~18 µs) küçük blok okuma; 150 m'ye kadar [REDP-5554] | Uygun okumalarda I/O süresi 90 µs yerine 20 µs |
 | zHPF / FICON | Mainframe I/O protokolü; DS8900F önbellek isabetinde ~90 µs [TT-2019] | Okuma (zHyperLink dışı) ve yazma servis süresi |
@@ -345,7 +414,7 @@ Modelin yakaladığı mainframe'e özgü özellikler:
 | CKD hacimlerde veri azaltma yok | Sıkıştırma/dedup dizide değil, host'ta (Db2, z16 on-chip hızlandırıcı) | HOST_COMPRESSION_RATIO parametresi (varsayılan 1,0 = yok) |
 | Lisans paketleri | Base Function (tüm kapasite), z-synergy Services (FICON, PAV, zHPF, zHyperLink; CKD), Copy Services. TB başına kademeli: 100 TB'a kadar 10 TB, 12 PB'a kadar 500 TB adımlarla [REDP-5554] | Fiyat yayımlanmadığı için donanım capex'ine oran [ASSUME] |
 
-### 8.2. Model Kataloğu
+### 8.3. Model Kataloğu
 
 `data/ds8900f_models.csv` [REDP-5554, ITCANDOR, TT-2019]:
 
@@ -357,7 +426,7 @@ Modelin yakaladığı mainframe'e özgü özellikler:
 
 DS8980F (998) kapsam dışı: yayımlanmış IOPS ve fiyatı yok. IOPS değerleri üretici tepe değerleridir (önbellek isabetli küçük blok). 993'ün z16 çerçevesine monte edilebilmesi mainframe'e özgü bir avantajdır (ayrı raf ve zemin alanı gerektirmez); model bunu ayrıca fiyatlamaz.
 
-### 8.3. Boyutlandırma
+### 8.4. Boyutlandırma
 
 Kopya başına ham kapasite:
 
@@ -379,7 +448,7 @@ Kopya sayısı topolojiden gelir [GDPS] (doğrulanmalı):
 
 IOPS ihtiyacı = tepe TPS × IOPS_PER_TX[rni]. Her kopya için en ucuz model seçilir: dizi sayısı = max(⌈ham_TB / maks_TB⌉, ⌈IOPS / maks_IOPS⌉). İkincil kopyalar failover'da birincilin yükünü taşıyabilmek için aynı IOPS'a göre boyutlanır.
 
-### 8.4. Maliyet
+### 8.5. Maliyet
 
 | Kalem | Formül | Kaynak |
 |---|---|---|
@@ -391,9 +460,9 @@ IOPS ihtiyacı = tepe TPS × IOPS_PER_TX[rni]. Her kopya için en ucuz model se�
 | Bakım | donanım × %15/yıl, 1 yıllık garanti sonrası (5 yıla ortalanmış) | [VENDORBENCH] %10–25; [IBM-122-037] garanti |
 | Enerji | tepe kW × $0,12 × 730 saat | [REDP-5554] tepe güç (tutucu: tepe değer kullanılıyor) |
 
-Etkin flash fiyatı varsayılanlarla ~$2.590/TB ham. Bu, modelin en belirsiz storage parametresidir: liste fiyatı resmî, ama gerçek indirim müşteriye özeldir (duyarlılık Bölüm 8.7).
+Etkin flash fiyatı varsayılanlarla ~$2.590/TB ham. Bu, modelin en belirsiz storage parametresidir: liste fiyatı resmî, ama gerçek indirim müşteriye özeldir (duyarlılık Bölüm 8.8).
 
-### 8.5. I/O Gecikmesi
+### 8.6. I/O Gecikmesi
 
 t_io = r × [h × (z × t_zHL + (1 − z) × t_FICON) + (1 − h) × t_miss] + (1 − r) × (t_FICON + senkron replikasyon)
 
@@ -409,7 +478,7 @@ t_io = r × [h × (z × t_zHL + (1 − z) × t_FICON) + (1 − h) × t_miss] + (
 
 Sonuç: M1'de 69 µs/I/O (D_io 0,69 ms, average RNI). M2–M4'te 129 µs/I/O (1,29 ms). zHyperLink kapalıyken M1'de 105 µs. Metro Mirror mesafesi 100 km'ye çıkarsa M2'de D_io 3,69 ms. Böylece availability topolojisi latency'yi de etkiler: daha yüksek availability, senkron kopya nedeniyle daha yüksek yazma gecikmesi demektir.
 
-### 8.6. Doğrulama Örnekleri
+### 8.7. Doğrulama Örnekleri
 
 Statik mod, average RNI, 20 TB veri, varsayılan parametreler:
 
@@ -425,7 +494,7 @@ Veri hacmi ekseni (50K TPS, %99,9): 5 TB'ta storage toplamın %3,9'u, 100 TB'ta 
 
 Yıllık mod (50K TPS ortalama, 20 TB): storage yıllık toplamın %3–7'si; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
 
-### 8.7. Duyarlılık
+### 8.8. Duyarlılık
 
 `python src/tools/storage_sensitivity.py` (50K TPS, 20 TB, M1, storage aylık maliyeti):
 
@@ -438,7 +507,7 @@ Yıllık mod (50K TPS ortalama, 20 TB): storage yıllık toplamın %3–7'si; st
 
 İndirim oranı tek başına storage maliyetini ~3 kat oynatıyor; bu parametre için gerçek bir teklif veya kaynaklı bir pazar aralığı en değerli kalibrasyon olur.
 
-### 8.8. Sınırlamalar
+### 8.9. Sınırlamalar
 
 - Fiyatlar: yalnızca flash liste fiyatı (2022) ve başlangıç fiyatları (2019) kaynaklı; indirim, lisans ve tam konfigürasyon fiyatı varsayım.
 - Drive katmanı tek: tüm kapasite 15,36 TB Tier 2 flash fiyatıyla. Küçük drive'lar (Tier 0/1) TB başına daha pahalı; yüksek IOPS yoğunluğu gereken küçük veri setlerinde maliyet eksik sayılabilir.
