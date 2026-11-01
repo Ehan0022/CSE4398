@@ -58,7 +58,7 @@ def main():
     print(f"   AWLC kademeli  {fmt(REF_TPS, run(REF_TPS))}")
 
     print("\n3) Mutlak fiyat seviyesi SW_PRICE_LEVEL_FACTOR (10K TPS)")
-    for v in [0.5, 0.75, 1.0, 1.25, 1.5]:
+    for v in [0.5, 0.75, 1.0, 1.25, 1.5, 1.75]:
         print(f"   x{v:<5} {with_attr('SW_PRICE_LEVEL_FACTOR', v, lambda: fmt(REF_TPS, run(REF_TPS)))}")
 
     print("\n4) zIIP'e kayan pay ZIIP_OFFLOAD_FRACTION (10K TPS)")
@@ -71,8 +71,8 @@ def main():
             print(f"   x{decay:<4} {tps:>7}  "
                   f"{with_attr('AWLC_UPPER_DECAY', decay, lambda: fmt(tps, run(tps)))}")
 
-    print("\n6) Availability -> GDPS yazilim premium'u (10K TPS)")
-    for av in [0.999, 0.99999, 0.9999999]:
+    print("\n6) Availability -> topoloji; yazilim degismez (CBU kurali), GDPS ayri kalem (10K TPS)")
+    for av in [0.999, 0.9999, 0.99999]:
         print(f"   {av:<9} {fmt(REF_TPS, run(REF_TPS, av))}")
 
 

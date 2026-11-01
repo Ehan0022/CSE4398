@@ -203,11 +203,21 @@ class WorkloadProfile:
     def cpu_weight(self):
         return self.cpu_us() / CPU_US_TM_BASE
 
-    def sync_io(self):
+    def sync_read_io(self):
+        """Senkron okuma I/O'su: buffer pool iskasi. Olculmus profilde 0
+        (REDP'nin senkron I/O'su VSAM rewrite, yani yazma)."""
+        if self._sync_io is not None:
+            return 0.0
+        return self.reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
+
+    def sync_write_io(self):
+        """Senkron yazma I/O'su: commit'te log yazimi (olculmus profilde rewrite)."""
         if self._sync_io is not None:
             return self._sync_io
-        return (self.reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
-                + self.commits * LOG_SYNC_IO_PER_COMMIT)
+        return self.commits * LOG_SYNC_IO_PER_COMMIT
+
+    def sync_io(self):
+        return self.sync_read_io() + self.sync_write_io()
 
     def storage_iops(self):
         if self._storage_iops is not None:
@@ -299,10 +309,8 @@ ZIIP_HW_PRICE_FACTOR = 0.25    # zIIP motor fiyati / esdeger GP fiyati [ASSUME]
 # riskini artirir. [ASSUME, pratik dayanak]
 DEFAULT_UTILIZATION_CEILING = 0.90
 # Geriye uyumluluk icin eski isim; ayni deger.
-HARD_UTILIZATION_CAP = DEFAULT_UTILIZATION_CEILING
 
 # I/O servis suresi parametreleri (mainframe storage yolu: z16 <-> DS8900F)
-IO_READ_FRACTION = 0.70        # [ASSUME] OLTP okuma/yazma orani ~70/30
 CACHE_HIT_RATIO = 0.90         # [ASSUME] DS8900F onbellek isabet orani (okuma)
 ZHYPERLINK_ENABLED = True      # z16 + DS8900F zHyperLink [REDP-5554]
 ZHYPERLINK_READ_SHARE = 0.80   # [ASSUME] isabetli okumalarin zHyperLink'e uygun payi
@@ -314,25 +322,35 @@ REPLICATION_S_PER_KM = 10e-6   # [FIZIK] fiberde isik ~5 us/km tek yon -> 10 us/
 METRO_DISTANCE_KM = 20.0       # [ASSUME] senkron Metro Mirror siteleri arasi mesafe
 
 
-def io_service_time_seconds(topology=None):
-    """Tek bir I/O'nun ortalama servis suresi (saniye).
-
-    okuma = isabet x (zHyperLink payi x t_zHL + kalan x t_FICON) + iska x t_miss
-    yazma = t_FICON (DS8900F NVS'e hizli yazma) + senkron replikasyon gecikmesi
-    Senkron replikasyon yalnizca topolojide senkron bir kopya varsa eklenir.
-    """
+def io_read_time_seconds():
+    """Senkron okuma I/O'sunun servis suresi (saniye):
+    isabet x (zHyperLink payi x t_zHL + kalan x t_FICON) + iska x t_miss."""
     z = ZHYPERLINK_READ_SHARE if ZHYPERLINK_ENABLED else 0.0
-    t_read = (CACHE_HIT_RATIO * (z * T_ZHYPERLINK_S + (1.0 - z) * T_FICON_HIT_S) +
-              (1.0 - CACHE_HIT_RATIO) * T_FLASH_MISS_S)
-    t_write = T_FICON_HIT_S
+    return (CACHE_HIT_RATIO * (z * T_ZHYPERLINK_S + (1.0 - z) * T_FICON_HIT_S) +
+            (1.0 - CACHE_HIT_RATIO) * T_FLASH_MISS_S)
+
+
+def io_write_time_seconds(topology=None):
+    """Senkron yazma I/O'sunun servis suresi (saniye): t_FICON (DS8900F NVS'e
+    hizli yazma) + topolojide senkron kopya varsa replikasyon gecikmesi."""
+    t = T_FICON_HIT_S
     if topology is not None and getattr(topology, "sync_replication", False):
-        t_write += METRO_DISTANCE_KM * REPLICATION_S_PER_KM
-    return IO_READ_FRACTION * t_read + (1.0 - IO_READ_FRACTION) * t_write
+        t += METRO_DISTANCE_KM * REPLICATION_S_PER_KM
+    return t
 
 
 def io_delay_seconds(workload=DEFAULT_WORKLOAD, topology=None):
-    """Transaction basina deterministik I/O gecikmesi (saniye)."""
-    return get_workload(workload).sync_io() * io_service_time_seconds(topology)
+    """Transaction basina deterministik I/O gecikmesi (saniye): okuma ve yazma
+    I/O'lari profilin kendi bilesimiyle ve kendi servis sureleriyle."""
+    w = get_workload(workload)
+    return (w.sync_read_io() * io_read_time_seconds()
+            + w.sync_write_io() * io_write_time_seconds(topology))
+
+
+def io_service_time_seconds(topology=None, workload=DEFAULT_WORKLOAD):
+    """Profilin I/O basina ortalama servis suresi (raporlama icin)."""
+    n = get_workload(workload).sync_io()
+    return io_delay_seconds(workload, topology) / n if n > 0 else 0.0
 
 
 def raw_tier_tps(tier, workload=DEFAULT_WORKLOAD):
@@ -462,7 +480,7 @@ class Topology:
         self.n_frames = n_frames        # birincil + DR (CBU) frame sayisi
         self.pattern = pattern          # SG24-8446 deseni
         self.gdps = gdps                # GDPS teklifi (None, "metro_global", "ca")
-        self.rpo_seconds = rpo_seconds  # saha felaketinde tutucu RPO  [GDPS-2026]
+        self.rpo_seconds = rpo_seconds  # tek site kaybinda RPO  [GDPS-2026]
         self.description = description
         self.storage_copies = storage_copies      # DS8900F veri kopyasi (dizi) sayisi
         self.sync_replication = sync_replication  # senkron Metro Mirror var mi
@@ -546,7 +564,8 @@ TOPOLOGIES = [
         n_frames=2,
         pattern="Fault tolerant",
         gdps="metro_global",
-        rpo_seconds=5.0,          # [GDPS-2026] metro 0; bolgesel felakette GM "2-5 sn"
+        rpo_seconds=0.0,          # [GDPS-2026] tek site kaybinda Metro Mirror: RPO 0
+                                  # (bolgesel felakette Global Mirror bacagi 2-5 sn)
         description="Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu "
                     "ve HyperSwap. RTO dakikalar - <1 saat.",
         storage_copies=4, sync_replication=True,    # H1+H2 (Metro) + H3+J3 (Global Mirror) [GDPS]
@@ -652,21 +671,31 @@ SW_PRODUCT_ANCHORS = {
 }
 SW_PRICE_LEVEL_FACTOR = 1.0            # 2004 nominal = 1.0 [ASSUME, aralik 0.5-1.5]
 
-# [PRICE] Donanim: kapasiteyle olcekleniyor. Liste fiyati yok; MIPS basina
-# kaba bir donanim fiyati turetiyoruz. Aralik ~$0.5M (giris) - $10M+ (tam).
-# Tam-hiz tek-frame ust kapasite ~ 7xx 32CP ~ 48637 MIPS. Kaba dogrusal cikarim:
-# [ASSUME] donanim ~ $200 / MIPS (0.5M-10M araligina kabaca oturuyor)
-HARDWARE_COST_PER_MIPS = 200.0         # USD/MIPS (satin alma)  [PRICE -> ASSUME]
+# [PRICE] Donanim: liste fiyati yayimlanmaz; kaynak araligi ~$0.5M (giris) -
+# $10M+ (buyuk yapilandirma). Model: frame basina sabit taban (cerceve, CPC
+# drawer, bellek, I/O, HMC) + kapasiteyle dogrusal artis.
+#   satin_alma = HW_FRAME_BASE_COST + PCI x HARDWARE_COST_PER_MIPS (+ zIIP)
+# Taban, kaynak araliginin giris ucuna esitlendi; egim aralikla taranir.
+# Not: 200 CP'lik 7K0 icin ~$44M verir; buyuk uc icin egim muhtemelen yuksektir
+# (mainframe aleyhine), bu yuzden low ucu $150/PCI.
+HW_FRAME_BASE_COST = 500000.0          # USD/frame [PRICE -> ASSUME, aralik 250K-1M]
+HARDWARE_COST_PER_MIPS = 200.0         # USD/PCI (satin alma)  [PRICE -> ASSUME, aralik 150-300]
 HARDWARE_AMORTIZATION_YEARS = 5        # [ASSUME] amortisman suresi
 MAINTENANCE_RATE_ANNUAL = 0.125        # donanim degerinin %12.5'i/yil [PRICE]
+HW_WARRANTY_YEARS = 1                  # [ASSUME] ilk yil garanti; storage ile ayni kural
+                                       # (bakim 5 yila ortalanir: x (5-1)/5)
+
+
+def maintenance_factor():
+    """Garanti sonrasi bakimin amortisman suresine ortalanmis payi."""
+    y = HARDWARE_AMORTIZATION_YEARS
+    return max(0.0, y - HW_WARRANTY_YEARS) / y
 
 # [PWR] Enerji: ~20-40 kW/frame. Orta deger + elektrik fiyati.
 POWER_KW_PER_SYSTEM = 30.0             # kW/frame  [PWR, orta deger]
 ELECTRICITY_USD_PER_KWH = 0.12         # [ASSUME] tipik ticari elektrik
 HOURS_PER_MONTH = 730.0
 
-# [PRICE] Ekonomik alt esik: <150 MIPS altinda mainframe mantikli degil.
-MAINFRAME_MIN_VIABLE_MIPS = 150.0      # [PRICE]
 
 
 # ------------------------------------------------------------------------------
@@ -885,7 +914,7 @@ def storage_plan(peak_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=Non
         "energy": energy,
         "power_kw": power_kw,
         "monthly_total": amort + maint + energy,
-        "io_service_time_s": io_service_time_seconds(topology),
+        "io_service_time_s": io_service_time_seconds(topology, workload),
         "io_delay_s": io_delay_seconds(workload, topology),
     }
 
@@ -1004,20 +1033,21 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
                       DR (CBU) frame'inin yazilimi kalici kapasitesine gore
                       faturalanir; bu modelde ihmal edilir [CBU].
       - hardware:     tam fiyat x cost_multiplier (1 + DR frame x DR_FRAME_COST_FRACTION)
-      - maintenance:  hardware'a oranli
+      - maintenance:  hardware'a oranli, garanti yili sonrasi
       - energy:       frame sayisi x kW x elektrik
       - gdps:         GDPS teklifinin sabit aylik bedeli (M3, M4)
       - staff:        altyapi personeli, birincil kademenin PCI'sina gore
                       alt-dogrusal (STAFF_SCENARIOS), topoloji carpaniyla
     """
     msu = tier.msu if billed_msu is None else billed_msu
-    # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
+    # Yazilim lisansi: AWLC kademeli  [AWLC, IBM-2004]
     software = software_monthly_cost(msu)
-    # Donanim amortismani - frame carpani  [PRICE/ASSUME]; zIIP motorlari dahil
-    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS + ziip_hw_purchase(tier, workload)
+    # Donanim amortismani: frame tabani + kapasite + zIIP  [PRICE/ASSUME]
+    hw_purchase = (HW_FRAME_BASE_COST + tier.mips * HARDWARE_COST_PER_MIPS
+                   + ziip_hw_purchase(tier, workload))
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
-    # Bakim  [PRICE]
-    maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL / 12
+    # Bakim: garanti sonrasi, amortisman suresine ortalanmis  [PRICE]
+    maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12
     # Enerji - her frame ayri  [PWR]
     energy = POWER_KW_PER_SYSTEM * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
 
@@ -1059,6 +1089,10 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
       3. Her topoloji icin: kapasiteyi karsilayan kademeleri aday yap
       4. Tum topoloji+kademe kombinasyonlari arasinda EN UCUZ olani sec
     """
+    if not tps > 0:
+        raise ValueError("tps pozitif olmali")
+    if not 0.0 < availability < 1.0:
+        raise ValueError("availability 0 ile 1 arasinda olmali")
     # Latency parametrelerini saniyeye ve fraction'a cevir
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     percentile_frac = latency_percentile / 100.0
@@ -1084,9 +1118,9 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
                   f"RTO hedefi: {rto_minutes if rto_minutes is not None else '-'} dk")
         print(f"  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):")
         for t in feasible_topos:
-            worst, best = t.availability_range()
+            a_worst, a_best = t.availability_range()
             print(f"       {t.code}: availability {t.availability():.5%} "
-                  f"(aralik {worst:.5%} - {best:.5%}) | "
+                  f"(aralik {a_worst:.5%} - {a_best:.5%}) | "
                   f"RPO {t.rpo_seconds:g} s, RTO {t.rto_minutes:g} dk")
 
     if not feasible_topos:
@@ -1133,10 +1167,10 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
 
         print(f"  -> SECILEN TOPOLOJI: {topo}")
         print(f"     {topo.description}")
-        worst, best = topo.availability_range()
+        a_worst, a_best = topo.availability_range()
         print(f"     availability: {topo.availability():.5%} "
               f"({topo.annual_downtime_hours():.2f} saat/yil kesinti; "
-              f"aralik {worst:.5%} - {best:.5%})")
+              f"aralik {a_worst:.5%} - {a_best:.5%})")
         print(f"  -> SECILEN KADEME: {tier} (birincil frame)")
         print(f"     tam-hiz CP esdegeri: {cp_eq:.2f}")
         print(f"     dinamik utilization tavani: %{rho_max*100:.1f} "
@@ -1273,6 +1307,8 @@ def generate_hourly_profile(preset_name=None, yearly_avg_tps=10000,
             peak_days = 15
 
     HOURS = 8760
+    if peak_avg_ratio < 1.0:
+        raise ValueError("peak_avg_ratio >= 1 olmali")
     # Gunluk desen: 14:00 peak, 03:00 dip
     daily = [1.0 + 0.5 * math.cos((h - 14) * 2 * math.pi / 24) for h in range(24)]
     # Haftalik desen: is gunu / hafta sonu
@@ -1283,17 +1319,47 @@ def generate_hourly_profile(preset_name=None, yearly_avg_tps=10000,
         step = max(1, 365 // peak_days)
         for i in range(peak_days):
             peak_day_set.add(i * step)
-    peak_day_multiplier = peak_avg_ratio / 1.5
 
-    profile = [0.0] * HOURS
-    for h in range(HOURS):
-        d = h // 24
-        hod = h % 24
-        wd = d % 7
-        factor = daily[hod] * weekly[wd]
-        if d in peak_day_set:
-            factor *= peak_day_multiplier
-        profile[h] = factor
+    base = [daily[h % 24] * weekly[(h // 24) % 7] for h in range(HOURS)]
+    is_peak = [(h // 24) in peak_day_set for h in range(HOURS)]
+
+    def shaped(alpha, mult):
+        """alpha: gunluk/haftalik dalgalanmanin genligi (1 = tam desen);
+        mult: peak gunlerin carpani."""
+        mean_b = sum(base) / HOURS
+        return [(mean_b + alpha * (b - mean_b)) * (mult if pk else 1.0)
+                for b, pk in zip(base, is_peak)]
+
+    def ratio_of(prof):
+        return max(prof) / (sum(prof) / HOURS)
+
+    # Profilin tepe/ortalama orani istenen degere esitlenir:
+    #  1) tam desenle, peak gun carpani m kapali formdan: tepe = max(b) x m,
+    #     ortalama = (S_normal + m x S_peak) / 8760  ->  m = r S_n / (8760 max(b) - r S_p)
+    #  2) istenen oran desenin kendi oranindan dusukse (orn. steady 1.5x),
+    #     peak gun etkisiz kalir ve dalgalanma genligi alpha ile kucultulur.
+    b_max = max(b for b, pk in zip(base, is_peak))
+    s_peak = sum(b for b, pk in zip(base, is_peak) if pk)
+    s_norm = sum(base) - s_peak
+    denom = HOURS * b_max - peak_avg_ratio * s_peak
+    mult = peak_avg_ratio * s_norm / denom if (peak_day_set and denom > 0) else 0.0
+    if mult >= 1.0:
+        profile = shaped(1.0, mult)
+    else:
+        # genlik ust siniri: profil negatife dusmemeli
+        mean_b = sum(base) / HOURS
+        a_max = mean_b / (mean_b - min(base))
+        if ratio_of(shaped(a_max, 1.0)) < peak_avg_ratio:
+            raise ValueError("bu peak_avg_ratio peak gunler olmadan elde edilemez; "
+                             "peak_days > 0 verin")
+        lo, hi = 0.0, a_max
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if ratio_of(shaped(mid, 1.0)) < peak_avg_ratio:
+                lo = mid
+            else:
+                hi = mid
+        profile = shaped((lo + hi) / 2, 1.0)
 
     current_avg = sum(profile) / HOURS
     scale = yearly_avg_tps / current_avg
@@ -1379,7 +1445,7 @@ def corridor_tier_for(base, fraction=None, feature_max_cps=None):
 def hw_monthly_cost_per_pci():
     """Permanent donanimin PCI basina aylik maliyeti (amortisman + bakim)."""
     return (HARDWARE_COST_PER_MIPS / (HARDWARE_AMORTIZATION_YEARS * 12) +
-            HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL / 12)
+            HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12)
 
 
 def consumed_pci(load_tps, workload=DEFAULT_WORKLOAD):
@@ -1455,10 +1521,18 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
     base_cost = monthly_cost(tier, topology, workload=workload)
     base_other_monthly = (base_cost["hardware_amort"] + base_cost["maintenance"] +
                           base_cost["energy"] + base_cost["gdps"])
+    # zIIP motorlari, yilin en buyuk aktif kademesindeki (CoD / corridor) GP
+    # kapasitesine eslik edecek sayida kalici kurulur: zIIP payi f, gecici GP
+    # kapasitesinde de ayni oranda zIIP ister. Ek motorlarin bedeli donanima.
+    top_tier = max(set(day_tier) | {always_on}, key=lambda t: t.pci)
+    ziip_extra = max(0.0, ziip_hw_purchase(top_tier, workload) - ziip_hw_purchase(tier, workload))
+    base_other_monthly += (ziip_extra / (HARDWARE_AMORTIZATION_YEARS * 12)
+                           + ziip_extra * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12
+                           ) * topology.cost_multiplier
     monthly_other = [base_other_monthly] * 12
 
     # --- On/Off CoD: gun basina, aktif gecici kapasite (always-on'un ustu) ----
-    hw_pci_day = hw_monthly_cost_per_pci() / 30.0
+    hw_pci_day = hw_monthly_cost_per_pci() / (HOURS_PER_MONTH / 24.0)
     cod_cost_total = sum((t.pci - always_on.pci) * hw_pci_day * COD_DAILY_MULTIPLIER
                          for t in day_tier if t is not always_on)
 
@@ -1556,6 +1630,8 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
                  rpo_seconds=None, rto_minutes=None):
     """Yillik simulasyon + strateji karsilastirmasi. En ucuz strateji, diger
     stratejilerin en iyi sonuclari 'alternatives' listesinde doner."""
+    if not yearly_avg_tps > 0:
+        raise ValueError("avg_tps pozitif olmali")
     profile = generate_hourly_profile(preset_name=preset_name,
                                       yearly_avg_tps=yearly_avg_tps,
                                       peak_avg_ratio=peak_avg_ratio,
@@ -1746,12 +1822,13 @@ import sys
 RANGE_PARAMETERS = [
     # (degisken, low, mid, high, aciklama)
     ("STAFF_SCENARIO", "low", "mid", "high", "Personel FTE egrisi + yuklu maliyet"),
-    ("SW_PRICE_LEVEL_FACTOR", 0.5, 1.0, 1.5, "AWLC mutlak fiyat seviyesi (2004 = 1.0)"),
+    ("SW_PRICE_LEVEL_FACTOR", 0.5, 1.0, 1.75, "AWLC mutlak fiyat seviyesi (2004 = 1.0)"),
     ("AWLC_UPPER_DECAY", 0.70, 0.80, 1.00, "AWLC L4+ kademe dusus orani"),
     ("CPU_US_PER_SQL_READ", 15.0, 30.0, 60.0, "Okuma SQL CPU, us (is yuku agirligi)"),
     ("CPU_US_PER_SQL_WRITE", 40.0, 70.0, 140.0, "Yazma SQL CPU, us (is yuku agirligi)"),
     ("ZIIP_OFFLOAD_FRACTION", 0.25, 0.10, 0.0, "zIIP'e kayan CPU payi"),
     ("HARDWARE_COST_PER_MIPS", 150.0, 200.0, 300.0, "Donanim USD/PCI"),
+    ("HW_FRAME_BASE_COST", 250000.0, 500000.0, 1000000.0, "Donanim frame tabani, USD"),
     ("STORAGE_DISCOUNT", 0.85, 0.70, 0.50, "DS8900F liste fiyati indirimi"),
     ("BP_HIT_RATIO", 0.99, 0.95, 0.90, "Db2 buffer pool isabeti (I/O)"),
     ("DR_FRAME_COST_FRACTION", 0.30, 0.50, 1.00, "DR frame bedeli (CBU; 1 = tam ayna)"),
@@ -1770,6 +1847,9 @@ class use_values:
 
     def __enter__(self):
         g = globals()
+        missing = [k for k in self.values if k not in g]
+        if missing:
+            raise KeyError(f"bilinmeyen model parametresi: {missing}")
         for k, v in self.values.items():
             self.old[k] = g[k]
             g[k] = v
@@ -1974,10 +2054,18 @@ Ornekler:
                         help="Kalibrasyon sabitlerini yazdir")
 
     args = parser.parse_args()
+    if args.tps is not None and args.tps <= 0:
+        parser.error("--tps pozitif olmali")
+    if args.avg_tps <= 0:
+        parser.error("--avg-tps pozitif olmali")
+    if not 0.0 < args.availability < 1.0:
+        parser.error("--availability 0 ile 1 arasinda olmali (orn. 0.999)")
 
     if args.sql_reads is not None or args.sql_writes is not None:
-        args.workload = WorkloadProfile("custom", args.sql_reads or 0.0,
-                                        args.sql_writes or 0.0, 1, True,
+        r, w = args.sql_reads or 0.0, args.sql_writes or 0.0
+        if r < 0 or w < 0:
+            parser.error("--sql-reads ve --sql-writes negatif olamaz")
+        args.workload = WorkloadProfile("custom", r, w, 1, (r + w) > 0,
                                         "Ozel bilesim", "USER")
 
     if args.calibration:
@@ -2037,5 +2125,5 @@ Ornekler:
                     data_tb=args.data_tb, data_growth=args.data_growth,
                     rpo_seconds=args.rpo_seconds, rto_minutes=args.rto_minutes)
     if result is None:
-        print("Tek z16 frame bu is yukunu karsilayamiyor.")
+        print("Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).")
         sys.exit(1)

@@ -99,6 +99,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 2 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_02_mainframe.md` | Mainframe özel inceleme; kapasite köprüsünde sublinearite çift sayımı bulundu (TPS ~%29 eksik); maliyet eğrisi için taban fiyat + kademeli MLC + zIIP + CBU gerekli; M1–M8 yol haritası |
 | 3 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` | Compute katmanı sağlam (kademeler, köprü, CoD/TFP); storage dahil edilmeli (shared-disk vs shared-nothing, DR, CPU, latency asimetrisi); en büyük eksik yazılım yığını ve kademeli MLC; öncelik sırası |
 | 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
+| 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
 
 ---
 
@@ -451,3 +452,42 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - GDPS Metro ayrı topoloji olarak eklenmeli.
 - Kesinti dağılımı (SLA ihlali olasılığı) yok.
 - Clustered taraf aynı denklemi kendi kurtarma süreleriyle kullanmalı; saha olayı parametreleri iki tarafta ortak.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Bağımsız denetim — Değerlendirme #5
+
+### 1. Aksiyon
+- Adım 5'e geçmeden önce model, kod ve v3 dokümanı önceki bağlamdan bağımsız olarak sıfırdan denetlendi. Her bulgu kodu çalıştırarak doğrulandı. Rapor: `evaluations/2026-11-01_degerlendirme_05_denetim.md` (**Değerlendirme #5**).
+
+### 2. Sebep
+- Emirhan'ın isteği: "modeli ve kodu bağımsız olarak denetle, problem varsa düzeltelim devam etmeden".
+
+### 3. Düzeltilenler
+- **Model hataları (sonucu değiştiren):**
+  - Donanıma kapasiteden bağımsız `HW_FRAME_BASE_COST` = $500K eklendi (aralık $250K–1M). En küçük kademe önceden $0,17M çıkıyordu; düşük TPS'te mainframe lehine yanlılıktı.
+  - Yıllık profil istenen tepe/ortalama oranını tam veriyor: peak günü çarpanı kapalı formdan, düşük oranlarda genlik ikiye bölmeyle. Ulaşılamayan oran hata veriyor.
+  - Yıllık modda zIIP motorları yılın en büyük aktif kademesine göre boyutlanıyor; geçici kapasitedeki zIIP ihtiyacı artık bedelli.
+- **Tutarlılık ve kod hataları:**
+  - M3'ün RPO'su 5 sn → 0 (tek site kaybında Metro Mirror). "RPO 0 ve RTO ≤ 60 dk" artık M3 seçiyor.
+  - D_io profilin okuma/yazma bileşimiyle hesaplanıyor; sabit okuma payı (0,70) kaldırıldı.
+  - Donanım bakımı 1 yıllık garantiyle (storage ile tutarlı).
+  - CoD gün = 730/24 saat.
+  - `solve(verbose=True)` dönüş değeri, girdi doğrulaması, `use_values` anahtar kontrolü, SQL'siz özel profilin zIIP uygunluğu. Kullanılmayan iki sabit kaldırıldı.
+  - SW_PRICE_LEVEL_FACTOR üst ucu 1,5 → 1,75 (2004 → 2026 TÜFE ~×1,7).
+- **Testler:** 6 yeni test (verbose dönüşü, profil oranı, statik = yıllık düz yükte, geçici kapasitede zIIP, CLI uç durumları, I/O karışımı). Toplam 20/20.
+- **Araçlar:** Duyarlılık araçları `m.use_values` kullanıyor; tüm çıktılar ve `data/out/` CSV'leri yeniden üretildi.
+
+### 4. Bilinçli tercih olarak belgelenenler
+- Personelin kurulu kapasiteye bağlı olması, GDPS bedelinin döngüsel çapası, DR makinesinin küçük yazılım faturasının ihmali, CPU_US_TM_BASE'in tek çapadan türetilmesi (718: 85,9 µs; 726: 93,3 µs), köprü belirsizliğinin aralıkta olmaması, testlerin bir kısmının tautolojik olması, DS8910F tepe IOPS'unun drive sayısından bağımsız alınması. Gerekçeleri v3 §6.7, §7.7.5, §10.4, §12.1, §12.2'de.
+
+### 5. Etkiler
+- **10K TPS ($/TPS/ay):** low 26,24 → 26,67; mid 83,32 → 84,06; high 317,58 → 337,28. high'daki artışın ~$18'i yazılım seviyesinin yeni üst ucundan, ~$5'i frame tabanından.
+- **Maliyet/TPS eğrisi (mid):** 500 TPS'te $300,55 → $324,42 (+%8); 150K TPS'te $38,30 → $37,89. Bükülme 500 → 150K TPS arasında ~7,9 kattan ~8,6 kata çıktı.
+- **Yıllık mod (10K ortalama, M1):** steady C $13,49M → $12,75M; retail B $21,75M → $21,31M; batch C $17,88M → $17,23M. Kazanan strateji hiçbir presette değişmedi. Düşüşün ana nedeni profil düzeltmesi (eski profil tepeyi istenenden yüksek üretiyordu).
+- **Dokümantasyon (v3):** §0.2, 4.4.4, 5.3, 5.5, 6.2, 6.6–6.8, 7.1.2, 7.1.6, 7.2, 7.3, 7.6, 7.7.4–7.7.5, 7.8, 8.1.1, 8.1.3–8.1.5, 8.6, 8.7, 9.2, 9.6–9.8, 10.3–10.4, 11.5, 12.1–12.2 yeni sayılar ve gerekçelerle güncellendi.
+
+### 6. Açık kalanlar
+- Adım 5 (TS7700 yedekleme + 5 yıllık NPV) ve Adım 6 (ortak modül) Emirhan'ın onayını bekliyor.
+- Drawer maliyeti, GDPS Metro topolojisi, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları.
+

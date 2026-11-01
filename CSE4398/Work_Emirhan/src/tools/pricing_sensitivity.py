@@ -31,18 +31,16 @@ def main():
     print("Yillik toplam, milyon USD (A=Permanent, B=Base+CoD, C=TFP); * = kazanan")
     print("Varsayilanlar:", ", ".join(f"{n}={getattr(m, n)}" for n, _ in SWEEPS))
     for name, values in SWEEPS:
-        default = getattr(m, name)
         print(f"\n{name}")
         print("  deger   | " + " | ".join(f"{p:<26}" for p in PRESETS))
         for v in values:
-            setattr(m, name, v)
-            cells = []
-            for p in PRESETS:
-                win, tot = row(p)
-                cells.append(" ".join(f"{k}{'*' if k == win else ' '}{tot[k]:.3f}"
-                                      for k in "ABC" if k in tot))
+            with m.use_values({name: v}):
+                cells = []
+                for p in PRESETS:
+                    win, tot = row(p)
+                    cells.append(" ".join(f"{k}{'*' if k == win else ' '}{tot[k]:.3f}"
+                                          for k in "ABC" if k in tot))
             print(f"  {v:<7} | " + " | ".join(f"{c:<26}" for c in cells))
-        setattr(m, name, default)
 
 
 if __name__ == "__main__":

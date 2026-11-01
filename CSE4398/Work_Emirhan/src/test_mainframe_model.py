@@ -248,7 +248,8 @@ def test_availability_rpo_rto_cbu_gdps():
     assert pick(rpo_seconds=0) == "M2"
     assert pick(rto_minutes=60) == "M3"
     assert pick(rto_minutes=1) == "M4"
-    assert m.solve(10000, 0.999, verbose=False, rpo_seconds=0, rto_minutes=60) is None
+    assert pick(rpo_seconds=0, rto_minutes=60) == "M3"
+    assert m.solve(10000, 0.999, verbose=False, rpo_seconds=0, rto_minutes=1) is None
     # CBU: DR frame bedeli orana bagli; 1.0 = tam ayna
     tier = next(t for t in m.Z16_TIERS if t.model == "3931-516")
     hw1 = m.monthly_cost(tier, m1)["hardware_amort"]
@@ -261,6 +262,97 @@ def test_availability_rpo_rto_cbu_gdps():
     assert m.monthly_cost(tier, m3)["gdps"] == m.monthly_cost(big, m3)["gdps"] > 0
     assert m.monthly_cost(tier, m1)["gdps"] == 0
     assert m.monthly_cost(tier, m4)["software"] == m.monthly_cost(tier, m1)["software"]
+
+
+def test_solve_return_value_verbose():
+    """solve() verbose=True iken de (kademe, topoloji, maliyet, ...) dondurmeli."""
+    import io, contextlib
+    with contextlib.redirect_stdout(io.StringIO()):
+        r = m.solve(10000, 0.999, data_tb=20)
+    q = m.solve(10000, 0.999, data_tb=20, verbose=False)
+    assert isinstance(r, tuple) and r[0] is q[0] and r[1] is q[1]
+    assert abs(r[2]["total"] - q[2]["total"]) < 1e-6
+
+
+def test_profile_ratio_honoured():
+    """Yillik profilin tepe/ortalama orani istenen degere esit olmali."""
+    for preset in m.WORKLOAD_PRESETS:
+        pr = m.generate_hourly_profile(preset, 10000)
+        want = m.WORKLOAD_PRESETS[preset]["peak_avg_ratio"]
+        assert abs(max(pr) / (sum(pr) / len(pr)) - want) < 1e-3, preset
+        assert abs(sum(pr) / len(pr) - 10000) < 1e-6
+    for ratio, days in [(1.1, 5), (1.8, 0), (4.0, 30)]:
+        pr = m.generate_hourly_profile(None, 5000, ratio, days)
+        assert abs(max(pr) / (sum(pr) / len(pr)) - ratio) < 1e-3, (ratio, days)
+        assert min(pr) >= 0
+    try:
+        m.generate_hourly_profile(None, 5000, 5.0, 0)
+        raise AssertionError("ulasilamaz oran hata vermeliydi")
+    except ValueError:
+        pass
+
+
+def test_static_equals_yearly_on_flat_load():
+    """Sabit yukte yillik Permanent strateji = 12 x statik aylik maliyet."""
+    flat = [10000.0] * 8760
+    r = m.solve(10000, 0.999, verbose=False, data_tb=20)
+    tier, topo, cost = r[0], r[1], r[2]
+    sim = m.simulate_yearly(flat, tier, topo, strategy="permanent",
+                            storage_monthly=cost["storage"],
+                            staff_monthly=cost["staff"])
+    assert abs(sim["yearly_total"] - 12 * cost["total"]) / (12 * cost["total"]) < 1e-3
+
+
+def test_ziip_sized_for_temporary_capacity():
+    """CoD/corridor gunlerinde de zIIP payi karsilanmali: gecici kapasiteli
+    strateji, ayni base'in kalici maliyetinden fazla zIIP donanimi tasir."""
+    prof = m.generate_hourly_profile("batch_heavy", 10000)
+    base = next(t for t in m.Z16_TIERS if t.model == "3931-522")
+    m1 = m.TOPOLOGIES[0]
+    sim = m.simulate_yearly(prof, base, m1, strategy="base_cod")
+    if sim is not None and sim["peak_tier"] is not None:
+        perm_other = 12 * (lambda c: c["hardware_amort"] + c["maintenance"] + c["energy"])(
+            m.monthly_cost(base, m1))
+        assert sim["yearly_other"] >= perm_other - 1e-6
+        if m.ziip_engines(sim["peak_tier"]) > m.ziip_engines(base):
+            assert sim["yearly_other"] > perm_other
+
+
+def test_cli_edge_cases():
+    """CLI: gecersiz girdiler hata vermeli, uc durumlar cokmemeli."""
+    import subprocess, sys, os
+    here = os.path.dirname(os.path.abspath(__file__))
+    run = lambda *a: subprocess.run([sys.executable, os.path.join(here, "mainframe_model.py"), *a],
+                                    capture_output=True, text=True)
+    assert run("--tps", "0").returncode != 0
+    assert run("--tps", "-5", "--range").returncode != 0
+    assert run("--yearly", "--avg-tps", "0").returncode != 0
+    assert run("--tps", "1000", "--availability", "1.5").returncode != 0
+    assert run("--tps", "1000", "--sql-reads", "0", "--sql-writes", "0").returncode == 0
+    custom = m.WorkloadProfile("c", 0, 0, 1, False, "", "")
+    assert m.ziip_fraction(custom) == 0
+    with_db2 = m.WorkloadProfile("c", 2, 1, 1, True, "", "")
+    assert m.ziip_fraction(with_db2) > 0
+    try:
+        with m.use_values({"SW_PRICE_LEVEL_FACTOR": 9.0, "NO_SUCH_PARAM": 1}):
+            pass
+    except KeyError:
+        pass
+    assert m.SW_PRICE_LEVEL_FACTOR == 1.0
+
+
+def test_io_delay_uses_profile_mix():
+    """D_io, profilin okuma ve yazma I/O'larini kendi servis sureleriyle tartar."""
+    m1, m2 = m.TOPOLOGIES[0], m.TOPOLOGIES[1]
+    for name in ("redp_light", "tpcb_like", "oltp_rw"):
+        w = m.get_workload(name)
+        expect = (w.sync_read_io() * m.io_read_time_seconds()
+                  + w.sync_write_io() * m.io_write_time_seconds(m2))
+        assert abs(m.io_delay_seconds(name, m2) - expect) < 1e-12
+    # REDP'nin senkron I/O'su yazmadir: senkron replikasyon tamamen eklenir
+    redp = m.get_workload("redp_light")
+    assert redp.sync_read_io() == 0
+    assert m.io_delay_seconds("redp_light", m2) > m.io_delay_seconds("redp_light", m1)
 
 
 if __name__ == "__main__":
