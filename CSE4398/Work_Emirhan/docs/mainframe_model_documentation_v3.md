@@ -360,12 +360,13 @@ Modelin sonuçları bu öngörüyü doğruluyor: 50K TPS'te storage, 20 TB verid
 | Kopya sayısı DR topolojisinden türetilir (M1 1, M2 2, M3/M4 4) | Kullanıcı girdisi | Proje kararı: replikasyon kullanıcıya sorulmaz, availability/RPO'dan türetilir (`project_context_restore_v4.md`, 4.7). Kopya sayıları GDPS mimarisinden | Yüksek availability storage maliyetini 2–4 katına çıkarır; availability ile storage maliyeti arasında açık bir bağ kurar |
 | Her kopya ayrı dizi ve birincilin IOPS'una göre boyutlanır | İkincil diziyi küçük boyutlamak | HyperSwap ve failover'da ikincil dizi birincilin tüm yükünü devralır; küçük ikincil gerçek bir failover'ı karşılamaz | Tutucu (maliyeti yukarı çeker) |
 | IOPS = tepe TPS × IOPS/işlem (RNI'ya bağlı) | Kullanıcı IOPS girdisi | Proje kararı: kullanıcıya IOPS sorulmaz, RNI üzerinden iki tarafa da taşınır | IOPS_PER_TX hem model seçimini hem D_io'yu belirler (Bölüm 8.1.5) |
-| Kopya başına en ucuz model; dizi sayısı = max(kapasite, IOPS ihtiyacı) | Sabit model | Kapasite ve IOPS iki ayrı darboğazdır; az veri + yüksek TPS IOPS ile, çok veri + düşük TPS kapasiteyle boyutlanır | 90K TPS'te IOPS darboğazı DS8950F'e geçişi zorlar |
+| Kopya başına en ucuz model; dizi sayısı = max(kapasite, IOPS ihtiyacı) | Sabit model | Kapasite ve IOPS iki ayrı darboğazdır; az veri + yüksek TPS IOPS ile, çok veri + düşük TPS kapasiteyle boyutlanır | ~60K TPS'te (IOPS tavanıyla) IOPS darboğazı DS8950F'e geçişi zorlar |
 | Fiyat = (flash + kontrolcü liste fiyatı) × (1 − indirim) | Bileşen başına ayrı indirim | Yayımlanmış tek fiyat noktaları liste fiyatlarıdır; tek indirim oranı varsayımı tek bir parametrede toplar ve duyarlılık analizine açık tutar | Tüm belirsizlik tek parametrede (Bölüm 8.8) |
 | Lisans = donanım capex'ine oran | TB başına fiyat | Lisans yapısı (BF, z-synergy, Copy Services; TB kademeli) resmî, fiyatı yayımlanmıyor; TB kademe granülaritesi fiyatın kendisini vermiyor | Varsayılanla storage capex'inin %20'si |
 | Enerji tepe güçle | Tipik güç | Yalnızca tepe güç yayımlanıyor [REDP-5554] | Tutucu; storage enerjisi toplamda küçük |
 | 3 yıllık planlama ufku | 1 yıl veya amortisman süresi (5 yıl) | Dizi büyümeye göre boyutlanır ama 5 yıl boyunca boş kapasite taşımak gerçekçi değil; kapasite planlamada yaygın orta ufuk | %15 büyümede kapasite ×1,52 |
-| I/O başına sabit gecikme (kuyruk yok) | Dizi kuyruğu (M/M/c) | PAV/HyperPAV/SuperPAV aynı hacme paralel I/O sağlar; dizi tepe IOPS'unun altında çalıştığı sürece kuyruk etkisi küçüktür | Dizi tepe IOPS'a yakın çalışırsa iyimser (Bölüm 8.1.5) |
+| I/O başına sabit gecikme (kuyruk yok) | Dizi kuyruğu (M/M/c) | PAV/HyperPAV/SuperPAV aynı hacme paralel I/O sağlar; dizi, tepe IOPS'unun %70'iyle sınırlı yüklendiği için kuyruk etkisi küçük tutulur | Gecikme kuyruk olmadan hesaplanır; tavan bu basitleştirmeyi korur |
+| Dizi, üretici tepe IOPS'unun %70'ine kadar yüklenir (STORAGE_IOPS_CEILING) | Tepe IOPS'un %100'ü | Tepe değer önbellek isabetli küçük blok ölçümüdür, gerçek OLTP karışımını temsil etmez; compute'taki %90 operasyonel tavanın storage karşılığı | DS8910F → DS8950F geçişi 90K yerine ~60K TPS'te |
 | Mainframe'de storage için ek CPU yükü yok | Host CPU yükü eklemek | I/O kanal alt sistemi ve SAP'lerde işlenir; kapasite köprüsündeki CICS benchmark'ı z/OS I/O'sunun CPU maliyetini zaten içerir. Eklemek çift sayım olur | x86 tarafında aynı kalem açıkça eklenmeli (asimetri bilinçli) |
 | Global Mirror ve uzak site replikasyonu latency'ye eklenmez | Eklemek | Asenkron replikasyon yazmanın tamamlanmasını beklemez; etkisi RPO'dadır, latency'de değil | RPO bağlantısı DR adımında |
 
@@ -388,7 +389,7 @@ Modelin sonuçları bu öngörüyü doğruluyor: 50K TPS'te storage, 20 TB verid
 
 - **İç geçerlilik (fiyat):** Storage maliyetinin mutlak düzeyi büyük ölçüde indirim oranına bağlı; 0,50–0,85 aralığında yaklaşık 3 kat değişiyor. Bu yüzden storage'lı sonuçlar tek bir nokta olarak değil, indirim aralığıyla birlikte raporlanmalı. Göreli sonuçlar (veri hacmiyle doğrusal büyüme, topolojiyle kopya sayısı, IOPS ile model geçişi) indirim oranından bağımsızdır.
 - **Yapı geçerliliği (IOPS_PER_TX):** İşlem başına 10 fiziksel I/O, Db2 buffer pool'ları düşünüldüğünde büyük olasılıkla yüksek. Bu hem D_io'yu hem dizi seçimini yukarı çeker. REDP-5320 iş yükü profiliyle kalibre edilene kadar storage'ın IOPS tarafı tutucu kabul edilmeli.
-- **Yapı geçerliliği (IOPS tavanı):** Dizi sayısı üretici tepe IOPS'unun %100'üne göre hesaplanıyor. Tepe değer önbellek isabetli küçük blok ölçümüdür; compute tarafındaki %90 operasyonel tavana karşılık storage'da bir tavan yok. Bu iyimser bir yaklaşımdır ve compute ile tutarlı hale getirilmelidir.
+- **Yapı geçerliliği (IOPS tavanı):** Dizi, üretici tepe IOPS'unun %70'iyle boyutlanıyor. Oranın kendisi varsayım; gerçek OLTP karışımında dizinin sürdürülebilir IOPS'u iş yüküne bağlıdır ve IBM bunu yayımlamıyor. Tavan, compute tarafındaki %90 operasyonel tavanla aynı mantığı (tepe değerde çalışmamak) uygular.
 - **Dış geçerlilik:** Tek üretici, 2019–2022 fiyatları, ABD liste fiyatları. Mainframe storage pazarının yaklaşık yarısını temsil eder; diğer yarı (PowerMax, VSP) farklı fiyatlanabilir.
 - **Sonuç geçerliliği:** Storage'ın toplam içindeki payı varsayılan veri hacmine (20 TB) bağlı. Tezde storage payı tek bir yüzde olarak değil, veri hacmi ekseninde bir eğri olarak sunulmalı.
 
@@ -446,7 +447,7 @@ Kopya sayısı topolojiden gelir [GDPS] (doğrulanmalı):
 | M3 | 4 | Metro/Global Mirror: H1 + H2 (senkron) + H3 + uzak sitede Global Mirror journal kopyası J3 |
 | M4 | 4 | İki aktif site, her birinde Metro Mirror çifti |
 
-IOPS ihtiyacı = tepe TPS × IOPS_PER_TX[rni]. Her kopya için en ucuz model seçilir: dizi sayısı = max(⌈ham_TB / maks_TB⌉, ⌈IOPS / maks_IOPS⌉). İkincil kopyalar failover'da birincilin yükünü taşıyabilmek için aynı IOPS'a göre boyutlanır.
+IOPS ihtiyacı = tepe TPS × IOPS_PER_TX[rni]. Her kopya için en ucuz model seçilir: dizi sayısı = max(⌈ham_TB / maks_TB⌉, ⌈IOPS / (0,70 × maks_IOPS)⌉). 0,70, STORAGE_IOPS_CEILING'dir [ASSUME]: dizi üretici tepe IOPS'unun %70'ine kadar yüklenir (gerekçe Bölüm 8.1.3). İkincil kopyalar failover'da birincilin yükünü taşıyabilmek için aynı IOPS'a göre boyutlanır.
 
 ### 8.5. Maliyet
 
@@ -487,7 +488,7 @@ Statik mod, average RNI, 20 TB veri, varsayılan parametreler:
 | 50K TPS, %99,9 | M1, 3931-436 | 1× DS8910F-993, 76 TB ham, $7.496/ay | %9,4 |
 | 50K TPS, %99,999 | M2, 3931-436 | 2× DS8910F-993, $13.778/ay | %10,9 |
 | 50K TPS, %99,99999 | M4, 3931-436 | 4× DS8910F-993, $26.344/ay | %17,7 |
-| 90K TPS, %99,9 | M1, 3931-610 | 900K IOPS → 1× DS8950F-996, $8.419/ay | %6,3 |
+| 90K TPS, %99,9 | M1, 3931-610 | 900K IOPS (> 0,7 × 860K) → 1× DS8950F-996, $8.419/ay | %6,3 |
 | 300K TPS, %99,9 | M1, 3931-727 | 3M IOPS → 2× DS8950F-996, $10.776/ay | %2,6 |
 
 Veri hacmi ekseni (50K TPS, %99,9): 5 TB'ta storage toplamın %3,9'u, 100 TB'ta %30,6'sı, 500 TB'ta %68'i, 2.000 TB'ta %89,5'i. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Bu, Değerlendirme #3'te öngörülen ikinci crossover ekseninin (veri hacmi) mainframe tarafında gerçekten oluştuğunu gösteriyor; clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
@@ -595,12 +596,12 @@ Yazılım (Software Consumption Solution) [TFP-SW]: R4HA yerine yıl boyunca tü
 
 ### 9.7. Doğrulama Örneği
 
-50K TPS ortalama yük, availability 0,999 (M1), average RNI, 20 TB veri, varsayılan parametreler. Toplamlara storage dahildir (steady_oltp'de 1× DS8910F-993, yıllık ~$90K; retail_bursty ve batch_heavy'de tepe IOPS 860K'yı aştığı için 1× DS8950F-996, yıllık ~$101K). Storage üç stratejide aynıdır.
+50K TPS ortalama yük, availability 0,999 (M1), average RNI, 20 TB veri, varsayılan parametreler. Toplamlara storage dahildir (steady_oltp ve batch_heavy'de tepe IOPS DS8910F'in tavanını (0,7 × 860K) aştığı için 1× DS8950F-996, yıllık ~$101K; retail_bursty'de tepe ~1,8M IOPS, DS8950F'in tavanını (0,7 × 2.320K) da aştığı için 2× DS8950F-996, yıllık ~$129K). Storage üç stratejide aynıdır.
 
 | Preset | A: Permanent | B: Base + CoD | C: TFP | Kazanan, A'ya göre |
 |---|---|---|---|---|
-| steady_oltp | $1,485M (3931-516) | $1,517M (515, 261 gün CoD) | **$1,339M** (512 + corridor 516) | C, −%9,8 |
-| retail_bursty | $3,050M (3931-624) | $2,305M (518 → 624, 20 gün) | **$2,302M** (518 + corridor 523 → 624) | C, −%24,5 (B ile fark %0,1) |
+| steady_oltp | $1,496M (3931-516) | $1,528M (515, 261 gün CoD) | **$1,350M** (512 + corridor 516) | C, −%9,8 |
+| retail_bursty | $3,078M (3931-624) | $2,333M (518 → 624, 20 gün) | **$2,331M** (518 + corridor 523 → 624) | C, −%24,3 (B ile fark %0,1) |
 | batch_heavy | $2,279M (3931-616) | $1,871M (515 → 616, 30 gün) | **$1,763M** (512 + corridor 516 → 616) | C, −%22,6 |
 
 Yorum:
@@ -615,14 +616,14 @@ Yorum:
 
 | Parametre (varsayılan) | Değer | steady_oltp A / B / C | retail_bursty A / B / C | batch_heavy A / B / C |
 |---|---|---|---|---|
-| CORRIDOR_PREMIUM (1,5) | 1,0 | 1,485 / 1,517 / **1,333** | 3,050 / 2,305 / **2,300** | 2,279 / 1,871 / **1,758** |
-| | 4,0 | 1,485 / 1,517 / **1,365** | 3,050 / **2,305** / 2,313 | 2,279 / 1,871 / **1,787** |
-| CORRIDOR_FRACTION (0,20) | 0,10 | 1,485 / 1,517 / **1,382** | 3,050 / **2,305** / 2,312 | 2,279 / 1,871 / **1,803** |
-| | 0,50 | 1,485 / 1,517 / **1,308** | 3,050 / 2,305 / **2,275** | 2,279 / 1,871 / **1,733** |
-| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 1,485 / 1,517 / **1,379** | 3,050 / **2,305** / 2,349 | 2,279 / 1,871 / **1,802** |
-| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 1,485 / 1,488 / **1,339** | 3,050 / **2,268** / 2,276 | 2,279 / 1,841 / **1,736** |
-| | 4,0 | 1,485 / 1,559 / **1,339** | 3,050 / 2,360 / **2,342** | 2,279 / 1,916 / **1,804** |
-| TFP_SW_DISCOUNT (0) | 0,10 | 1,485 / 1,517 / **1,279** | 3,050 / 2,305 / **2,177** | 2,279 / 1,871 / **1,668** |
+| CORRIDOR_PREMIUM (1,5) | 1,0 | 1,496 / 1,528 / **1,345** | 3,078 / 2,333 / **2,329** | 2,279 / 1,871 / **1,758** |
+| | 4,0 | 1,496 / 1,528 / **1,376** | 3,078 / **2,333** / 2,341 | 2,279 / 1,871 / **1,787** |
+| CORRIDOR_FRACTION (0,20) | 0,10 | 1,496 / 1,528 / **1,393** | 3,078 / **2,333** / 2,340 | 2,279 / 1,871 / **1,803** |
+| | 0,50 | 1,496 / 1,528 / **1,319** | 3,078 / 2,333 / **2,303** | 2,279 / 1,871 / **1,733** |
+| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 1,496 / 1,528 / **1,390** | 3,078 / **2,333** / 2,378 | 2,279 / 1,871 / **1,802** |
+| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 1,496 / 1,499 / **1,350** | 3,078 / **2,296** / 2,304 | 2,279 / 1,841 / **1,736** |
+| | 4,0 | 1,496 / 1,570 / **1,350** | 3,078 / 2,389 / **2,370** | 2,279 / 1,916 / **1,804** |
+| TFP_SW_DISCOUNT (0) | 0,10 | 1,496 / 1,528 / **1,290** | 3,078 / 2,333 / **2,205** | 2,279 / 1,871 / **1,668** |
 
 Sonuç: steady_oltp ve batch_heavy'de TFP'nin üstünlüğü tüm taranan aralıkta korunur. retail_bursty'de B ile C arasındaki seçim fiyat varsayımlarına duyarlıdır (fark ±%2 içinde); bu, gerçek sözleşme fiyatları olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemeyeceği anlamına gelir ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
 

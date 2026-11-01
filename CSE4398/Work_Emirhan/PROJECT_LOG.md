@@ -261,3 +261,12 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
   - Eşit derinlik: yazılım yığını ve personel olmadan clustered tarafa geçmek karşılaştırmayı mainframe lehine yanlı yapar.
   - Kod tek dosyada ~1.500 satır; clustered tarafa geçmeden ortak parçalar ayrı modüle taşınmalı.
 - **Önerilen sıra:** storage IOPS tavanı → yazılım yığını (kademeli MLC, CICS, Db2, zIIP) ve paralel REDP-5320 profili → personel → CBU + GDPS → ortak modül ayrımı, 5 yıllık NPV.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Plan ve storage IOPS tavanı
+
+- **Plan:** Emirhan'ın isteğiyle kısmen olan ve eksik kalemler için sıralı plan çıkarıldı: (0) storage IOPS tavanı, (1) yazılım yığını (z/OS + CICS + Db2, kademeli MLC, zIIP), (2) REDP-5320 iş yükü profili, (3) personel, (4) availability (CBU, GDPS kalemi, RPO/RTO, M4 etiketleri), (5) yedekleme ve 5 yıllık NPV, (6) ortak modül ayrımı. Sıra Emirhan'a soruldu; 0. adım her seçenekte ilk olduğu için başlandı.
+- **Aksiyon (0):** `STORAGE_IOPS_CEILING = 0,70` [ASSUME] eklendi; dizi sayısı tepe IOPS'un %70'ine göre hesaplanıyor.
+- **Sebep:** Değerlendirme #4, madde 2.1: compute'ta %90 operasyonel tavan varken storage üretici tepe IOPS'unun %100'üyle boyutlanıyordu.
+- **Etki:** DS8910F → DS8950F geçişi 90K yerine ~60K TPS'te. Yıllık modda (50K ort.) steady_oltp 1× DS8950F'e, retail_bursty 2× DS8950F'e geçti; toplamlar +$11K / +$28K. Strateji sıralaması değişmedi. Testler 10/10. v3 Bölüm 8.1.3, 8.1.5, 8.4, 8.7, 9.7, 9.8 güncellendi.

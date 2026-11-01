@@ -527,6 +527,9 @@ HOST_COMPRESSION_RATIO = 1.0     # [ASSUME] Db2 sikistirmasi (z16 on-chip); 1.0 
 SAFEGUARDED_COPY = True          # [REDP-5554] fidye yazilimi korumasi (birincil dizide)
 SAFEGUARDED_RESERVE = 0.25       # [ASSUME] Safeguarded Copy icin ek kapasite orani
 RAID_USABLE_FRACTION = 0.75      # [ASSUME] RAID 6 (6+P+Q) kullanilabilir/ham (doğrulanmalı)
+STORAGE_IOPS_CEILING = 0.70      # [ASSUME] dizi, ureticinin tepe IOPS'unun bu oranina kadar
+                                 #   yuklenir (tepe deger onbellek isabetli kucuk blok olcumu;
+                                 #   compute'taki %90 operasyonel tavanin storage karsiligi)
 
 # --- Fiyat --------------------------------------------------------------------
 DS8900F_FLASH_LIST_USD_PER_TB = 8620.0   # [ITJUNGLE-22] ham TB, liste
@@ -553,7 +556,8 @@ def _size_array(raw_tb, iops):
     """Bir kopya icin en ucuz DS8900F konfigurasyonu: (model, adet, liste capex, kW)."""
     best = None
     for sm in DS8900F_MODELS:
-        n = max(1, math.ceil(raw_tb / sm.max_raw_tb), math.ceil(iops / sm.max_iops))
+        n = max(1, math.ceil(raw_tb / sm.max_raw_tb),
+                math.ceil(iops / (sm.max_iops * STORAGE_IOPS_CEILING)))
         per_array_tb = raw_tb / n
         kw = sm.power_kw
         if sm.expansion_threshold_tb and per_array_tb > sm.expansion_threshold_tb:
