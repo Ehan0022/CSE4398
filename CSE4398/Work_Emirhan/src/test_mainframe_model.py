@@ -13,25 +13,25 @@ def _cost(r):
 
 def test_latency_monotonic():
     """Daha siki latency hedefi hicbir zaman daha ucuz sonuc vermemeli."""
-    for rni in ["low", "average", "high"]:
+    for workload in ["redp_light", "oltp_rw", "oltp_heavy"]:
         for tps in [2000, 10000, 50000, 120000, 200000]:
-            no_lat = _cost(m.solve(tps, 0.999, rni, None, verbose=False))
+            no_lat = _cost(m.solve(tps, 0.999, workload, None, verbose=False))
             prev = None
             for lat in LATENCIES_MS:
-                c = _cost(m.solve(tps, 0.999, rni, lat, 99, verbose=False))
-                assert c >= no_lat - 1e-6, (rni, tps, lat, "latency'siz durumdan ucuz")
+                c = _cost(m.solve(tps, 0.999, workload, lat, 99, verbose=False))
+                assert c >= no_lat - 1e-6, (workload, tps, lat, "latency'siz durumdan ucuz")
                 if prev is not None:
-                    assert c >= prev - 1e-6, (rni, tps, lat, "monotonluk ihlali")
+                    assert c >= prev - 1e-6, (workload, tps, lat, "monotonluk ihlali")
                 prev = c
 
 
 def test_latency_binds_when_tight():
     """Latency girdisi etkin olmali: siki hedef kademeyi degistirmeli."""
-    loose = m.solve(50000, 0.999, "average", 200, 99, verbose=False)
-    tight = m.solve(50000, 0.999, "average", 20, 99, verbose=False)
+    loose = m.solve(50000, 0.999, "oltp_rw", 200, 99, verbose=False)
+    tight = m.solve(50000, 0.999, "oltp_rw", 20, 99, verbose=False)
     assert _cost(tight) > _cost(loose)
-    d_io_ms = m.io_delay_seconds("average", m.TOPOLOGIES[0]) * 1000
-    assert m.solve(50000, 0.999, "average", d_io_ms * 0.95, 99, verbose=False) is None
+    d_io_ms = m.io_delay_seconds("oltp_rw", m.TOPOLOGIES[0]) * 1000
+    assert m.solve(50000, 0.999, "oltp_rw", d_io_ms * 0.95, 99, verbose=False) is None
 
 
 def test_tier_table_complete():
@@ -67,7 +67,7 @@ def test_cod_advantage_grows_with_burstiness():
     """peak/avg orani arttikca gecici kapasitenin (B veya C) permanent'a
     gore goreli tasarrufu artmali."""
     def savings(preset):
-        s = m.solve_yearly(preset_name=preset, yearly_avg_tps=50000, verbose=False)
+        s = m.solve_yearly(preset_name=preset, yearly_avg_tps=10000, verbose=False)
         perm = s["by_strategy"]["permanent"]["yearly_total"]
         flex = min(v["yearly_total"] for k, v in s["by_strategy"].items() if k != "permanent")
         return (perm - flex) / perm
@@ -97,7 +97,7 @@ def test_temporary_capacity_limits():
 def test_yearly_strategies_respect_limits():
     """Secilen B/C stratejilerinin CoD tepe kademesi base'den izinli olmali."""
     for preset in m.WORKLOAD_PRESETS:
-        s = m.solve_yearly(preset_name=preset, yearly_avg_tps=50000, verbose=False)
+        s = m.solve_yearly(preset_name=preset, yearly_avg_tps=10000, verbose=False)
         for name, sim in s["by_strategy"].items():
             if name == "permanent":
                 continue
@@ -109,7 +109,7 @@ def test_yearly_strategies_respect_limits():
 def test_tfp_software_revenue_neutral_and_corridor_monotonic():
     """TFP-SW fiyati permanent konfigurasyonun R4HA faturasini geri uretmeli;
     corridor ucreti CORRIDOR_PREMIUM ile artmali."""
-    prof = m.generate_hourly_profile("batch_heavy", 50000)
+    prof = m.generate_hourly_profile("batch_heavy", 10000)
     perm = next(t for t in m.Z16_TIERS if m.is_capacity_feasible(t, max(prof)))
     topo = m.TOPOLOGIES[0]
     sp = m.simulate_yearly(prof, perm, topo, strategy="permanent")
@@ -117,7 +117,7 @@ def test_tfp_software_revenue_neutral_and_corridor_monotonic():
     mh = sum(m.consumed_msu(perm, x) for x in prof)
     assert abs(price * mh - sp["yearly_software"]) < 1e-6 * sp["yearly_software"]
 
-    base = next(t for t in m.Z16_TIERS if t.model == "3931-512")
+    base = next(t for t in m.Z16_TIERS if t.msu >= 0.6 * perm.msu and t.series == perm.series)
     corr = m.corridor_tier_for(base)
     old = m.CORRIDOR_PREMIUM
     try:
@@ -137,17 +137,17 @@ def test_storage_sizing_and_mainframe_features():
     kapasite veri hacminden gelir; zHyperLink ve senkron replikasyon D_io'yu
     beklenen yonde degistirir."""
     m1, m2, m3 = m.TOPOLOGIES[0], m.TOPOLOGIES[1], m.TOPOLOGIES[2]
-    p1 = m.storage_plan(50000, "average", m1, data_tb=20)
-    p3 = m.storage_plan(50000, "average", m3, data_tb=20)
+    p1 = m.storage_plan(50000, "oltp_rw", m1, data_tb=20)
+    p3 = m.storage_plan(50000, "oltp_rw", m3, data_tb=20)
     assert p1["copies"] == 1 and p3["copies"] == 4
     assert p3["monthly_total"] > p1["monthly_total"]
-    assert m.storage_plan(50000, "average", m1, data_tb=200)["capex"] > p1["capex"]
+    assert m.storage_plan(50000, "oltp_rw", m1, data_tb=200)["capex"] > p1["capex"]
     # 860K IOPS'u asan yuk DS8950F gerektirmeli
-    big = m.storage_plan(150000, "average", m1, data_tb=20)
+    big = m.storage_plan(150000, "oltp_rw", m1, data_tb=20)
     assert big["arrays"][0]["model"].family == "DS8950F"
     assert p1["arrays"][0]["model"].family == "DS8910F"
     # senkron Metro Mirror yazma gecikmesini artirir
-    assert m.io_delay_seconds("average", m2) > m.io_delay_seconds("average", m1)
+    assert m.io_delay_seconds("oltp_rw", m2) > m.io_delay_seconds("oltp_rw", m1)
     old = m.ZHYPERLINK_ENABLED
     try:
         with_zhl = m.io_service_time_seconds(m1)
@@ -171,8 +171,8 @@ def test_awlc_software_stack_and_ziip():
     per = [c / x for c, x in zip(costs, msus)]
     assert all(a > b for a, b in zip(per, per[1:]))
     # olcek ekonomisi: maliyet/TPS buyuk hacimde belirgin dusmeli
-    lo = m.solve(5000, verbose=False, data_tb=20)[2]["total"] / 5000
-    hi = m.solve(500000, verbose=False, data_tb=20)[2]["total"] / 500000
+    lo = m.solve(1000, verbose=False, data_tb=20)[2]["total"] / 1000
+    hi = m.solve(100000, verbose=False, data_tb=20)[2]["total"] / 100000
     assert hi < lo / 3
     # zIIP: daha fazla offload -> daha az faturalanan MSU, zIIP motoru > 0
     old = m.ZIIP_OFFLOAD_FRACTION
@@ -186,6 +186,26 @@ def test_awlc_software_stack_and_ziip():
         assert 0 < m.ziip_engines(r1[0]) <= m.ZIIP_PER_CP_LIMIT * r1[0].cps
     finally:
         m.ZIIP_OFFLOAD_FRACTION = old
+
+
+def test_workload_profiles():
+    """Is yuku profili: REDP profili kopruyu aynen korur (w = 1); daha agir
+    bilesim daha az TPS, daha fazla I/O ve daha yuksek maliyet verir; Db2'siz
+    profil zIIP kullanmaz."""
+    redp = m.get_workload("redp_light")
+    assert abs(redp.cpu_weight() - 1.0) < 1e-12 and m.ziip_fraction(redp) == 0.0
+    t = next(x for x in m.Z16_TIERS if x.model == "3931-718")
+    assert abs(m.raw_tier_tps(t, redp) - t.pci * m.TPS_PER_PCI) < 1e-6
+    names = ["redp_light", "tpcb_like", "oltp_rw", "oltp_heavy"]
+    ws = [m.get_workload(n) for n in names]
+    assert all(a.cpu_weight() < b.cpu_weight() for a, b in zip(ws, ws[1:]))
+    assert all(a.storage_iops() < b.storage_iops() for a, b in zip(ws, ws[1:]))
+    costs = [m.solve(10000, verbose=False, workload=n, data_tb=20)[2]["total"] for n in names]
+    assert all(a < b for a, b in zip(costs, costs[1:]))
+    # ozel bilesim: daha fazla okuma SQL -> daha yuksek agirlik ve senkron I/O
+    c1 = m.WorkloadProfile("c1", 5, 1, 1, True, "", "TEST")
+    c2 = m.WorkloadProfile("c2", 10, 1, 1, True, "", "TEST")
+    assert c2.cpu_weight() > c1.cpu_weight() and c2.sync_io() > c1.sync_io()
 
 
 if __name__ == "__main__":

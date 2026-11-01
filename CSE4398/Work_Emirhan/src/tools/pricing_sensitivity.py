@@ -1,5 +1,5 @@
 """
-Fiyatlama varsayimlarinin duyarlilik analizi (yillik mod, M1, 50K ort. TPS).
+Fiyatlama varsayimlarinin duyarlilik analizi (yillik mod, M1, 10K ort. TPS, oltp_rw).
 Kalibre edilmemis [ASSUME] parametreleri tek tek tarar ve her preset icin
 kazanan stratejiyi ve stratejilerin yillik toplamlarini yazdirir.
 Calistirma (proje kokunden):  python src/tools/pricing_sensitivity.py
@@ -22,7 +22,7 @@ SHORT = {"permanent": "A", "base_cod": "B", "tfp": "C"}
 
 
 def row(preset):
-    s = m.solve_yearly(preset_name=preset, yearly_avg_tps=50000, verbose=False)
+    s = m.solve_yearly(preset_name=preset, yearly_avg_tps=10000, verbose=False)
     tot = {SHORT[k]: v["yearly_total"] / 1e6 for k, v in s["by_strategy"].items()}
     return SHORT[s["strategy"]], tot
 

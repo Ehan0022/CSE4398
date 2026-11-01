@@ -8,7 +8,9 @@ Teknik dokumantasyon: docs/mainframe_model_documentation_v3.md.
 
 Akis:
   1. Kademe tablosu (data/z16_a01_capacity.csv, 317 kademe) yuklenir.
-  2. Kapasite koprusu: kademe TPS'i = PCI x TPS_PER_PCI x RNI carpani.
+  2. Kapasite koprusu: kademe TPS'i = PCI x TPS_PER_PCI / w. TPS_PER_PCI
+     REDP-5320 islemi icindir; w, is yuku profilinin (okuma/yazma SQL
+     bilesimi) REDP islemine goreli CPU agirligidir.
      TPS_PER_PCI, REDP-5320 z13 benchmark'inin ayni LSPR/PCI olcegindeki
      z13 kapasitesine bolunmesiyle bulunur (nesiller arasi LSPR oranlari
      zaten bu olcege gomulu).
@@ -59,6 +61,11 @@ KAYNAK ETIKETLERI:
   [IBM-2004] = IBM WLC sunumu (vm.ibm.com 2005-Z24): Db2 kademe fiyatlari ve
                ornek fatura (z/OS, CICS, Db2) -> egri + urun katsayilari
   [LONGPELA] = Longpela: L7 MSU fiyati L6'dan ~%20 dusuk (L4+ dusus varsayimi)
+  [REDP-PROFILE] = REDP-5320 sayac tablolari: islem basina 4.76 okuma, 0.047
+               guncelleme, 0.062 CF log yazimi, 85.9 us CPU (data/raw/)
+  [CATTERALL-2019/2012] = R. Catterall (IBM) Db2 blogu: CICS-Db2 islemi ~1.3 ms
+               Db2 CPU; CICS'te tek INSERT ~68 us
+  [SYSBENCH], [TPC-B] = profil bilesimleri (oltp_rw, tpcb_like)
   [ZIIP]     = z16 zIIP kurallari (SG24-8950): MSU disi, tam hiz, zIIP:CP <= 2:1
   [PWR]      = Enerji: 20-40 kW/frame
   [ASSUME]   = Kalibre edilmemis varsayim
@@ -144,16 +151,98 @@ def cp_equivalents(tier):
     return tier.pci / 2253.0   # 3931-701 = 2253 PCI [LSPR]
 
 
-# [ASSUME] Islem karmasikligi carpanlari (TPS kapasitesine uygulanir).
-# average = 1.0 = REDP benchmark is yuku. low/high kalibre edilmedi.
-# Not: LSPR'nin Low/High RNI sutunlari ayni is icin "nest intensity" etkisini
-# olcer (39-way'de ~+%15 / -%10); buradaki carpan ise transaction basina is
-# miktarindaki farki da temsil ediyor. Iki kavramin ayrilmasi acik is.
-RNI_MULTIPLIER = {
-    "low":     1.25,   # hafif islem -> daha fazla TPS   [ASSUME]
-    "average": 1.00,   # REDP benchmark noktasi          [REDP baz]
-    "high":    0.70,   # agir islem -> daha az TPS       [ASSUME]
+# ------------------------------------------------------------------------------
+# IS YUKU PROFILI — "1 islem"in bilesimle tanimi (eski RNI carpanlarinin yerine)
+# ------------------------------------------------------------------------------
+# Kopru (TPS_PER_PCI) REDP-5320 islemiyle kalibre: 1 STARTBROWSE + 5 READNEXT,
+# bellekteki CICS shared data table (VSAM KSDS), ~%4 guncelleme, Db2 yok,
+# neredeyse sifir DASD I/O, ~86 us CPU (z13) [REDP-PROFILE]. Bu islem cok hafif.
+# Gercekci bir OLTP islemi, bilesimiyle tanimlanir ve CPU agirligi w REDP
+# islemine goreli hesaplanir:
+#     CPU(us) = CPU_US_TM_BASE + reads x CPU_US_PER_SQL_READ + writes x CPU_US_PER_SQL_WRITE
+#     w = CPU / CPU_US_TM_BASE                   (REDP profili: w = 1)
+# Ayni bilesim I/O'yu da verir (Db2 buffer pool modeli):
+#     sync_io = reads x GETPAGES_PER_SQL_READ x (1 - BP_HIT_RATIO) + LOG_SYNC_IO_PER_COMMIT
+#     storage_iops = sync_io + writes x ASYNC_WRITE_IO_PER_SQL_WRITE
+# Clustered taraf AYNI bilesimi (reads, writes, commit) kullanir; boylece TPS
+# iki tarafta ayni isi ifade eder (Degerlendirme #1, tehdit 1).
+CPU_US_TM_BASE = 85.9          # REDP islemi, z13 CP-us (CICS + 5 bellek okumasi) [REDP-PROFILE]
+CPU_US_PER_SQL_READ = 30.0     # Db2 tekil/indeksli SELECT, z13-donemi CP-us [ASSUME, aralik 15-60]
+CPU_US_PER_SQL_WRITE = 70.0    # Db2 INSERT/UPDATE/DELETE; CICS'te INSERT ~68 us [CATTERALL-2012]
+GETPAGES_PER_SQL_READ = 4.0    # indeks seviyeleri + veri sayfasi [ASSUME]
+BP_HIT_RATIO = 0.95            # Db2 buffer pool isabet orani, OLTP [ASSUME, aralik 0.90-0.99]
+LOG_SYNC_IO_PER_COMMIT = 1.0   # commit'te senkron log yazimi (dual log paralel) [ASSUME]
+ASYNC_WRITE_IO_PER_SQL_WRITE = 0.5   # deferred write, sayfa birlestirme [ASSUME]
+
+
+class WorkloadProfile:
+    """Bir islem tipinin bilesimi. Override alanlari (sync_io, storage_iops)
+    yalnizca dogrudan olculmus profiller icindir (REDP)."""
+    def __init__(self, name, reads, writes, commits, ziip_eligible, label,
+                 source, sync_io=None, storage_iops=None):
+        self.name, self.reads, self.writes, self.commits = name, reads, writes, commits
+        self.ziip_eligible = ziip_eligible   # Db2 isi var mi (zIIP'e kayabilir mi)
+        self.label, self.source = label, source
+        self._sync_io, self._storage_iops = sync_io, storage_iops
+
+    def cpu_us(self):
+        return (CPU_US_TM_BASE + self.reads * CPU_US_PER_SQL_READ
+                + self.writes * CPU_US_PER_SQL_WRITE)
+
+    def cpu_weight(self):
+        return self.cpu_us() / CPU_US_TM_BASE
+
+    def sync_io(self):
+        if self._sync_io is not None:
+            return self._sync_io
+        return (self.reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
+                + self.commits * LOG_SYNC_IO_PER_COMMIT)
+
+    def storage_iops(self):
+        if self._storage_iops is not None:
+            return self._storage_iops
+        return self.sync_io() + self.writes * ASYNC_WRITE_IO_PER_SQL_WRITE
+
+    def __repr__(self):
+        return (f"{self.name}: {self.reads:g} okuma + {self.writes:g} yazma SQL, "
+                f"w={self.cpu_weight():.2f}, sync I/O={self.sync_io():.2f}, "
+                f"IOPS={self.storage_iops():.2f}")
+
+
+WORKLOAD_PROFILES = {
+    # Kopru isleminin kendisi. Db2 yok; DASD: VSAM rewrite 0.047 (senkron) +
+    # CF log yazimi 0.062 (sonradan DASD'ye offload) [REDP-PROFILE].
+    "redp_light": WorkloadProfile("redp_light", 0, 0, 1, False,
+                                  "REDP-5320 islemi (CICS bellek tablosu, Db2 yok)",
+                                  "REDP-PROFILE", sync_io=0.047, storage_iops=0.109),
+    # TPC-B / debit-credit bileseni: 1 SELECT + 3 UPDATE + 1 INSERT.
+    "tpcb_like":  WorkloadProfile("tpcb_like", 1, 4, 1, True,
+                                  "Debit-credit (TPC-B bileseni)", "TPC-B"),
+    # sysbench oltp_read_write: 10 point + 4 range SELECT, 2 UPDATE, 1 DELETE,
+    # 1 INSERT, 1 COMMIT. x86 tarafinda yaygin olculen bilesim -> varsayilan.
+    "oltp_rw":    WorkloadProfile("oltp_rw", 14, 4, 1, True,
+                                  "Okuma-yazma OLTP (sysbench oltp_read_write bileseni)",
+                                  "SYSBENCH"),
+    # Agir CICS-Db2 islemi: ~1.3 ms Db2 CPU'luk bir saha olcumunun buyuklugu
+    # [CATTERALL-2019]; bilesim bu buyuklugu verecek sekilde secildi [ASSUME].
+    "oltp_heavy": WorkloadProfile("oltp_heavy", 30, 6, 1, True,
+                                  "Agir CICS-Db2 islemi (~1.3 ms CPU)",
+                                  "CATTERALL-2019"),
 }
+DEFAULT_WORKLOAD = "oltp_rw"
+
+
+def get_workload(workload):
+    """Profil adi veya WorkloadProfile nesnesi -> WorkloadProfile."""
+    if isinstance(workload, WorkloadProfile):
+        return workload
+    return WORKLOAD_PROFILES[workload]
+
+
+def ziip_fraction(workload=DEFAULT_WORKLOAD):
+    """Profilin zIIP'e kayan CPU payi: Db2 isi yoksa 0."""
+    return ZIIP_OFFLOAD_FRACTION if get_workload(workload).ziip_eligible else 0.0
+
 
 # [ZIIP] zIIP (z Integrated Information Processor): Db2 DRDA istekleri, Java,
 # XML ve bazi Db2 sistem gorevleri (prefetch, log, utility) zIIP'te calisir.
@@ -178,13 +267,12 @@ ZIIP_HW_PRICE_FACTOR = 0.25    # zIIP motor fiyati / esdeger GP fiyati [ASSUME]
 #     Paylasimli kuyruktan (M/M/c) daha kotu yanit verir -> gercek bir ust sinir.
 #       R_cpu(p) = E[X_cpu] / (1 - rho) * ln(1/(1-p))
 #   - Sabit I/O gecikmesi (kuyruktan bagimsiz, deterministik):
-#       D_io = IOPS_PER_TX[rni] * t_io(topoloji)
+#       D_io = sync_io(profil) * t_io(topoloji)
 #     t_io, storage katmanindan gelir (BOLUM 6): okuma/yazma orani, DS8900F
 #     onbellek isabeti, zHyperLink / zHPF-FICON servis sureleri ve senkron
 #     replikasyonun (Metro Mirror) mesafe gecikmesi.
-#     IOPS_PER_TX proje kararindan (RNI hem CPU hem I/O yogunlugunu temsil eder,
-#     low ~5, avg ~10, high ~20 IOPS/tx). Tum I/O'lar sirali/senkron sayilir
-#     (tutucu; gercekte bir kismi paralel ve buffer pool'dan karsilanir).
+#     sync_io, is yuku profilinin bilesiminden gelir (BOLUM 3, Db2 buffer pool
+#     isabeti + commit log yazimi). Senkron I/O'lar sirali sayilir (tutucu).
 #   - Toplam: R(p) = D_io + R_cpu(p)
 #   - Cozum:  rho_max = 1 - E[X_cpu] * ln(1/(1-p)) / (latency_target - D_io)
 #   - Operasyonel tavan HER ZAMAN gecerli: rho = min(rho_latency, 0.90).
@@ -201,15 +289,6 @@ ZIIP_HW_PRICE_FACTOR = 0.25    # zIIP motor fiyati / esdeger GP fiyati [ASSUME]
 DEFAULT_UTILIZATION_CEILING = 0.90
 # Geriye uyumluluk icin eski isim; ayni deger.
 HARD_UTILIZATION_CAP = DEFAULT_UTILIZATION_CEILING
-
-# [ASSUME] Transaction basina I/O sayisi (proje karari, RNI'ya bagli).
-# Bu deger Phase 2'de DS8900F IOPS boyutlandirmasinda da kullanilacak;
-# clustered tarafa da ayni tablo tasinmali.
-IOPS_PER_TX = {
-    "low":      5,
-    "average": 10,
-    "high":    20,
-}
 
 # I/O servis suresi parametreleri (mainframe storage yolu: z16 <-> DS8900F)
 IO_READ_FRACTION = 0.70        # [ASSUME] OLTP okuma/yazma orani ~70/30
@@ -240,32 +319,34 @@ def io_service_time_seconds(topology=None):
     return IO_READ_FRACTION * t_read + (1.0 - IO_READ_FRACTION) * t_write
 
 
-def io_delay_seconds(rni="average", topology=None):
+def io_delay_seconds(workload=DEFAULT_WORKLOAD, topology=None):
     """Transaction basina deterministik I/O gecikmesi (saniye)."""
-    return IOPS_PER_TX[rni] * io_service_time_seconds(topology)
+    return get_workload(workload).sync_io() * io_service_time_seconds(topology)
 
 
-def raw_tier_tps(tier, rni="average"):
+def raw_tier_tps(tier, workload=DEFAULT_WORKLOAD):
     """Kademenin %100 utilization'daki ham TPS kapasitesi.
 
-    zIIP'e kayan is (ZIIP_OFFLOAD_FRACTION) genel amacli CP'yi tuketmez; bu
-    yuzden ayni GP kademesi 1/(1-f) kat daha fazla transaction tasir. zIIP
+    TPS_PER_PCI REDP islemi icindir; profilin CPU agirligi w'ye bolunur.
+    zIIP'e kayan is (ziip_fraction) genel amacli CP'yi tuketmez; bu yuzden
+    ayni GP kademesi 1/(1-f) kat daha fazla transaction tasir. zIIP
     motorlarinin donanim maliyeti monthly_cost icinde ayrica eklenir."""
-    return tier.pci * TPS_PER_PCI * RNI_MULTIPLIER[rni] / (1.0 - ZIIP_OFFLOAD_FRACTION)
+    w = get_workload(workload)
+    return tier.pci * TPS_PER_PCI / w.cpu_weight() / (1.0 - ziip_fraction(w))
 
 
-def avg_service_time_seconds(tier, rni="average"):
+def avg_service_time_seconds(tier, workload=DEFAULT_WORKLOAD):
     """
     CP basina ortalama CPU servis suresi E[X_cpu] = c / raw_tps (saniye).
     c = fiziksel CP sayisi. Bir transaction tek bir CP'de islenir.
     """
-    raw_tps = raw_tier_tps(tier, rni)
+    raw_tps = raw_tier_tps(tier, workload)
     if raw_tps <= 0:
         return float('inf')
     return tier.cps / raw_tps
 
 
-def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile,
+def max_utilization_for_latency(tier, workload, latency_target_seconds, percentile,
                                 topology=None):
     """
     Latency hedefini saglayan maksimum utilization (0 ile 0.90 arasi).
@@ -275,8 +356,8 @@ def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile,
     if latency_target_seconds is None:
         return DEFAULT_UTILIZATION_CEILING
 
-    ex = avg_service_time_seconds(tier, rni)
-    budget = latency_target_seconds - io_delay_seconds(rni, topology)
+    ex = avg_service_time_seconds(tier, workload)
+    budget = latency_target_seconds - io_delay_seconds(workload, topology)
     ln_term = math.log(1.0 / (1.0 - percentile))
     if budget <= 0 or ex * ln_term >= budget:
         # I/O gecikmesi ya da bos sistemdeki CPU suresi bile hedefi asiyor
@@ -286,20 +367,20 @@ def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile,
     return max(0.0, min(rho_max, DEFAULT_UTILIZATION_CEILING))
 
 
-def expected_latency_at(tier, rni, tps, percentile, topology=None):
+def expected_latency_at(tier, workload, tps, percentile, topology=None):
     """
     Verilen TPS yukunde tahmini percentile yanit suresi (saniye):
     D_io + per-CP M/M/1 percentile. Bilgi amacli.
     """
-    raw_tps = raw_tier_tps(tier, rni)
+    raw_tps = raw_tier_tps(tier, workload)
     if raw_tps <= 0:
         return float('inf')
     rho = tps / raw_tps
     if rho >= 1.0:
         return float('inf')
-    ex = avg_service_time_seconds(tier, rni)
+    ex = avg_service_time_seconds(tier, workload)
     ln_term = math.log(1.0 / (1.0 - percentile))
-    return io_delay_seconds(rni, topology) + ex * (1.0 / (1.0 - rho)) * ln_term
+    return io_delay_seconds(workload, topology) + ex * (1.0 / (1.0 - rho)) * ln_term
 
 # ------------------------------------------------------------------------------
 # AVAILABILITY MODELI — IBM Z Resiliency Models (Redbook SG24-8446)
@@ -619,7 +700,7 @@ def _size_array(raw_tb, iops):
     return best
 
 
-def storage_plan(peak_tps, rni="average", topology=None, data_tb=None, growth=None):
+def storage_plan(peak_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=None, growth=None):
     """DS8900F storage boyutlandirmasi ve aylik maliyeti.
 
     Her kopya ayri bir dizi (veya dizi grubu) olarak boyutlanir; ikincil kopyalar
@@ -628,7 +709,7 @@ def storage_plan(peak_tps, rni="average", topology=None, data_tb=None, growth=No
     """
     copies = topology.storage_copies if topology is not None else 1
     base_raw = storage_capacity_tb(data_tb, growth)
-    iops = peak_tps * IOPS_PER_TX[rni]
+    iops = peak_tps * get_workload(workload).storage_iops()
     discount = 1.0 - STORAGE_DISCOUNT
 
     arrays = []
@@ -664,7 +745,7 @@ def storage_plan(peak_tps, rni="average", topology=None, data_tb=None, growth=No
         "power_kw": power_kw,
         "monthly_total": amort + maint + energy,
         "io_service_time_s": io_service_time_seconds(topology),
-        "io_delay_s": io_delay_seconds(rni, topology),
+        "io_delay_s": io_delay_seconds(workload, topology),
     }
 
 
@@ -680,7 +761,7 @@ def describe_storage(plan):
 # MODEL FONKSIYONLARI
 # ==============================================================================
 
-def tier_max_tps(tier, rni="average", latency_target_seconds=None, percentile=0.99,
+def tier_max_tps(tier, workload=DEFAULT_WORKLOAD, latency_target_seconds=None, percentile=0.99,
                  topology=None):
     """
     Bir kademenin verilen RNI ve latency hedefi altinda saglayabilecegi
@@ -690,44 +771,44 @@ def tier_max_tps(tier, rni="average", latency_target_seconds=None, percentile=0.
     Latency hedefi varsa, M/M/1 formulunden o kademenin destekleyebilecegi
     max utilization hesaplanir; gercek tavan budur.
     """
-    raw_tps = raw_tier_tps(tier, rni)
-    rho_max = max_utilization_for_latency(tier, rni, latency_target_seconds, percentile,
+    raw_tps = raw_tier_tps(tier, workload)
+    rho_max = max_utilization_for_latency(tier, workload, latency_target_seconds, percentile,
                                           topology)
     return raw_tps * rho_max
 
 
-def is_capacity_feasible(tier, tps_required, rni="average",
+def is_capacity_feasible(tier, tps_required, workload=DEFAULT_WORKLOAD,
                           latency_target_seconds=None, percentile=0.99, topology=None):
     """Asama 3: kademe, latency hedefi altinda gereken TPS'i karsilar mi?"""
-    return tier_max_tps(tier, rni, latency_target_seconds, percentile,
+    return tier_max_tps(tier, workload, latency_target_seconds, percentile,
                         topology) >= tps_required
 
 
-def consumed_msu(tier, load_tps, rni="average"):
+def consumed_msu(tier, load_tps, workload=DEFAULT_WORKLOAD):
     """
     Sub-capacity MLC icin faturalanan MSU: kademenin kurulu MSU'sunun, verilen
     yukun (R4HA) kullandigi kismi. Kurulu kapasiteyi asamaz.  [R4HA]
     """
-    raw = raw_tier_tps(tier, rni)
+    raw = raw_tier_tps(tier, workload)
     if raw <= 0:
         return tier.msu
     return min(load_tps / raw, 1.0) * tier.msu
 
 
-def ziip_engines(tier):
+def ziip_engines(tier, workload=DEFAULT_WORKLOAD):
     """Kademenin GP tam-kapasitesine eslik eden zIIP motor sayisi.
     GP'de calisan is (1-f), zIIP'te calisan f oraninda ise zIIP PCI ihtiyaci
     = GP PCI x f/(1-f). Motor sayisi yukari yuvarlanir, 2:1 sinirina kirpilir."""
-    f = ZIIP_OFFLOAD_FRACTION
+    f = ziip_fraction(workload)
     if f <= 0:
         return 0
     need = tier.pci * f / (1.0 - f) / ZIIP_ENGINE_PCI
     return min(math.ceil(need - 1e-9), ZIIP_PER_CP_LIMIT * tier.cps)
 
 
-def ziip_hw_purchase(tier):
+def ziip_hw_purchase(tier, workload=DEFAULT_WORKLOAD):
     """zIIP motorlarinin satin alma bedeli (USD)."""
-    return (ziip_engines(tier) * ZIIP_ENGINE_PCI * HARDWARE_COST_PER_MIPS
+    return (ziip_engines(tier, workload) * ZIIP_ENGINE_PCI * HARDWARE_COST_PER_MIPS
             * ZIIP_HW_PRICE_FACTOR)
 
 
@@ -768,7 +849,7 @@ def software_monthly_cost(msu, breakdown=False):
     return (total, parts) if breakdown else total
 
 
-def monthly_cost(tier, topology, billed_msu=None):
+def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
@@ -788,7 +869,7 @@ def monthly_cost(tier, topology, billed_msu=None):
     # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
     software = software_monthly_cost(msu) * topology.software_premium
     # Donanim amortismani - frame carpani  [PRICE/ASSUME]; zIIP motorlari dahil
-    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS + ziip_hw_purchase(tier)
+    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS + ziip_hw_purchase(tier, workload)
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
     # Bakim  [PRICE]
     maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL / 12
@@ -805,7 +886,7 @@ def monthly_cost(tier, topology, billed_msu=None):
     }
 
 
-def solve(tps, availability=0.999, rni="average",
+def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=None, latency_percentile=99, verbose=True,
           data_tb=None, data_growth=None):
     """
@@ -815,7 +896,7 @@ def solve(tps, availability=0.999, rni="average",
     Parametreler:
       tps                 : Hedef throughput (saniyedeki islem)
       availability        : Hedef uptime (0-1 arasi)
-      rni                 : Islem karmasikligi: 'low' / 'average' / 'high'
+      workload            : Is yuku profili adi (WORKLOAD_PROFILES) veya WorkloadProfile
       latency_ms          : Hedef latency milisaniye olarak (None ise %90 sabit tavan)
       latency_percentile  : Hedef percentile (orn. 99 -> p99 latency hedefi)
       data_tb, data_growth: Mantiksal veri hacmi (TB) ve yillik buyume (storage)
@@ -834,16 +915,18 @@ def solve(tps, availability=0.999, rni="average",
     feasible_topos = find_feasible_topologies(availability)
 
     if verbose:
-        print(f"  Girdi: {tps:,.0f} TPS | RNI={rni} | uptime hedefi={availability:.6%}")
+        wp = get_workload(workload)
+        print(f"  Girdi: {tps:,.0f} TPS | is yuku={wp.name} | uptime hedefi={availability:.6%}")
         if latency_target_s is not None:
             print(f"         latency hedefi: p{latency_percentile} < {latency_ms:g} ms "
                   f"(M/M/1 kuyruk modeli)")
         else:
             print(f"         latency hedefi: yok -> default %{DEFAULT_UTILIZATION_CEILING*100:.0f} "
                   f"utilization tavani")
-        print(f"  -> Kapasite koprusu: ~{TPS_PER_PCI:.2f} TPS / PCI "
-              f"(average RNI) [REDP+LSPR]")
-        print(f"     RNI carpani: x{RNI_MULTIPLIER[rni]}")
+        print(f"  -> Kapasite koprusu: ~{TPS_PER_PCI:.2f} REDP-islemi / s / PCI [REDP+LSPR]")
+        print(f"     is yuku profili: {wp}")
+        print(f"     -> {TPS_PER_PCI / wp.cpu_weight():.2f} islem / s / PCI (zIIP payi "
+              f"f={ziip_fraction(wp):.2f} haric)")
         print(f"  -> Feasible topolojiler (ITIC low + planned indirimi):")
         for t in feasible_topos:
             eff_low = t.effective_availability_low()
@@ -859,18 +942,19 @@ def solve(tps, availability=0.999, rni="average",
     # 2. Her topoloji icin feasible kademeler (latency-aware)
     candidates = []  # liste: (tier, topology, cost, util, rho_max)
     for topo in feasible_topos:
-        splan = storage_plan(tps, rni, topo, data_tb, data_growth)
+        splan = storage_plan(tps, workload, topo, data_tb, data_growth)
         for tier in Z16_TIERS:
-            if is_capacity_feasible(tier, tps, rni, latency_target_s, percentile_frac, topo):
+            if is_capacity_feasible(tier, tps, workload, latency_target_s, percentile_frac, topo):
                 # Sabit yukte R4HA = tps -> sub-capacity faturasi  [R4HA]
                 cost = monthly_cost(tier, topo,
-                                    billed_msu=consumed_msu(tier, tps, rni))
+                                    billed_msu=consumed_msu(tier, tps, workload),
+                                    workload=workload)
                 cost["storage"] = splan["monthly_total"]
                 cost["storage_plan"] = splan
                 cost["total"] += splan["monthly_total"]
-                rho_max = max_utilization_for_latency(tier, rni,
+                rho_max = max_utilization_for_latency(tier, workload,
                                                       latency_target_s, percentile_frac, topo)
-                max_t = tier_max_tps(tier, rni, latency_target_s, percentile_frac, topo)
+                max_t = tier_max_tps(tier, workload, latency_target_s, percentile_frac, topo)
                 util = tps / max_t * rho_max if max_t > 0 else 0
                 candidates.append((tier, topo, cost, util, rho_max))
 
@@ -884,11 +968,11 @@ def solve(tps, availability=0.999, rni="average",
     tier, topo, cost, util, rho_max = best
 
     if verbose:
-        max_tps = tier_max_tps(tier, rni, latency_target_s, percentile_frac, topo)
+        max_tps = tier_max_tps(tier, workload, latency_target_s, percentile_frac, topo)
         cp_eq = cp_equivalents(tier)
         # Gercek latency tahmini bilgi olarak goster
         if latency_target_s is not None:
-            actual_lat_s = expected_latency_at(tier, rni, tps, percentile_frac, topo)
+            actual_lat_s = expected_latency_at(tier, workload, tps, percentile_frac, topo)
         else:
             actual_lat_s = None
 
@@ -909,8 +993,8 @@ def solve(tps, availability=0.999, rni="average",
         print(f"       yazilim:  ${cost['software']:,.0f}  "
               f"(z/OS + CICS TS + Db2, AWLC kademeli; premium x{topo.software_premium})")
         print(f"       donanim:  ${cost['hardware_amort']:,.0f}  "
-              f"({topo.n_frames} frame; {ziip_engines(tier)} zIIP, "
-              f"f={ZIIP_OFFLOAD_FRACTION:.2f})")
+              f"({topo.n_frames} frame; {ziip_engines(tier, workload)} zIIP, "
+              f"f={ziip_fraction(workload):.2f})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
         print(f"       enerji:   ${cost['energy']:,.0f}")
         sp = cost["storage_plan"]
@@ -1135,13 +1219,14 @@ def hw_monthly_cost_per_pci():
             HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL / 12)
 
 
-def consumed_pci(load_tps, rni="average"):
+def consumed_pci(load_tps, workload=DEFAULT_WORKLOAD):
     """Bir yukun tukettigi GENEL AMACLI (GP) kapasite, PCI cinsinden
     (%100 utilization esdegeri). zIIP'e kayan pay dusulur."""
-    return load_tps * (1.0 - ZIIP_OFFLOAD_FRACTION) / (TPS_PER_PCI * RNI_MULTIPLIER[rni])
+    w = get_workload(workload)
+    return load_tps * w.cpu_weight() * (1.0 - ziip_fraction(w)) / TPS_PER_PCI
 
 
-def simulate_yearly(profile, tier, topology, rni="average",
+def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
                     latency_ms=None, latency_percentile=99,
                     strategy="permanent", corridor_tier=None,
                     feature_max_cps=None, sw_price_per_msu_hour=None,
@@ -1168,7 +1253,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     DAYS = HOURS // 24
 
     def max_tps(t):
-        return tier_max_tps(t, rni, latency_target_s, pct, topology)
+        return tier_max_tps(t, workload, latency_target_s, pct, topology)
 
     if strategy == "tfp":
         if corridor_tier is None:
@@ -1204,7 +1289,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     cod_days = sum(1 for t in day_tier if t is not always_on)
 
     # --- permanent donanim (her frame) ---------------------------------------
-    base_cost = monthly_cost(tier, topology)
+    base_cost = monthly_cost(tier, topology, workload=workload)
     base_other_monthly = (base_cost["hardware_amort"] + base_cost["maintenance"] +
                           base_cost["energy"])
     monthly_other = [base_other_monthly] * 12
@@ -1219,7 +1304,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     if strategy == "tfp":
         hw_pci_hour = hw_monthly_cost_per_pci() / HOURS_PER_MONTH
         for load in profile:
-            used = min(consumed_pci(load, rni), corridor_tier.pci) - tier.pci
+            used = min(consumed_pci(load, workload), corridor_tier.pci) - tier.pci
             if used > 0:
                 corridor_cost_total += used * hw_pci_hour * CORRIDOR_PREMIUM
         corridor_cost_total += ((corridor_tier.pci - tier.pci) * hw_monthly_cost_per_pci()
@@ -1233,7 +1318,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     for m in range(12):
         hours = range(m * month_len, min((m + 1) * month_len, HOURS))
         if strategy == "tfp":
-            mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], rni)
+            mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], workload)
                      for h in hours)
             msu_hours += mh
             monthly_software.append(mh * (sw_price_per_msu_hour or 0.0)
@@ -1242,9 +1327,10 @@ def simulate_yearly(profile, tier, topology, rni="average",
             # ayin en buyuk aktif kademesi faturalanabilir tavandir
             cap_tier = max((day_tier[min(h // 24, DAYS - 1)] for h in hours),
                            key=lambda t: t.pci)
-            billed = consumed_msu(cap_tier, r4ha_peaks[m], rni)
+            billed = consumed_msu(cap_tier, r4ha_peaks[m], workload)
             monthly_software.append(
-                monthly_cost(cap_tier, topology, billed_msu=billed)["software"])
+                monthly_cost(cap_tier, topology, billed_msu=billed,
+                             workload=workload)["software"])
 
     yearly_software = sum(monthly_software)
     yearly_other = sum(monthly_other)
@@ -1287,19 +1373,19 @@ STRATEGY_LABELS = {
 }
 
 
-def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, rni="average"):
+def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, workload=DEFAULT_WORKLOAD):
     """TFP-SW efektif MSU-saat fiyati [TFP-SW]: IBM fiyati musterinin gecmis
     12 ayindan belirler. Burada 'gecmis yil' = ayni profilin permanent
     konfigurasyondaki R4HA faturasi; fiyat bu faturayi ayni yilin tuketilen
     MSU-saatine bolerek bulunur (gelir-notr), sonra TFP_SW_DISCOUNT uygulanir."""
-    msu_hours = sum(consumed_msu(reference_tier, load, rni) for load in profile)
+    msu_hours = sum(consumed_msu(reference_tier, load, workload) for load in profile)
     base_sw = reference_sim["yearly_software"] / reference_sim["topology"].software_premium
     return base_sw / msu_hours * (1.0 - TFP_SW_DISCOUNT)
 
 
 def solve_yearly(preset_name=None, yearly_avg_tps=50000,
                  peak_avg_ratio=None, peak_days=None,
-                 availability=0.999, rni="average",
+                 availability=0.999, workload=DEFAULT_WORKLOAD,
                  latency_ms=None, latency_percentile=99,
                  strategies=("permanent", "base_cod", "tfp"),
                  verbose=True, data_tb=None, data_growth=None):
@@ -1327,7 +1413,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
         print(f"  Workload: {preset_name or 'custom'} - {desc}")
         print(f"    yillik ortalama: {avg_load:,.0f} TPS  |  peak saat: {peak_load:,.0f} TPS")
         print(f"    peak/avg orani: {peak_load/avg_load:.2f}x")
-        print(f"  Availability hedefi: {availability:.6%}  |  RNI: {rni}")
+        print(f"  Availability hedefi: {availability:.6%}  |  is yuku: {get_workload(workload)}")
         if latency_ms is not None:
             print(f"  Latency hedefi: p{latency_percentile} < {latency_ms:g} ms")
         print()
@@ -1335,31 +1421,31 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
     best_by_strategy = {}
     for topo in feasible_topos:
         perm_tier = next((t for t in Z16_TIERS
-                          if is_capacity_feasible(t, peak_load, rni, latency_target_s,
+                          if is_capacity_feasible(t, peak_load, workload, latency_target_s,
                                                   pct, topo)),
                          None)
         if perm_tier is None:
             continue
-        splan = storage_plan(peak_load, rni, topo, data_tb, data_growth)
+        splan = storage_plan(peak_load, workload, topo, data_tb, data_growth)
         st_m = splan["monthly_total"]
-        sim_perm = simulate_yearly(profile, perm_tier, topo, rni, latency_ms,
+        sim_perm = simulate_yearly(profile, perm_tier, topo, workload, latency_ms,
                                    latency_percentile, strategy="permanent",
                                    storage_monthly=st_m)
-        sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, rni)
+        sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, workload)
 
         candidates = {"permanent": [sim_perm]} if "permanent" in strategies else {}
         for base in Z16_TIERS:
             if base.pci >= perm_tier.pci:
                 break
-            if not is_capacity_feasible(base, avg_load * BASE_MIN_AVG_FACTOR, rni,
+            if not is_capacity_feasible(base, avg_load * BASE_MIN_AVG_FACTOR, workload,
                                         latency_target_s, pct, topo):
                 continue
             # hizli eleme: izinli en buyuk gecici kademe bile peak'i tasimiyorsa atla
-            if tier_max_tps(max_temporary_tier(base), rni, latency_target_s, pct,
+            if tier_max_tps(max_temporary_tier(base), workload, latency_target_s, pct,
                             topo) < peak_load:
                 continue
             if "base_cod" in strategies:
-                s = simulate_yearly(profile, base, topo, rni, latency_ms,
+                s = simulate_yearly(profile, base, topo, workload, latency_ms,
                                     latency_percentile, strategy="base_cod",
                                     storage_monthly=st_m)
                 if s is not None:
@@ -1367,7 +1453,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
             if "tfp" in strategies:
                 corr = corridor_tier_for(base)
                 if corr is not None:
-                    s = simulate_yearly(profile, base, topo, rni, latency_ms,
+                    s = simulate_yearly(profile, base, topo, workload, latency_ms,
                                         latency_percentile, strategy="tfp",
                                         corridor_tier=corr,
                                         sw_price_per_msu_hour=sw_price,
@@ -1461,14 +1547,15 @@ def export_yearly_csv(sim, filepath):
 # Kullanim ornekleri:
 #
 #   python mainframe_model.py --tps 50000
-#   python mainframe_model.py --tps 80000 --availability 0.9993 --rni high
+#   python mainframe_model.py --tps 80000 --availability 0.9993 --workload high
 #   python mainframe_model.py --demo          (5 hazir senaryo)
 #   python mainframe_model.py --calibration   (kalibrasyon kontrolu)
 #
 # Parametreler:
 #   --tps           Saniyedeki islem sayisi (zorunlu, --demo yoksa)
 #   --availability  Hedef uptime, 0-1 arasi (varsayilan: 0.999 = %99.9)
-#   --rni           Islem karmasikligi: low / average / high (varsayilan: average)
+#   --workload      Is yuku profili: redp_light / tpcb_like / oltp_rw / oltp_heavy
+#                   (varsayilan: oltp_rw); --sql-reads/--sql-writes ile ozel bilesim
 #   --demo          5 hazir senaryo calistir
 #   --calibration   Kalibrasyon sabitlerini yazdir
 # ==============================================================================
@@ -1499,7 +1586,7 @@ def print_calibration():
                  "3931-739", "3931-7A0", "3931-7K0"]:
         t = next(x for x in Z16_TIERS if x.model == code)
         print(f"   {str(t):<45} | ham TPS={raw_tier_tps(t):>10,.0f} | "
-              f"%90'da={tier_max_tps(t, 'average'):>10,.0f} | PCI kaynagi={t.pci_source}")
+              f"%90'da={tier_max_tps(t):>10,.0f} | PCI kaynagi={t.pci_source}")
 
 
 def run_demo():
@@ -1507,21 +1594,21 @@ def run_demo():
     print("DEMO SENARYOLAR")
     print("=" * 70)
     print("\n[A] Orta yuk OLTP (latency hedefi yok, %90 sabit tavan):")
-    solve(tps=50000, availability=0.999, rni="average")
+    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD)
     print("[B] Ayni yuk, p99 < 200 ms latency hedefi:")
-    solve(tps=50000, availability=0.999, rni="average",
+    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
     print("[C] Ayni yuk, sikilastirilmis p99 < 50 ms (trading-seviyesi):")
-    solve(tps=50000, availability=0.999, rni="average",
+    solve(tps=50000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=50, latency_percentile=99)
     print("[D] Yuksek yuk + yuksek uptime + p99 < 500 ms:")
-    solve(tps=150000, availability=0.99999, rni="average",
+    solve(tps=150000, availability=0.99999, workload=DEFAULT_WORKLOAD,
           latency_ms=500, latency_percentile=99)
-    print("[E] Agir islemler (high RNI) + p99 < 200 ms:")
-    solve(tps=50000, availability=0.999, rni="high",
+    print("[E] Agir islemler (oltp_heavy) + p99 < 200 ms:")
+    solve(tps=50000, availability=0.999, workload="oltp_heavy",
           latency_ms=200, latency_percentile=99)
     print("[F] Cok dusuk yuk:")
-    solve(tps=2000, availability=0.999, rni="average",
+    solve(tps=2000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
 
 
@@ -1533,7 +1620,7 @@ if __name__ == "__main__":
 Ornekler:
   Statik (tek nokta):
     python mainframe_model.py --tps 50000
-    python mainframe_model.py --tps 80000 --availability 0.9993 --rni high --latency-ms 200
+    python mainframe_model.py --tps 80000 --availability 0.9993 --workload high --latency-ms 200
 
   Yillik simulasyon (workload profile + CoD karsilastirmasi):
     python mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000
@@ -1569,9 +1656,13 @@ Ornekler:
     # Ortak parametreler
     parser.add_argument("--availability", type=float, default=0.999,
                         help="Hedef uptime, 0-1 arasi (varsayilan: 0.999)")
-    parser.add_argument("--rni", choices=["low", "average", "high"],
-                        default="average",
-                        help="Islem karmasikligi (varsayilan: average)")
+    parser.add_argument("--workload", choices=list(WORKLOAD_PROFILES),
+                        default=DEFAULT_WORKLOAD,
+                        help=f"Is yuku profili (varsayilan: {DEFAULT_WORKLOAD})")
+    parser.add_argument("--sql-reads", type=float, default=None,
+                        help="Ozel profil: islem basina okuma SQL sayisi")
+    parser.add_argument("--sql-writes", type=float, default=None,
+                        help="Ozel profil: islem basina yazma SQL sayisi")
     parser.add_argument("--latency-ms", type=float, default=None,
                         help="Hedef latency milisaniye (orn: 200)")
     parser.add_argument("--latency-percentile", type=int, default=99,
@@ -1592,6 +1683,11 @@ Ornekler:
 
     args = parser.parse_args()
 
+    if args.sql_reads is not None or args.sql_writes is not None:
+        args.workload = WorkloadProfile("custom", args.sql_reads or 0.0,
+                                        args.sql_writes or 0.0, 1, True,
+                                        "Ozel bilesim", "USER")
+
     if args.calibration:
         print_calibration()
         sys.exit(0)
@@ -1611,7 +1707,7 @@ Ornekler:
             peak_avg_ratio=args.peak_ratio,
             peak_days=args.peak_days,
             availability=args.availability,
-            rni=args.rni,
+            workload=args.workload,
             latency_ms=args.latency_ms,
             latency_percentile=args.latency_percentile,
             data_tb=args.data_tb,
@@ -1634,7 +1730,7 @@ Ornekler:
     print("=" * 70)
     result = solve(tps=args.tps,
                    availability=args.availability,
-                   rni=args.rni,
+                   workload=args.workload,
                    latency_ms=args.latency_ms,
                    latency_percentile=args.latency_percentile,
                    data_tb=args.data_tb,

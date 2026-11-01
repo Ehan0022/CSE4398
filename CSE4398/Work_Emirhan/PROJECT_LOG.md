@@ -301,3 +301,37 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - zIIP payının REDP-5320 profiliyle daraltılması (benchmark zIIP kullanmıyor).
 - Donanım fiyatı ($200/PCI) artık yazılıma göre en kaba kalem; personel eklenmeden yazılım payı olduğundan yüksek görünüyor.
 - TFP gelir-nötr kalibrasyonunda kademe MSU/PCI oranı farkından kaynaklanan ~%1'lik artefakt.
+
+---
+
+## 2026-11-01 — Oturum 2 (devam): Bileşimli iş yükü profili — Plan adımı 2
+
+### 1. REDP-5320 profili
+- **Aksiyon:** Benchmark raporunun sayaç tablolarından işlem profili çıkarıldı ve `data/raw/redp5320_workload_profile.csv` olarak kaydedildi.
+- **Bulgu:** Köprü işlemi çok hafif. İşlem başına 4,76 bellek okuması (CICS shared data table), 0,047 güncelleme, 0,062 CF log yazımı ve 85,9 µs CPU (z13) var. Db2, Java ve zIIP yok; DASD I/O neredeyse sıfır. Model ise kapasiteyi bu işlemle hesaplarken latency ve storage için 10 I/O/işlem varsayıyordu: tutarsızdı ve mainframe kapasitesini olduğundan yüksek gösteriyordu.
+- **Ek kanıt:** Bir sahada CICS-Db2 işleminin Db2 CPU'su ~1,3 ms ölçülmüş [CATTERALL-2019], yani REDP işleminin ~15 katı. CICS'te tek INSERT ~68 µs [CATTERALL-2012].
+- **Karar (Emirhan, karar kartı):** "1 işlem" bileşimle tanımlanacak (seçenek A: bileşimli profil).
+
+### 2. Modele ekleme
+- **Aksiyon:**
+  - RNI çarpanları (1,25/1,00/0,70) ve IOPS_PER_TX (5/10/20) kaldırıldı; kaynakları yoktu.
+  - `WorkloadProfile`: okuma SQL, yazma SQL, commit. CPU = 85,9 + 30·okuma + 70·yazma µs, w = CPU/85,9. Senkron I/O = okuma·4·(1−0,95) + 1; IOPS = senkron + 0,5·yazma.
+  - Profiller: redp_light (ölçülmüş, w = 1), tpcb_like (w = 4,61), **oltp_rw** (sysbench oltp_read_write bileşimi, w = 9,15, varsayılan), oltp_heavy (w = 16,37).
+  - zIIP yalnızca Db2'li profillerde. CLI: `--workload`, `--sql-reads`, `--sql-writes`.
+  - Yeni araç `src/tools/workload_sensitivity.py` ve yeni test `test_workload_profiles` (12/12 geçiyor). Diğer araçların ve testlerin referans noktası 10K TPS'e indi.
+- **Sebep:** Değerlendirme #1'in en kritik tehdidi (TPS iki tarafta ortak birim değil). Clustered taraf aynı bileşimi kendi ölçümleriyle karşılayacak.
+
+### 3. Etkileri
+- **Kapasite:** oltp_rw aynı TPS için ~9 kat kapasite istiyor. Önceki "50K TPS", bugünkü birimle ~5,5K oltp_rw TPS. Tek z16 tavanı oltp_rw'de ~187K TPS, oltp_heavy'de ~104K.
+- **Makullük:** IBM'in z14 için duyurduğu günde 12 milyar işlem, w ≈ 9'a karşılık geliyor (z14 PCI tahmini, doğrulanmalı).
+- **Maliyet (statik, oltp_rw):** 10K TPS'te $416.750/ay ($41,68/TPS); $/TPS 500 TPS'te 174,8'den 180K TPS'te 19,8'e iniyor. Ölçek ekonomisi ~20K TPS'e kadar; L4+ kademe varsayımı artık ~4K TPS'ten itibaren bağlayıcı.
+- **I/O:** D_io M1'de 0,26 ms (önceden 0,69); DS8950F geçişi ~104K TPS'e kaydı; storage payı 20 TB'da %1,8.
+- **Latency:** oltp_rw'de p99 alt sınırı ~2,4 ms; 5 ms hedef 7xx kademesine kaydırıyor.
+- **Yıllık (10K ort.):** steady C $6,435M, retail B $9,534M (C ile fark %0,2), batch C $7,981M; TFP_SW_DISCOUNT %5 → C her presette kazanıyor.
+- **Yeni sınırlama:** İkinci frame kapasite eklemediği için Parallel Sysplex ile tek CEC ötesine ölçekleme yok. Yol haritasına eklendi.
+- **Dokümantasyon:** v3 §4.3–4.5 (yeni §4.4 İş Yükü Profili, savunmasıyla), §2.1, §5.3–5.5, §7.1.6, §7.6, §8.1, §8.4, §8.6–8.8, §9.5, §9.7–9.8, §10, §11.1, §12 güncellendi.
+
+### 4. Açık noktalar
+- CPU_US_PER_SQL_READ (30 µs) en kritik profil varsayımı: 15–60 µs, 10K TPS'te maliyeti $349K–533K arasında oynatıyor. IRWW veya gerçek bir SMF 101 örneği ikinci çapa olur.
+- Parallel Sysplex ölçeklemesi (çok CEC, data sharing ek yükü).
+- Clustered tarafın oltp_rw bileşimini hangi ölçümle karşılayacağı (sysbench sonuçları).
