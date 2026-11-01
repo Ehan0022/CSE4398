@@ -30,7 +30,8 @@ def test_latency_binds_when_tight():
     loose = m.solve(50000, 0.999, "average", 200, 99, verbose=False)
     tight = m.solve(50000, 0.999, "average", 20, 99, verbose=False)
     assert _cost(tight) > _cost(loose)
-    assert m.solve(50000, 0.999, "average", 3, 99, verbose=False) is None  # D_io = 3 ms
+    d_io_ms = m.io_delay_seconds("average", m.TOPOLOGIES[0]) * 1000
+    assert m.solve(50000, 0.999, "average", d_io_ms * 0.95, 99, verbose=False) is None
 
 
 def test_tier_table_complete():
@@ -129,6 +130,31 @@ def test_tfp_software_revenue_neutral_and_corridor_monotonic():
         assert costs[1] > costs[0] > 0
     finally:
         m.CORRIDOR_PREMIUM = old
+
+
+def test_storage_sizing_and_mainframe_features():
+    """DS8900F boyutlandirmasi: kopya sayisi topolojiden, model IOPS'tan,
+    kapasite veri hacminden gelir; zHyperLink ve senkron replikasyon D_io'yu
+    beklenen yonde degistirir."""
+    m1, m2, m3 = m.TOPOLOGIES[0], m.TOPOLOGIES[1], m.TOPOLOGIES[2]
+    p1 = m.storage_plan(50000, "average", m1, data_tb=20)
+    p3 = m.storage_plan(50000, "average", m3, data_tb=20)
+    assert p1["copies"] == 1 and p3["copies"] == 4
+    assert p3["monthly_total"] > p1["monthly_total"]
+    assert m.storage_plan(50000, "average", m1, data_tb=200)["capex"] > p1["capex"]
+    # 860K IOPS'u asan yuk DS8950F gerektirmeli
+    big = m.storage_plan(150000, "average", m1, data_tb=20)
+    assert big["arrays"][0]["model"].family == "DS8950F"
+    assert p1["arrays"][0]["model"].family == "DS8910F"
+    # senkron Metro Mirror yazma gecikmesini artirir
+    assert m.io_delay_seconds("average", m2) > m.io_delay_seconds("average", m1)
+    old = m.ZHYPERLINK_ENABLED
+    try:
+        with_zhl = m.io_service_time_seconds(m1)
+        m.ZHYPERLINK_ENABLED = False
+        assert m.io_service_time_seconds(m1) > with_zhl
+    finally:
+        m.ZHYPERLINK_ENABLED = old
 
 
 if __name__ == "__main__":

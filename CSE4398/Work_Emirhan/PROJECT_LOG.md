@@ -97,6 +97,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 |---|---|---|---|
 | 1 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_01.md` | Mainframe compute modeli düzeltildi; ortak birim ve crossover hipotezi kritik tehdit; clustered taraf yok |
 | 2 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_02_mainframe.md` | Mainframe özel inceleme; kapasite köprüsünde sublinearite çift sayımı bulundu (TPS ~%29 eksik); maliyet eğrisi için taban fiyat + kademeli MLC + zIIP + CBU gerekli; M1–M8 yol haritası |
+| 3 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` | Compute katmanı sağlam (kademeler, köprü, CoD/TFP); storage dahil edilmeli (shared-disk vs shared-nothing, DR, CPU, latency asimetrisi); en büyük eksik yazılım yığını ve kademeli MLC; öncelik sırası |
 
 ---
 
@@ -187,3 +188,56 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Corridor fiyatı, abonelik bedeli ve corridor genişliği müşteriye özel; gerçek bir sözleşme/IBM teklifinden kalibrasyon mümkünse yapılmalı.
 - On/Off CoD kaydının 180 gün sınırı ve tek-aktif-kayıt kuralı modellenmedi.
 - TFP-SW'nin büyüme fiyatı tek yıllık ufukta görünmüyor; 5 yıllık NPV adımında (M8) modellenmeli.
+
+---
+
+## 2026-10-31 — Oturum 1 (devam): Değerlendirme #3 (mainframe eksikleri ve storage)
+
+- **Aksiyon:** Mainframe modelinin güncel hali yeniden değerlendirildi ve storage katmanının projeye dahil edilip edilmeyeceği sorusu incelendi. `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` yazıldı.
+- **Sebep:** Emirhan'ın sorusu: storage iki tarafta da paralel değil mi, bir bitirme projesinde dahil olmalı mı?
+- **Sonuç:**
+  - Storage dahil edilmeli. "Paralel" argümanı yalnızca iki taraf aynı storage'ı aynı maliyetle kullansa geçerli olurdu. Gerçekte shared-disk (mainframe) ile shared-nothing (clustered DB'lerin bir kısmı) farklı kopya sayısı, farklı DR katmanı, farklı I/O CPU maliyeti ve farklı I/O gecikmesi demek. Ayrıca veri hacmi ekseninde ikinci bir crossover boyutu açabilir. Projenin kendi gerekçesi de storage'ı tam yığın tanımına dahil ediyor.
+  - Storage iki taraf için ortak bir arayüzle (data_volume_tb, data_growth_pct, RNI'dan IOPS, RPO) ve sade tutulacak.
+  - En büyük mainframe eksiği yazılım yığını (CICS, Db2, kademeli MLC, zIIP). Önerilen sıra: yazılım yığını, storage arayüzü + DS8900F, personel, donanım tabanı + CBU + GDPS, 5 yıllık NPV. Transaction köprüsü paralel.
+  - Açık karar: clustered tarafta storage tipi (öneri: DB mimarisine bağlı; shared-disk → SAN, shared-nothing → yerel NVMe × RF).
+
+---
+
+## 2026-11-01 — Oturum 2: Mainframe storage katmanı (IBM DS8900F)
+
+### 0. Ortam
+- Emirhan projeyi yeni bilgisayara GitHub üzerinden klonladı (`Ehan0022/CSE4398`, proje yolu `CSE4398/Work_Emirhan`). Repo, önceki oturumun son hali ile karşılaştırıldı: yalnızca Değerlendirme #3 ve log'daki ilgili girdi eksikti (önceki bilgisayar çevrimdışı olduğu için yazılamamıştı); bu oturumla birlikte eşleniyor.
+
+### 1. Veri toplama
+- **Aksiyon:** DS8900F için resmî ve ikincil kaynaklardan teknik ve fiyat verisi toplandı: IBM DS8900F Product Guide (REDP-5554, R9.3.2), IT Candor (IOPS), TechTarget (başlangıç fiyatları, zHPF süresi, pazar payı), IT Jungle (IBM duyurusu 322-396 flash liste fiyatı), kurumsal storage fiyat karşılaştırmaları (indirim ve destek aralıkları).
+- **Bulgular:**
+  - Modeller: DS8910F-993 (z16 çerçevesine 16U monte, 737 TB ham), DS8910F-994 (2.949 TB), DS8950F-996 (5.898 TB, E96 ile); maks. IOPS 860K / 2.320K; tepe güç 2,2 / 4,6 / 6,2 (+3,9) kW.
+  - Fiyat: başlangıç $134K (DS8910F), $196K (DS8950F) [2019]; 15,36 TB flash liste $8,62/GB [2022]. İndirim, lisans ve bakım fiyatları yayımlanmıyor.
+  - Lisanslar: Base Function, z-synergy Services (FICON, PAV, zHPF, zHyperLink), Copy Services (FlashCopy, Safeguarded Copy, Metro/Global Mirror); TB başına kademeli.
+  - Gecikme: zHyperLink < 20 µs (~18 µs), zHPF/FICON ~90 µs.
+- **Sebep:** Emirhan'ın isteği: mainframe storage maliyetleri ve mainframe'e özgü storage özellikleri modele eklensin. Değerlendirme #3'teki öncelik sırası.
+
+### 2. Modele ekleme
+- **Aksiyon:**
+  - `data/ds8900f_models.csv` (kaynaklı model kataloğu) ve `mainframe_model.py` BÖLÜM 6 (storage) eklendi.
+  - Boyutlandırma: veri × büyüme (3 yıl) × Db2/z/OS ek yükü / host sıkıştırma / RAID 6; birincil dizide Safeguarded Copy rezervi; kopya sayısı topolojiden (M1 1, M2 2, M3 4, M4 4); IOPS = tepe TPS × IOPS/işlem; kopya başına en ucuz model ve dizi sayısı.
+  - Maliyet: (flash liste + kontrolcü liste) × (1 − indirim) + lisans oranı; 5 yıl amortisman, garanti sonrası bakım, tepe güçle enerji.
+  - Latency: sabit 0,3 ms/I/O kaldırıldı. I/O süresi artık storage yolundan hesaplanıyor (okuma/yazma, önbellek isabeti, zHyperLink, zHPF/FICON, senkron Metro Mirror mesafe gecikmesi). Latency fonksiyonları topolojiyi alıyor; senkron kopyalı topolojilerde yazma gecikmesi artıyor.
+  - `solve` ve `solve_yearly` storage'ı topoloji başına hesaplayıp toplama ekliyor; CLI'ya `--data-tb` ve `--data-growth` eklendi. `src/tools/storage_sensitivity.py` eklendi.
+- **Sebep:** Projenin tam yığın TCO iddiası ve "storage iki tarafa ortak arayüzle" kararı (Değerlendirme #3). Mainframe'e özgü yapılar (shared-disk, storage tabanlı replikasyon, zHyperLink, I/O'nun SAP'lerde işlenmesi, Safeguarded Copy) modelde açıkça temsil edilmeli.
+
+### 3. Etkileri
+- **D_io:** average RNI'da 3,0 ms'den M1'de 0,69 ms'ye, M2–M4'te 1,29 ms'ye indi. Latency daha az bağlayıcı: 50K TPS'te 5 ms hedefte 3931-704 yerine 3931-510 seçiliyor; infeasible eşiği 0,69 ms.
+- **Storage maliyeti (50K TPS, 20 TB, %99,9):** 1× DS8910F-993, $7.496/ay, toplamın %9,4'ü. M4'te 4 kopya ile $26.344/ay (%17,7).
+- **Veri hacmi ekseni:** 500 TB'ta storage toplamın %68'i, 2.000 TB'ta %89,5'i. Compute sabitken storage veri hacmiyle doğrusal büyüyor: veri hacmi ekseninde ikinci bir crossover beklentisi mainframe tarafında doğrulandı.
+- **IOPS:** 90K TPS üstünde (900K IOPS) DS8950F gerekiyor; IOPS_PER_TX = 10 varsayımı model seçimini doğrudan etkiliyor ve büyük olasılıkla yüksek.
+- **Yıllık:** storage toplamın %3–7'si; strateji sıralaması değişmedi (C: TFP kazanıyor).
+- **En büyük belirsizlik:** indirim oranı (0,50–0,85 aralığında storage maliyeti ~3 kat değişiyor).
+- **Testler:** storage testi eklendi, latency testinin infeasible eşiği storage'tan gelen D_io'ya bağlandı. 10/10 geçiyor.
+- **Dokümantasyon:** v3'e yeni Bölüm 8 (Storage Katmanı) eklendi; sonraki bölümler 9–12 olarak yeniden numaralandı; latency, girdiler, referanslar, eksikler güncellendi.
+
+### 4. Açık noktalar
+- Gerçek bir DS8900F teklifiyle indirim ve lisans oranlarının kalibrasyonu.
+- GDPS kopya sayılarının GDPS Redbook'tan doğrulanması; uzun mesafe DR hattı maliyeti (storage ağı kapsam dışı kararı GDPS adımında yeniden ele alınmalı).
+- IOPS_PER_TX'in REDP-5320 iş yükü profiliyle kalibrasyonu.
+- TS7700 yedekleme, drive katmanı (Tier 0/1), DS8000 G10.

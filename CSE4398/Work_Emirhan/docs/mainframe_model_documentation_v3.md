@@ -1,6 +1,6 @@
 # Mainframe (Scale-Up) Modelinin Detaylı Dokümantasyonu — v3
 
-*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
+*IBM z16 A01 (3931) · compute kapasitesi, latency, availability, storage (DS8900F), yıllık simülasyon, Capacity-on-Demand ve Tailored Fit Pricing*
 
 Bu doküman mainframe modelinin **güncel halini** anlatır: hangi veri hangi kaynaktan alındı, nasıl işlendi, modele nasıl girdi. Değişikliklerin tarihçesi ve gerekçeleri `PROJECT_LOG.md` dosyasındadır. Önceki sürüm (`mainframe_model_documentation_v2.md`) tarihsel kayıt olarak değiştirilmeden tutulur.
 
@@ -20,7 +20,8 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 - Per-CP M/M/1 kuyruğu + sabit I/O gecikmesiyle latency feasibility (Bölüm 5)
 - IBM Z Resiliency 4-model availability çerçevesi (M1–M4) (Bölüm 6)
 - Kademe başına resmî MSU ile sub-capacity yazılım faturası, donanım amortismanı, bakım, enerji (Bölüm 7)
-- Yıllık simülasyon: 8.760 saatlik profil ve üç donanım edinim/fiyatlama stratejisi: Permanent, Base + On/Off CoD ve Tailored Fit Pricing (base + capacity corridor + CoD); On/Off CoD'nin resmî sınırları (Bölüm 8)
+- Storage katmanı: IBM DS8900F boyutlandırması (veri hacmi, IOPS, topolojiye bağlı kopya sayısı), maliyeti ve I/O gecikmesi; zHyperLink, zHPF/FICON, Metro/Global Mirror, Safeguarded Copy (Bölüm 8)
+- Yıllık simülasyon: 8.760 saatlik profil ve üç donanım edinim/fiyatlama stratejisi: Permanent, Base + On/Off CoD ve Tailored Fit Pricing (base + capacity corridor + CoD); On/Off CoD'nin resmî sınırları (Bölüm 9)
 
 ### 1.3. Kapsam Dışı
 
@@ -30,7 +31,7 @@ Verilen bir iş yükü (throughput, işlem karmaşıklığı, latency hedefi, av
 
 ### 1.4. Henüz Modele Eklenmemiş Bileşenler
 
-CICS TS ve Db2 for z/OS lisansları, DS8900F storage, GDPS'in ayrı kalem olarak modellenmesi, operasyon personeli, zIIP, CBU (DR kapasitesi), stokastik arıza modeli. Bkz. Bölüm 11.
+CICS TS ve Db2 for z/OS lisansları, GDPS'in ayrı kalem olarak modellenmesi, operasyon personeli, zIIP, CBU (DR kapasitesi), yedekleme için sanal teyp (TS7700), stokastik arıza modeli. Bkz. Bölüm 12.
 
 ## 2. Modelin Girdi ve Çıktıları
 
@@ -44,8 +45,10 @@ CICS TS ve Db2 for z/OS lisansları, DS8900F storage, GDPS'in ayrı kalem olarak
 | availability | Hedef uptime | 0.999 – 0.99999999 |
 | [yıllık] preset | Workload preset adı | steady_oltp / retail_bursty / batch_heavy |
 | [yıllık] avg_tps + peak_ratio + peak_days | Custom workload tanımı | ör. 50K TPS, 3.5×, 20 gün |
+| data_tb | Mantıksal Db2 veri hacmi (indeksler dahil), TB | 1 – 5.000 (varsayılan 20) |
+| data_growth | Yıllık veri büyümesi | 0 – 0,5 (varsayılan 0,15) |
 
-Projenin 8 girdisinden data_volume_tb, data_growth_pct, rpo_seconds ve rto_minutes henüz modele bağlı değil (storage ve DR adımlarıyla gelecek).
+Projenin 8 girdisinden rpo_seconds ve rto_minutes henüz modele bağlı değil (DR adımıyla gelecek). IOPS kullanıcıya sorulmaz; TPS × RNI'ya bağlı IOPS/işlem olarak türetilir.
 
 ### 2.2. Çıktılar
 
@@ -138,13 +141,13 @@ Tam-hız CP eşdeğeri (bilgi amaçlı) = PCI / 2.253 (3931-701).
 - average = 1,00 (REDP benchmark noktası)
 - high = 0,70 [ASSUME]
 
-**Kavramsal not:** LSPR'nin Low/High RNI sütunları aynı iş için "nest intensity" (cache/bellek hiyerarşisi yoğunluğu) etkisini ölçer ve etki görece dar bir aralıktadır (ör. 3931-639'da low +%15, high −%10). Modeldeki RNI çarpanı ise buna ek olarak transaction başına iş miktarı farkını da temsil ediyor. İki kavramın ayrılması açık bir iş (Bölüm 11).
+**Kavramsal not:** LSPR'nin Low/High RNI sütunları aynı iş için "nest intensity" (cache/bellek hiyerarşisi yoğunluğu) etkisini ölçer ve etki görece dar bir aralıktadır (ör. 3931-639'da low +%15, high −%10). Modeldeki RNI çarpanı ise buna ek olarak transaction başına iş miktarı farkını da temsil ediyor. İki kavramın ayrılması açık bir iş (Bölüm 12).
 
 ### 4.5. Akademik Notlar
 
 - LSPR oranları IBM'in kendi iş yükü karışımında ölçülür. CICS/Db2 OLTP iş yükünün bu karışıma benzediği bir varsayımdır.
 - z13 değerleri z/OS 2.2 LSPR tablosundan, z16 değerleri güncel ITRR tablosundan alındı. İkisi de aynı bazı kullanıyor, ama farklı z/OS seviyelerinde ölçülmüş olabilir.
-- Köprünün tek kaynağı REDP-5320. Benchmark'ın transaction tanımı (Db2 çağrısı, I/O, transaction başına CPU süresi) henüz modele işlenmedi. Bu, iki taraf arasındaki transaction köprüsünün mainframe yarısıdır (Bölüm 11).
+- Köprünün tek kaynağı REDP-5320. Benchmark'ın transaction tanımı (Db2 çağrısı, I/O, transaction başına CPU süresi) henüz modele işlenmedi. Bu, iki taraf arasındaki transaction köprüsünün mainframe yarısıdır (Bölüm 12).
 
 ## 5. Latency Modeli — Per-CP M/M/1 + Sabit I/O Gecikmesi
 
@@ -168,7 +171,7 @@ Tutucu kuyruk: c adet bağımsız M/M/1 kuyruğu, her birine λ/c yük. Paylaş�
 
 R_cpu(p) = E[X_cpu] × 1/(1 − ρ) × ln(1/(1 − p))
 
-Sabit I/O gecikmesi: D_io = IOPS_PER_TX[rni] × IO_SERVICE_TIME (low 5, average 10, high 20 I/O; 0,3 ms/I/O)
+Sabit I/O gecikmesi: D_io = IOPS_PER_TX[rni] × t_io (low 5, average 10, high 20 I/O). t_io, storage katmanından gelir (Bölüm 8.5): okuma/yazma oranı, DS8900F önbellek isabeti, zHyperLink ve zHPF/FICON servis süreleri, senkron replikasyonun mesafe gecikmesi. Varsayılanlarla t_io M1'de 69 µs, senkron kopyalı topolojilerde (M2–M4) 129 µs; average RNI'da D_io sırasıyla 0,69 ms ve 1,29 ms.
 
 R(p) = D_io + R_cpu(p)
 
@@ -179,15 +182,15 @@ Hedef ≤ D_io ise ya da boş sistemdeki CPU süresi bile bütçeyi aşıyorsa k
 ### 5.4. Basitleştirmeler ve Sınırlamalar
 
 - Operasyonel tavan (0,90) her zaman geçerli. Latency hedefi tavanı yalnızca düşürebilir; daha sıkı SLA hiçbir zaman daha ucuz sonuç vermez.
-- IOPS_PER_TX ve IO_SERVICE_TIME = 0,3 ms [ASSUME]. DS8900F + FICON/zHPF için sektör aralığı ~0,1–0,5 ms. Tüm I/O'lar sıralı/senkron sayılır (tutucu).
+- IOPS_PER_TX [ASSUME]; tüm I/O'lar sıralı/senkron sayılır (tutucu). Db2 buffer pool'ları fiziksel I/O sayısını gerçekte çok azaltır; IOPS_PER_TX = 10 büyük olasılıkla yüksek bir değerdir ve hem D_io'yu hem storage IOPS boyutlandırmasını etkiler (REDP-5320 iş yükü profiliyle kalibre edilmeli).
 - Network (iç fabric), lock/latch beklemesi ve buffer pool isabet oranı modellenmez. Clustered taraf aynı yapıyı (aynı kuyruk ailesi + D_io + ağ gecikmesi) kullanmalıdır.
 
 ### 5.5. Davranış
 
 Latency hedefi 3–500 ms aralığında, 3 RNI × 7 TPS seviyesi (2K–1M) için tarandı. Maliyet hiçbir senaryoda hedef sıkılaştıkça azalmadı. Gözlenen davranış:
 - 50 ms ve üstü hedeflerde seçilen kademe latency'siz durumla aynı.
-- 20 ms ve altında tavan düşer; model yavaş alt-kapasite CP'lerinden daha hızlı CP'li kademelere kayar. Örnek: 50K TPS avg RNI'da latency'siz 3931-436 (36 yavaş CP, p99 ≈ 29 ms), 20 ms hedefte 3931-509, 5 ms hedefte 3931-704.
-- Hedef D_io'ya yaklaştığında infeasible olur (avg RNI'da 3 ms, high RNI'da 6 ms).
+- 20 ms ve altında tavan düşer; model yavaş alt-kapasite CP'lerinden daha hızlı CP'li kademelere kayar. Örnek: 50K TPS avg RNI'da latency'siz 3931-436 (36 yavaş CP, p99 ≈ 27 ms), 20 ms hedefte 3931-509, 5 ms hedefte 3931-510, 2 ms hedefte 3931-704.
+- Hedef D_io'ya yaklaştığında infeasible olur (M1'de avg RNI'da 0,69 ms, high RNI'da 1,39 ms; senkron kopyalı topolojilerde daha yüksek).
 
 ## 6. Availability Modeli — IBM Z Resiliency 4-Model
 
@@ -299,7 +302,7 @@ aylık enerji = 30 × 0.12 × 730 = \$2.628 / ay / frame
 
 Frame sayısıyla çarpılır. Elektrik fiyatı ABD ticari ortalaması; coğrafyaya göre değişir.
 
-**Not:** Enerji frame başına sabit 30 kW alınıyor. 39 CP'nin üzerindeki kademeler birden fazla CPC drawer'ı, büyük yapılandırmalar birden fazla rack gerektirir (Max82–Max200). Bu yüzden büyük kademelerde enerji eksik sayılıyor; resmî güç değerleri IBM z16 IMPP belgesinden alınmalı (Bölüm 11).
+**Not:** Enerji frame başına sabit 30 kW alınıyor. 39 CP'nin üzerindeki kademeler birden fazla CPC drawer'ı, büyük yapılandırmalar birden fazla rack gerektirir (Max82–Max200). Bu yüzden büyük kademelerde enerji eksik sayılıyor; resmî güç değerleri IBM z16 IMPP belgesinden alınmalı (Bölüm 12).
 
 ### 7.5. Toplam Aylık Maliyet
 
@@ -320,17 +323,139 @@ Statik mod, availability 0.999, average RNI:
 | 800.000 | 3931-788 | $1.082.520 | 1,35 |
 | 1.200.000 | 3931-7E7 | $1.623.183 | 1,35 |
 
-25K TPS'in üzerinde eğri neredeyse düz. Sebep: donanım fiyatı PCI ile doğrusal, yazılım tek bir $/MSU ile tüketime orantılı. Ölçek ekonomisini (sabit taban maliyet, azalan birim fiyatlı MLC kademeleri) içeren gerçek maliyet yapısı bir sonraki adımda modellenecek (Bölüm 11).
+25K TPS'in üzerinde eğri neredeyse düz. Sebep: donanım fiyatı PCI ile doğrusal, yazılım tek bir $/MSU ile tüketime orantılı. Ölçek ekonomisini (sabit taban maliyet, azalan birim fiyatlı MLC kademeleri) içeren gerçek maliyet yapısı bir sonraki adımda modellenecek (Bölüm 12).
 
-## 8. Yıllık Simülasyon — Workload Profile ve Fiyatlama Stratejileri
+## 8. Storage Katmanı — IBM DS8900F
 
-### 8.1. Yaklaşımın Gerekçesi
+### 8.1. Neden Bu Dizi ve Mainframe'e Özgü Yapı
+
+Mainframe tarafının storage'ı sabittir: IBM DS8900F (z15/z16 ile aynı nesil, tamamen flash). Projenin "mainframe tarafı tek yığın" ilkesine uyar. IDC'ye göre IBM, mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TT-2019]. DS8000'in ardılı DS8000 G10 bu modelin kapsamı dışındadır (z16 ile eşleşen nesil DS8900F; doğrulanmalı: G10'un çıkış tarihi).
+
+Modelin yakaladığı mainframe'e özgü özellikler:
+
+| Özellik | Ne yapar | Modeldeki etkisi |
+|---|---|---|
+| Shared-disk (Db2 data sharing) | Tüm Db2 üyeleri aynı diske erişir; site başına verinin tek kopyası | Kopya sayısını yalnızca DR topolojisi belirler (Bölüm 8.3) |
+| Storage tabanlı replikasyon | Metro Mirror (senkron), Global Mirror (asenkron + journal), GDPS yönetir | Kopya başına ayrı dizi; senkron kopya yazma gecikmesine mesafe ekler |
+| zHyperLink | z16 ile DS8900F arasında senkron, < 20 µs (~18 µs) küçük blok okuma; 150 m'ye kadar [REDP-5554] | Uygun okumalarda I/O süresi 90 µs yerine 20 µs |
+| zHPF / FICON | Mainframe I/O protokolü; DS8900F önbellek isabetinde ~90 µs [TT-2019] | Okuma (zHyperLink dışı) ve yazma servis süresi |
+| PAV / HyperPAV / SuperPAV | Aynı hacme paralel I/O | Kuyruk etkisi modellenmez; I/O'ların sabit gecikme sayılmasının gerekçesi |
+| Kanal alt sistemi ve SAP'ler | I/O işlemesi genel amaçlı CP'den ayrı | Ek CPU yükü yok: kapasite köprüsündeki CICS benchmark'ı z/OS I/O'sunun CPU maliyetini zaten içeriyor. Clustered tarafta storage yığınının host CPU'su ayrıca eklenmeli |
+| Safeguarded Copy | Fidye yazılımına karşı değiştirilemez anlık kopyalar (yüzlerce, 500'e kadar) [REDP-5554, TT-2019] | Birincil dizide ek kapasite + Copy Services lisansı |
+| CKD hacimlerde veri azaltma yok | Sıkıştırma/dedup dizide değil, host'ta (Db2, z16 on-chip hızlandırıcı) | HOST_COMPRESSION_RATIO parametresi (varsayılan 1,0 = yok) |
+| Lisans paketleri | Base Function (tüm kapasite), z-synergy Services (FICON, PAV, zHPF, zHyperLink; CKD), Copy Services. TB başına kademeli: 100 TB'a kadar 10 TB, 12 PB'a kadar 500 TB adımlarla [REDP-5554] | Fiyat yayımlanmadığı için donanım capex'ine oran [ASSUME] |
+
+### 8.2. Model Kataloğu
+
+`data/ds8900f_models.csv` [REDP-5554, ITCANDOR, TT-2019]:
+
+| Model | Maks. ham kapasite (15,36 TB drive) | Maks. IOPS | Başlangıç liste fiyatı | Tepe güç |
+|---|---|---|---|---|
+| DS8910F-993 | 737 TB (z16 çerçevesine 16U monte) | 860K | $134.000 | 2,2 kW |
+| DS8910F-994 | 2.949 TB (bağımsız raf) | 860K | $134.000 | 4,6 kW |
+| DS8950F-996 | 5.898 TB (2.949 TB üstü E96 genişleme, +3,9 kW) | 2.320K | $196.000 | 6,2 kW |
+
+DS8980F (998) kapsam dışı: yayımlanmış IOPS ve fiyatı yok. IOPS değerleri üretici tepe değerleridir (önbellek isabetli küçük blok). 993'ün z16 çerçevesine monte edilebilmesi mainframe'e özgü bir avantajdır (ayrı raf ve zemin alanı gerektirmez); model bunu ayrıca fiyatlamaz.
+
+### 8.3. Boyutlandırma
+
+Kopya başına ham kapasite:
+
+ham_TB = veri_TB × (1 + büyüme)^3 × DB_OVERHEAD_FACTOR / HOST_COMPRESSION_RATIO / RAID_USABLE_FRACTION
+
+- Planlama ufku 3 yıl [ASSUME]. Dizi bu ufkun sonundaki veriye göre boyutlanır; 5 yıllık NPV adımında büyüme yolu ayrıca modellenecek.
+- DB_OVERHEAD_FACTOR = 1,5 [ASSUME]: Db2 aktif/arşiv log, image copy, work alanı, z/OS sistem hacimleri ve boş alan.
+- RAID_USABLE_FRACTION = 0,75 [ASSUME]: RAID 6 (6+P+Q), yedek drive'lar hariç (doğrulanmalı).
+- Safeguarded Copy için birincil dizide +%25 [ASSUME]; gerçek değer değişim hızına ve saklama sayısına bağlıdır.
+
+Kopya sayısı topolojiden gelir [GDPS] (doğrulanmalı):
+
+| Topoloji | Kopya | Gerekçe |
+|---|---|---|
+| M1 | 1 | Tek dizi |
+| M2 | 2 | Metro Mirror çifti (HyperSwap), senkron |
+| M3 | 4 | Metro/Global Mirror: H1 + H2 (senkron) + H3 + uzak sitede Global Mirror journal kopyası J3 |
+| M4 | 4 | İki aktif site, her birinde Metro Mirror çifti |
+
+IOPS ihtiyacı = tepe TPS × IOPS_PER_TX[rni]. Her kopya için en ucuz model seçilir: dizi sayısı = max(⌈ham_TB / maks_TB⌉, ⌈IOPS / maks_IOPS⌉). İkincil kopyalar failover'da birincilin yükünü taşıyabilmek için aynı IOPS'a göre boyutlanır.
+
+### 8.4. Maliyet
+
+| Kalem | Formül | Kaynak |
+|---|---|---|
+| Flash | ham_TB × $8.620/TB (liste) | 15,36 TB flash kartı liste fiyatı $132.381 = $8,62/GB, kontrolcü hariç, Mayıs 2022 [ITJUNGLE-22] |
+| Kontrolcü | dizi sayısı × başlangıç liste fiyatı | [TT-2019] |
+| İndirim | (flash + kontrolcü) × (1 − 0,70) | [ASSUME]; kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VENDORBENCH] |
+| Lisans | donanım × (0,15 BF + z-synergy, +0,10 Copy Services) | [ASSUME]; yapı [REDP-5554], fiyat yayımlanmıyor |
+| Amortisman | (donanım + lisans) / 5 yıl | Mainframe donanımıyla aynı |
+| Bakım | donanım × %15/yıl, 1 yıllık garanti sonrası (5 yıla ortalanmış) | [VENDORBENCH] %10–25; [IBM-122-037] garanti |
+| Enerji | tepe kW × $0,12 × 730 saat | [REDP-5554] tepe güç (tutucu: tepe değer kullanılıyor) |
+
+Etkin flash fiyatı varsayılanlarla ~$2.590/TB ham. Bu, modelin en belirsiz storage parametresidir: liste fiyatı resmî, ama gerçek indirim müşteriye özeldir (duyarlılık Bölüm 8.7).
+
+### 8.5. I/O Gecikmesi
+
+t_io = r × [h × (z × t_zHL + (1 − z) × t_FICON) + (1 − h) × t_miss] + (1 − r) × (t_FICON + senkron replikasyon)
+
+| Parametre | Değer | Kaynak |
+|---|---|---|
+| r: okuma payı | 0,70 | [ASSUME] OLTP ~70/30 |
+| h: önbellek isabeti | 0,90 | [ASSUME] |
+| z: isabetli okumaların zHyperLink'e uygun payı | 0,80 | [ASSUME] Db2 senkron rastgele okumalar |
+| t_zHL | 20 µs | [REDP-5554] |
+| t_FICON | 90 µs | [TT-2019] (yazmalar DS8900F NVS'ine hızlı yazma) |
+| t_miss | 300 µs | [ASSUME] flash arka uç + FICON |
+| Senkron replikasyon | mesafe × 10 µs/km, varsayılan 20 km | Fiberde ışık ~5 µs/km tek yön; gidiş-dönüş 10 µs/km |
+
+Sonuç: M1'de 69 µs/I/O (D_io 0,69 ms, average RNI). M2–M4'te 129 µs/I/O (1,29 ms). zHyperLink kapalıyken M1'de 105 µs. Metro Mirror mesafesi 100 km'ye çıkarsa M2'de D_io 3,69 ms. Böylece availability topolojisi latency'yi de etkiler: daha yüksek availability, senkron kopya nedeniyle daha yüksek yazma gecikmesi demektir.
+
+### 8.6. Doğrulama Örnekleri
+
+Statik mod, average RNI, 20 TB veri, varsayılan parametreler:
+
+| Senaryo | Seçim | Storage | Storage / toplam |
+|---|---|---|---|
+| 50K TPS, %99,9 | M1, 3931-436 | 1× DS8910F-993, 76 TB ham, $7.496/ay | %9,4 |
+| 50K TPS, %99,999 | M2, 3931-436 | 2× DS8910F-993, $13.778/ay | %10,9 |
+| 50K TPS, %99,99999 | M4, 3931-436 | 4× DS8910F-993, $26.344/ay | %17,7 |
+| 90K TPS, %99,9 | M1, 3931-610 | 900K IOPS → 1× DS8950F-996, $8.419/ay | %6,3 |
+| 300K TPS, %99,9 | M1, 3931-727 | 3M IOPS → 2× DS8950F-996, $10.776/ay | %2,6 |
+
+Veri hacmi ekseni (50K TPS, %99,9): 5 TB'ta storage toplamın %3,9'u, 100 TB'ta %30,6'sı, 500 TB'ta %68'i, 2.000 TB'ta %89,5'i. Storage maliyeti veri hacmiyle neredeyse doğrusal büyürken compute sabit kalır. Bu, Değerlendirme #3'te öngörülen ikinci crossover ekseninin (veri hacmi) mainframe tarafında gerçekten oluştuğunu gösteriyor; clustered tarafta kopya sayısı (replication factor) ve $/TB farklı olduğu için iki eğrinin eğimi farklı olacaktır.
+
+Yıllık mod (50K TPS ortalama, 20 TB): storage yıllık toplamın %3–7'si; strateji sıralaması değişmiyor (storage üç stratejide de aynı).
+
+### 8.7. Duyarlılık
+
+`python src/tools/storage_sensitivity.py` (50K TPS, 20 TB, M1, storage aylık maliyeti):
+
+| Parametre | Değerler → aylık storage |
+|---|---|
+| STORAGE_DISCOUNT | 0,50 → $12.364 · 0,70 → $7.496 · 0,85 → $3.844 |
+| DB_OVERHEAD_FACTOR | 1,2 → $6.283 · 1,5 → $7.496 · 2,0 → $9.517 |
+| HOST_COMPRESSION_RATIO | 1,0 → $7.496 · 1,5 → $5.474 · 2,5 → $3.858 |
+| STORAGE_LICENSE_RATE_BASE | 0,05 → $7.101 · 0,15 → $7.496 · 0,30 → $8.088 |
+
+İndirim oranı tek başına storage maliyetini ~3 kat oynatıyor; bu parametre için gerçek bir teklif veya kaynaklı bir pazar aralığı en değerli kalibrasyon olur.
+
+### 8.8. Sınırlamalar
+
+- Fiyatlar: yalnızca flash liste fiyatı (2022) ve başlangıç fiyatları (2019) kaynaklı; indirim, lisans ve tam konfigürasyon fiyatı varsayım.
+- Drive katmanı tek: tüm kapasite 15,36 TB Tier 2 flash fiyatıyla. Küçük drive'lar (Tier 0/1) TB başına daha pahalı; yüksek IOPS yoğunluğu gereken küçük veri setlerinde maliyet eksik sayılabilir.
+- IOPS kontrolü üretici tepe değerine göre; gerçek kapasite iş yüküne bağlı.
+- Yedekleme (TS7700 sanal teyp, dış yedek) yok; Safeguarded Copy yalnızca mantıksal bozulmaya karşı.
+- Storage ağı (FICON switch'ler, uzun mesafe bağlantı) yok: proje kararıyla iki tarafta da kapsam dışı. Uzun mesafe DR hattının maliyeti bu kararla dışarıda kalıyor; GDPS adımında yeniden değerlendirilmeli.
+- Global Mirror ve M4'ün uzak site replikasyonu asenkron olduğundan latency'ye eklenmiyor; RPO etkisi DR adımında bağlanacak.
+
+## 9. Yıllık Simülasyon — Workload Profile ve Fiyatlama Stratejileri
+
+### 9.1. Yaklaşımın Gerekçesi
 
 Statik tek-nokta sorgusu "şu anda şu yük için ne lazım" sorusunu cevaplar; ama gerçek bir kurumun maliyetini belirleyen şey yılın saatleri arasında değişen trafik desenidir. Tek bir ortalama TPS sayısı R4HA peak'i ve dolayısıyla yazılım faturasını gizler. Bir saatlik patlama tüm ayın yazılım faturasını yukarı çekebilir.
 
 Ayrıca mainframe'in en karakteristik özelliklerinden biri Capacity on Demand'dir (CoD): peak günlerde geçici kapasite ekleme. Bu özellik, mainframe ekonomisini düşünüldüğünden çok daha esnek yapar — ve modelde temsil edilmezse mainframe haksız yere pahalı görünür.
 
-### 8.2. Workload Profile Üretimi
+### 9.2. Workload Profile Üretimi
 
 8.760 saatlik deterministik TPS vektörü üretilir. Üç katmanlı desen:
 - Günlük desen: sabah-öğlen peak (~14:00), gece dip (~03:00) — sinüs dalgası
@@ -345,7 +470,7 @@ Workload Preset'leri
 | retail_bursty | 3.5×, 20 peak gün | Perakende / e-ticaret — Black Friday, Noel |
 | batch_heavy | 2.5×, 30 peak gün | Batch ağırlıklı — ay sonu, vergi dönemi |
 
-### 8.3. R4HA (Rolling 4-Hour Average)
+### 9.3. R4HA (Rolling 4-Hour Average)
 
 IBM MLC sub-capacity fiyatlandırması, her ay için en yüksek kayan 4-saatlik ortalama tüketimi (R4HA) baz alır. Yani kapasite sürekli değil, peak kullanım faturalanır. Model bu mekanizmayı doğrudan uygular:
 
@@ -355,7 +480,7 @@ aylık R4HA peak = max(r4ha\[ay başlangıcı : ay sonu\])
 
 Bu, neden saatlik simülasyon yaptığımızın kalbidir: günlük veya aylık ortalama R4HA'yı kaçırırdı.
 
-### 8.4. Güncel IBM Z Donanım Edinim Modeli
+### 9.4. Güncel IBM Z Donanım Edinim Modeli
 
 IBM z15 ve sonrası için güncel ticari model üç katmanlıdır:
 
@@ -363,9 +488,9 @@ IBM z15 ve sonrası için güncel ticari model üç katmanlıdır:
 2. **Capacity corridor (Tailored Fit Pricing for IBM Z Hardware, "Hardware Consumption Solution").** IBM'in tanımıyla "always-on, subscription-based corridor of pay-for-use capacity, on top of purchased capacity" [TFP-HW]. Corridor kapasitesi her zaman aktiftir; ücret, base'in üstünde **fiilen tüketilen MSU** üzerinden, SCRT ile saatlik ölçülerek kesilir. Boşta duran corridor kapasitesi ücretlendirilmez. Ön koşullar: z15 veya sonrası, z/OS genel amaçlı CP'ler, adanmış (dedicated) CP olmaması ve yazılım tarafında **Software Consumption Solution**. Corridor genişliği IBM'in iş yükü analiziyle belirlenir; IBM'in yayımlanmış maliyet çalışmasındaki örnek corridor, yeni iş yükünün %20'sidir [TFP-TCO].
 3. **On/Off Capacity on Demand.** Corridor'u da aşan talep için geçici kapasite kaydı. 24 saatlik periyotlarla, o gün aktif edilen kapasite üzerinden faturalanır [COD].
 
-Corridor fiyatı, corridor büyüklüğü için IBM'in yayımladığı genel bir kural ve corridor ile On/Off CoD'nin tam etkileşimi kamuya açık değildir; bunlar müşteriye özel sözleşmede belirlenir. Bu yüzden modelde parametre olarak durur ve duyarlılık analizine girer (Bölüm 8.8).
+Corridor fiyatı, corridor büyüklüğü için IBM'in yayımladığı genel bir kural ve corridor ile On/Off CoD'nin tam etkileşimi kamuya açık değildir; bunlar müşteriye özel sözleşmede belirlenir. Bu yüzden modelde parametre olarak durur ve duyarlılık analizine girer (Bölüm 9.8).
 
-### 8.5. Geçici Kapasitenin Resmî Sınırları [COD]
+### 9.5. Geçici Kapasitenin Resmî Sınırları [COD]
 
 SC28-7025'e göre geçici kapasite üç kısıta tabidir. Model her gün aktive edilen kademeyi (corridor tavanı dahil) bu kısıtlarla sınırlar:
 
@@ -379,7 +504,7 @@ Kurulu drawer özelliği varsayılan olarak base kademeyi taşıyan en küçük 
 
 Pratik sonuç: %100 kuralı küçük base'lerde bağlayıcıdır (ör. 3931-705 → en fazla 2 × 1.232 MSU), drawer sınırı ise drawer'ı dolduran base'lerde bağlayıcıdır (ör. 3931-735, Max39 üzerinde en fazla 3931-739'a, yani %11 ek kapasiteye çıkabilir). Yani "ne kadar geçici kapasite alınabilir" sorusunun gerçek cevabı çoğu durumda 2×'ten azdır ve base kademeye bağlıdır.
 
-### 8.6. Üç Strateji
+### 9.6. Üç Strateji
 
 **Strateji A — Permanent.** Yılın peak saatini karşılayan en küçük feasible kademe satın alınır. Yazılım: aylık R4HA sub-capacity MLC.
 
@@ -399,46 +524,46 @@ Yazılım (Software Consumption Solution) [TFP-SW]: R4HA yerine yıl boyunca tü
 
 **Strateji seçimi.** Her availability-feasible topoloji için Strateji A'nın kademesi bulunur; ardından ortalama yükün en az 1,2 katını taşıyan [ASSUME] ve izinli en büyük geçici kademesi peak'i karşılayabilen her base kademe için B ve C simüle edilir. Her strateji için en ucuz sonuç tutulur ve üçü karşılaştırılır. Çok-frame topolojilerde geçici kapasite ücretleri tek frame için hesaplanır; ikinci frame yalnızca failover içindir ve onun geçici kapasitesi CBU konusudur (yol haritası).
 
-### 8.7. Doğrulama Örneği
+### 9.7. Doğrulama Örneği
 
-50K TPS ortalama yük, availability 0,999 (M1), average RNI, varsayılan parametreler:
+50K TPS ortalama yük, availability 0,999 (M1), average RNI, 20 TB veri, varsayılan parametreler. Toplamlara storage dahildir (steady_oltp'de 1× DS8910F-993, yıllık ~$90K; retail_bursty ve batch_heavy'de tepe IOPS 860K'yı aştığı için 1× DS8950F-996, yıllık ~$101K). Storage üç stratejide aynıdır.
 
 | Preset | A: Permanent | B: Base + CoD | C: TFP | Kazanan, A'ya göre |
 |---|---|---|---|---|
-| steady_oltp | $1,395M (3931-516) | $1,427M (515, 261 gün CoD) | **$1,249M** (512 + corridor 516) | C, −%10,5 |
-| retail_bursty | $2,949M (3931-624) | $2,204M (518 → 624, 20 gün) | **$2,201M** (518 + corridor 523 → 624) | C, −%25,3 (B ile fark %0,1) |
-| batch_heavy | $2,178M (3931-616) | $1,770M (515 → 616, 30 gün) | **$1,662M** (512 + corridor 516 → 616) | C, −%23,7 |
+| steady_oltp | $1,485M (3931-516) | $1,517M (515, 261 gün CoD) | **$1,339M** (512 + corridor 516) | C, −%9,8 |
+| retail_bursty | $3,050M (3931-624) | $2,305M (518 → 624, 20 gün) | **$2,302M** (518 + corridor 523 → 624) | C, −%24,5 (B ile fark %0,1) |
+| batch_heavy | $2,279M (3931-616) | $1,871M (515 → 616, 30 gün) | **$1,763M** (512 + corridor 516 → 616) | C, −%22,6 |
 
 Yorum:
 
-- **Günlük dalgalanma corridor'un, seyrek mevsimsel tepeler CoD'nin alanıdır.** steady_oltp'de günlük tepe base'i neredeyse her gün aşar; B bunu 261 gün CoD ile karşılamak zorunda kalır ve A'dan pahalıya gelir, C ise bu tepeleri tüketim bazlı corridor'la ucuza emer. retail_bursty'de maliyeti 20 günlük büyük tepeler belirler; B ve C neredeyse eşittir ve kazanan corridor fiyat varsayımlarına göre değişir (Bölüm 8.8).
+- **Günlük dalgalanma corridor'un, seyrek mevsimsel tepeler CoD'nin alanıdır.** steady_oltp'de günlük tepe base'i neredeyse her gün aşar; B bunu 261 gün CoD ile karşılamak zorunda kalır ve A'dan pahalıya gelir, C ise bu tepeleri tüketim bazlı corridor'la ucuza emer. retail_bursty'de maliyeti 20 günlük büyük tepeler belirler; B ve C neredeyse eşittir ve kazanan corridor fiyat varsayımlarına göre değişir (Bölüm 9.8).
 - **%100 kuralı bağlayıcıdır.** retail_bursty'de peak kademe 3931-624 (3.059 MSU); bunu geçici olarak açabilmek için base en az 1.530 MSU olmalıdır. Model base'i 3931-518'e (1.560 MSU) çıkarır. Sınır uygulanmadan model 3931-515 (1.351 MSU) seçiyordu; bu, resmî kurala göre ulaşılamayan bir konfigürasyondu.
 - Yazılım, yıllık toplamın %42–57'sidir ve en büyük tek kalemdir; donanım fiyatlama stratejisi yalnızca donanım kalemini yeniden dağıtır. Bu, maliyet/TPS eğrisinin düzlüğü sorununu tek başına çözmez.
 
-### 8.8. Duyarlılık Analizi (Fiyatlama Varsayımları)
+### 9.8. Duyarlılık Analizi (Fiyatlama Varsayımları)
 
-`python src/tools/pricing_sensitivity.py` kalibre edilmemiş fiyat parametrelerini tek tek tarar (50K TPS, M1). Yıllık toplamlar, milyon USD; kazanan kalın:
+`python src/tools/pricing_sensitivity.py` kalibre edilmemiş fiyat parametrelerini tek tek tarar (50K TPS, M1, 20 TB; storage dahil). Yıllık toplamlar, milyon USD; kazanan kalın:
 
 | Parametre (varsayılan) | Değer | steady_oltp A / B / C | retail_bursty A / B / C | batch_heavy A / B / C |
 |---|---|---|---|---|
-| CORRIDOR_PREMIUM (1,5) | 1,0 | 1,395 / 1,427 / **1,244** | 2,949 / 2,204 / **2,199** | 2,178 / 1,770 / **1,657** |
-| | 4,0 | 1,395 / 1,427 / **1,275** | 2,949 / **2,204** / 2,212 | 2,178 / 1,770 / **1,686** |
-| CORRIDOR_FRACTION (0,20) | 0,10 | 1,395 / 1,427 / **1,292** | 2,949 / **2,204** / 2,211 | 2,178 / 1,770 / **1,702** |
-| | 0,50 | 1,395 / 1,427 / **1,218** | 2,949 / 2,204 / **2,174** | 2,178 / 1,770 / **1,632** |
-| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 1,395 / 1,427 / **1,289** | 2,949 / **2,204** / 2,248 | 2,178 / 1,770 / **1,701** |
-| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 1,395 / 1,398 / **1,249** | 2,949 / **2,167** / 2,175 | 2,178 / 1,740 / **1,635** |
-| | 4,0 | 1,395 / 1,469 / **1,249** | 2,949 / 2,259 / **2,241** | 2,178 / 1,815 / **1,702** |
-| TFP_SW_DISCOUNT (0) | 0,10 | 1,395 / 1,427 / **1,189** | 2,949 / 2,204 / **2,076** | 2,178 / 1,770 / **1,567** |
+| CORRIDOR_PREMIUM (1,5) | 1,0 | 1,485 / 1,517 / **1,333** | 3,050 / 2,305 / **2,300** | 2,279 / 1,871 / **1,758** |
+| | 4,0 | 1,485 / 1,517 / **1,365** | 3,050 / **2,305** / 2,313 | 2,279 / 1,871 / **1,787** |
+| CORRIDOR_FRACTION (0,20) | 0,10 | 1,485 / 1,517 / **1,382** | 3,050 / **2,305** / 2,312 | 2,279 / 1,871 / **1,803** |
+| | 0,50 | 1,485 / 1,517 / **1,308** | 3,050 / 2,305 / **2,275** | 2,279 / 1,871 / **1,733** |
+| CORRIDOR_SUBSCRIPTION_RATE (0) | 0,25 | 1,485 / 1,517 / **1,379** | 3,050 / **2,305** / 2,349 | 2,279 / 1,871 / **1,802** |
+| COD_DAILY_MULTIPLIER (2,5) | 1,5 | 1,485 / 1,488 / **1,339** | 3,050 / **2,268** / 2,276 | 2,279 / 1,841 / **1,736** |
+| | 4,0 | 1,485 / 1,559 / **1,339** | 3,050 / 2,360 / **2,342** | 2,279 / 1,916 / **1,804** |
+| TFP_SW_DISCOUNT (0) | 0,10 | 1,485 / 1,517 / **1,279** | 3,050 / 2,305 / **2,177** | 2,279 / 1,871 / **1,668** |
 
 Sonuç: steady_oltp ve batch_heavy'de TFP'nin üstünlüğü tüm taranan aralıkta korunur. retail_bursty'de B ile C arasındaki seçim fiyat varsayımlarına duyarlıdır (fark ±%2 içinde); bu, gerçek sözleşme fiyatları olmadan "bursty iş yükü için TFP mi CoD mu" sorusuna kesin cevap verilemeyeceği anlamına gelir ve tezde böyle raporlanmalıdır. Permanent strateji, taranan hiçbir noktada kazanmaz.
 
-### 8.9. Grafik-Hazır CSV Çıktısı
+### 9.9. Grafik-Hazır CSV Çıktısı
 
 İki dosya üretilir, matplotlib/pandas ile doğrudan kullanılabilir:
 - \<prefix\>\_hourly.csv — 8760 satır: hour, load_tps, capacity_tps, utilization, cod_active
 - \<prefix\>\_monthly.csv — 12 satır: month, r4ha_peak_tps, software_cost, other_cost
 
-## 9. Kod Yapısı ve Kullanım
+## 10. Kod Yapısı ve Kullanım
 
 ```
 Work_Emirhan/
@@ -448,28 +573,30 @@ Work_Emirhan/
   src/test_mainframe_model.py          tutarlılık testleri
   src/tools/build_z16_capacity_table.py  kademe tablosunu ham verilerden üretir
   src/tools/pricing_sensitivity.py     fiyatlama varsayımlarının duyarlılık analizi
+  src/tools/storage_sensitivity.py     storage (DS8900F) duyarlılık analizi
+  data/ds8900f_models.csv              DS8900F model kataloğu (kaynaklar dosya başlığında)
 ```
 
-### 9.1. Statik Mod
+### 10.1. Statik Mod
 
-python src/mainframe_model.py --tps 50000 --availability 0.999 --rni average --latency-ms 200
+python src/mainframe_model.py --tps 50000 --availability 0.999 --rni average --latency-ms 200 --data-tb 20 --data-growth 0.15
 
-### 9.2. Yıllık Mod
+### 10.2. Yıllık Mod
 
 python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000 --availability 0.999 --csv out
 
-### 9.3. Yardımcı Modlar
+### 10.3. Yardımcı Modlar
 
 - --demo: hazır 6 senaryo
 - --calibration: kademe tablosu özeti, köprü katsayıları ve örnek kademeler
 
-### 9.4. Testler
+### 10.4. Testler
 
-python src/test_mainframe_model.py — 9 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması.
+python src/test_mainframe_model.py — 10 test: latency monotonluğu, latency'nin sıkı hedefte bağlayıcı olması, kademe tablosunun bütünlüğü (317 satır, seri başına kesin artan PCI ve MSU), köprünün kendi z13 çapalarını %2 içinde ve 7K0 PCI'sini %0,5 içinde üretmesi, MSU faturasının kurulu kapasiteyle sınırlı olması, geçici kapasitenin (B veya C) avantajının burstiness ile artması, geçici hedeflerin SC28-7025 kurallarına uyması (%100, drawer, alt-kapasite; 735 → 739 ve 705 örnekleri), seçilen B/C konfigürasyonlarının bu kurallara uyması, TFP-SW fiyatının gelir-nötr olması ve corridor ücretinin CORRIDOR_PREMIUM ile artması, storage boyutlandırmasının (topolojiden kopya sayısı, IOPS'tan model, veri hacminden kapasite) ve zHyperLink / senkron replikasyonun D_io'ya etkisinin beklenen yönde olması. Latency testinin infeasible eşiği artık storage'tan gelen D_io'ya göre hesaplanıyor.
 
-## 10. Referanslar ve Kullanım Amaçları
+## 11. Referanslar ve Kullanım Amaçları
 
-### 10.1. Kapasite Tablosu ve Throughput Köprüsü
+### 11.1. Kapasite Tablosu ve Throughput Köprüsü
 
 - **[LSPR]** IBM Z LSPR ITRRs (çok imajlı tablo, System z9 2094-701 = 1,00). 3931 4xx/5xx/6xx 1–39 CP ve 701–703 için PCI, MSU, Low/Average/High. https://www.ibm.com/support/pages/ibm-z-lspr-itrrs
 - **[LSPR-z13]** IBM Z LSPR ITR zOSv2r2. Köprü çapaları: 2964-718 = 21.579 PCI (38,55), 2964-726 = 29.048 PCI (51,89). https://www.ibm.com/support/pages/node/6953815
@@ -479,12 +606,12 @@ python src/test_mainframe_model.py — 9 test: latency monotonluğu, latency'nin
 - **[SG24-8952]** IBM Redbooks, "IBM z16 A02 and IBM z16 AGZ Technical Guide" (2023). Kapsam dışı bırakılan rack-mount modellerin tanımı. https://www.redbooks.ibm.com/redbooks/pdfs/sg248952.pdf
 - **[REDP]** IBM Redpaper REDP-5320, "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13" (Burgess, Mitchell, Moxey). 18 CP → 174.000 TPS, 26 CP → 227.000 TPS. https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf
 
-### 10.2. Availability
+### 11.2. Availability
 - **\[REDBOOK\] —** IBM Redbook SG24-8446, "Getting Started with IBM Z Resiliency" (White, Coq). 4-model availability çerçevesinin (M1-M4) ve her topolojinin tasarım hedefleri/RTO-RPO değerlerinin temelidir. Modelin Topology sınıfının tüm yapısı bu kaynaktan alınmıştır. https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf
 - **\[ITIC\] —** ITIC Global Server Reliability Surveys 2020-2024. Bağımsız endüstri anketleri (1.200-1.950 işletme/yıl); mainframe gerçek uptime ölçümleri. Her topolojiye atanan hw_low (alt sınır) rakamının kaynağıdır. Vendor iddiası ile bağımsız ölçümün ikili sunumunu sağlar. https://itic-corp.com/
 - **\[PRECISELY\] —** Precisely, High Availability definition. Endüstri kuralı: toplam downtime'ın yaklaşık %90'ı planlı outage'lardan kaynaklanır. effective_availability hesabındaki ×10 çarpanının (planlı kesinti indirimi) kaynağıdır. https://www.precisely.com/glossary/high-availability-ha/
 
-### 10.3. CoD ve Yıllık Simülasyon
+### 11.3. CoD ve Yıllık Simülasyon
 - **\[COD\] —** IBM SC28-7025, "IBM Z and LinuxONE Capacity on Demand User's Guide". On/Off CoD'nin teknik yapısı (gün-bazlı faturalandırma, 24-saatlik aktivasyon periyodu, prepaid/postpaid modelleri) ve geçici kapasite sınırları (satın alınan kapasitenin %100'ü, kurulu kapasite, alt-kapasite seviye kuralları). Gün başına dolar fiyatı kapalı, premium çarpanı 2.5 \[ASSUME\]. https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf
 - **\[CFCC\] —** IBM Coupling Facility Configuration Options (Raften), IBM Z Resiliency Redbook ve ilgili IBM dokümanları. ICF (Internal Coupling Facility) specialty engine olduğu için kapasite derecelendirmesini etkilemez ve yazılım lisansını artırmaz. M2 topolojisinin software_premium = 1.0 kalmasının (ek frame eklenmesine rağmen) gerekçesidir.
 
@@ -492,32 +619,43 @@ python src/test_mainframe_model.py — 9 test: latency monotonluğu, latency'nin
 - **[TFP-TCO] —** IBM IT Economics Consulting & Research, TFP for IBM Z Hardware maliyet çalışması (Mayıs 2021). Örnek corridor: 4.000 MSU'luk yeni iş yükü için %20 (800 MSU). CORRIDOR_FRACTION = 0,20 varsayılanının kaynağı. IBM sponsorlu bir çalışmadır; yalnızca yapı ve büyüklük örneği olarak kullanılır.
 - **[TFP-SW] —** IBM TFP Software Consumption Solution fiyatlama özeti ve z/OS TFP dokümantasyonu: geçmiş 12 ayın MSU tüketiminden efektif MSU fiyatı, yıllık MSU taahhüdü (kullanılmayan MSU devreder), büyüme için indirimli fiyat, R4HA/tepe/capping yok. Modeldeki gelir-nötr kalibrasyonun gerekçesi.
 
-### 10.4. Maliyet Verileri (Yarı-Kapalı)
+### 11.4. Storage (DS8900F)
+
+- **[REDP-5554] —** IBM Storage DS8900F Product Guide, Release 9.3.2 (https://www.redbooks.ibm.com/redpapers/pdfs/redp5554.pdf). Model kataloğu (çekirdek, bellek, HPFE Gen2 çifti, maks. drive ve ham kapasite), drive katmanları (Tier 0: 0,8/1,6/3,2 TB; Tier 1: 3,84 TB; Tier 2: 1,92/7,68/15,36 TB), tepe güç, zHyperLink (< 20 µs, ~18 µs; 150 m), lisans paketleri (Base Function, Copy Services, z-synergy Services) ve TB kademeleri, Safeguarded Copy.
+- **[ITCANDOR] —** "IBM launches the DS8900F" (https://www.itcandor.com/ibm-storage-q419/). Maks. IOPS: DS8910F 860K, DS8950F 2.320K.
+- **[TT-2019] —** TechTarget, "IBM Storage syncs new DS8900F array to z15 mainframe launch" (https://www.techtarget.com/searchstorage/news/252470647/IBM-Storage-syncs-new-DS8900F-array-to-z15-mainframe-launch). IBM'e göre başlangıç fiyatları ($134.000 DS8910F, $196.000 DS8950F), zHPF yanıt süresi (z13'te 120 → 90 µs), IDC'ye göre mainframe storage pazar payı %40–50.
+- **[ITJUNGLE-22] —** IT Jungle, "More Price Hikes From IBM, Now For High End Storage" (https://www.itjungle.com/2022/05/16/more-price-hikes-from-ibm-now-for-high-end-storage/). IBM duyurusu 322-396: 16 adet 15,36 TB flash kartı (özellik 1625) liste fiyatı $2,12M, kart başına $132.381 = $8,62/GB (kontrolcü hariç); flash +%18, FICON +%40 fiyat artışı.
+- **[VENDORBENCH] —** Kurumsal storage TB başına fiyat karşılaştırmaları (isvcosell.com / vendorbenchmark.com, 2026): liste fiyatından %35–65 indirim, yıllık destek %10–25. Metodolojisi açıklanmamış; yalnızca aralık olarak kullanılır.
+- **[IBM-122-037] —** IBM duyurusu 122-037, DS8900F bir yıllık garanti teklifi.
+- **[GDPS] —** IBM GDPS mimarisi (Metro Mirror çifti ve HyperSwap; Metro/Global Mirror'da uzak sitede journal kopyası). Kopya sayıları doğrulanmalı (GDPS Redbook).
+
+### 11.5. Maliyet Verileri (Yarı-Kapalı)
 - **\[PRICE\] —** Bağımsız mainframe fiyat rehberleri (electronics.alibaba buying guides serisi). z15/z16 donanım fiyat aralığı (\$0.5M-\$10M+), yıllık bakım donanım değerinin %10-15'i, alt ekonomik eşik ~150 MIPS. HARDWARE_COST_PER_MIPS = \$200 ve MAINTENANCE_RATE_ANNUAL = 0.125 değerlerinin kaynağıdır. Açık liste fiyatı olmadığı için kestirim.
 - **\[LIC\] —** MLC/MSU lisanslama kaynakları (atonementlicensing.com, redresscompliance.com). Tipik kurumsal 600-2500 MSU → aylık \$15K-\$80K → ~\$25-55/MSU/ay aralığı. SOFTWARE_COST_PER_MSU_MONTH = \$40 (orta değer) bu kaynaktan.
 - **\[PWR\] —** Aynı fiyat rehberi (electronics.alibaba) enerji ölçütleri. z15/z16 frame başına 20-40 kW; modelde POWER_KW_PER_SYSTEM = 30 kW (orta).
 
-### 10.5. Teorik Temel
+### 11.6. Teorik Temel
 
 - **[QUEUE]** Kuyruk teorisi (per-CP M/M/1). Mainframe WLM/RMF response-time percentile metodolojisiyle uyumlu (SMF 72.3 / 110.1).
 
-## 11. Modelin Bilinen Eksikleri ve Sonraki Adımlar
+## 12. Modelin Bilinen Eksikleri ve Sonraki Adımlar
 
-### 11.1. Kalibre Edilmemiş Parametreler [ASSUME]
+### 12.1. Kalibre Edilmemiş Parametreler [ASSUME]
 
 - RNI çarpanları low 1,25 / high 0,70 (ve LSPR RNI kavramıyla ayrıştırılması)
 - HARDWARE_COST_PER_MIPS = $200/PCI (doğrusal kestirim)
 - SOFTWARE_COST_PER_MSU_MONTH = $40 (tek fiyat; gerçekte ürün başına kademeli)
 - GDPS yazılım primi (M3 ×1,15, M4 ×1,30)
 - COD_DAILY_MULTIPLIER = 2,5 ve base kademe için "≥ ortalama yükün %120'si" eşiği
-- TFP: CORRIDOR_PREMIUM = 1,5, CORRIDOR_FRACTION = 0,20 (IBM örneğinden), CORRIDOR_SUBSCRIPTION_RATE = 0, TFP_SW_DISCOUNT = 0 (Bölüm 8.8'de taranır)
-- IOPS_PER_TX ve IO_SERVICE_TIME = 0,3 ms
+- TFP: CORRIDOR_PREMIUM = 1,5, CORRIDOR_FRACTION = 0,20 (IBM örneğinden), CORRIDOR_SUBSCRIPTION_RATE = 0, TFP_SW_DISCOUNT = 0 (Bölüm 9.8'de taranır)
+- Storage: STORAGE_DISCOUNT = 0,70, lisans oranları 0,15 + 0,10, DB_OVERHEAD_FACTOR = 1,5, RAID_USABLE_FRACTION = 0,75, SAFEGUARDED_RESERVE = 0,25, planlama ufku 3 yıl; I/O yolu: okuma payı 0,70, önbellek isabeti 0,90, zHyperLink payı 0,80, t_miss = 300 µs, Metro Mirror mesafesi 20 km (Bölüm 8)
+- IOPS_PER_TX (D_io'yu ve storage IOPS boyutlandırmasını birlikte belirler; büyük olasılıkla yüksek)
 - ELECTRICITY_USD_PER_KWH = $0,12, POWER_KW_PER_SYSTEM = 30 kW
 
-### 11.2. Yapısal Basitleştirmeler
+### 12.2. Yapısal Basitleştirmeler
 
 - Enerji, büyük kademelerde drawer/rack sayısıyla ölçeklenmiyor (Bölüm 7.4 notu).
-- Kurulu drawer özelliği base'i taşıyan en küçük özellik olarak sabit; drawer maliyeti yok, bu yüzden özellik seçimi karar değişkeni değil (Bölüm 8.5).
+- Kurulu drawer özelliği base'i taşıyan en küçük özellik olarak sabit; drawer maliyeti yok, bu yüzden özellik seçimi karar değişkeni değil (Bölüm 9.5).
 - Corridor genişliği base MSU'nun sabit bir oranı; IBM'de bu, iş yükü analiziyle müşteriye özel belirlenir.
 - On/Off CoD kaydının 180 günlük süresi ve tek-aktif-kayıt kuralı modellenmiyor (simülasyonlarda en fazla 261 gün CoD görülüyor; bu, kayıt yenilemesi gerektirir).
 - R4HA LPAR değil CPC toplamı üzerinden hesaplanıyor.
@@ -525,12 +663,12 @@ python src/test_mainframe_model.py — 9 test: latency monotonluğu, latency'nin
 - Yedek frame tam kapasite ve tam maliyetle sayılıyor (CBU modellenmiyor).
 - M4'ün availability kaynak etiketleri ters görünüyor; M3 ve M4'ün effective low değerleri aynı. RPO/RTO girdileri bağlı değil.
 
-### 11.3. Yol Haritası (Değerlendirme #2, M3–M8)
+### 12.3. Yol Haritası (Değerlendirme #2, M3–M8)
 
 - REDP-5320 iş yükü profilinin çıkarılması (transaction köprüsünün mainframe yarısı; D_io kalibrasyonu)
 - Maliyet yapısı: donanımda taban + drawer + kapasite başına artış (drawer özelliğini karar değişkeni yapar), ürün başına kademeli MLC (z/OS, CICS, Db2), zIIP (TFP-HW zIIP corridor'u dahil)
 - Availability: RPO/RTO bağlantısı, M4 düzeltmesi, DR frame için CBU
-- DS8900F storage (data_volume_tb, data_growth_pct, RNI'dan IOPS)
+- Storage: gerçek bir DS8900F teklifiyle indirim/lisans kalibrasyonu; TS7700 yedekleme; DS8000 G10
 - Personel ve GDPS ayrı kalem
 - 5 yıllık ufuk + NPV, kümelenmiş peak dağılımı; TFP-SW büyüme fiyatı ve MSU taahhüdü
 - (Opsiyonel) z16 A02 rack-mount modelleri
