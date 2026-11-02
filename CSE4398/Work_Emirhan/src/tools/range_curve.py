@@ -23,7 +23,7 @@ def main():
     rows = []
     print(f"Profil: {m.get_workload(workload)}  |  %99.9, {DATA_TB} TB")
     print(f"{'TPS':>8} | {'low $/TPS':>10} {'mid $/TPS':>10} {'high $/TPS':>10} | "
-          f"mid dokum: yazilim / personel / donanim+bakim+enerji / storage / yedek")
+          f"mid dokum: yazilim / personel / donanim+bakim+enerji / storage / yedek / uretim disi")
     for tps in TPS_POINTS:
         rng = m.solve_range(tps, workload=workload, data_tb=DATA_TB)
         cells, rec = [], {"tps": tps}
@@ -37,10 +37,11 @@ def main():
         if mid is not None:
             c = mid["cost"]
             hw = c["hardware_amort"] + c["maintenance"] + c["energy"]
-            parts = [c["software"], c["staff"], hw, c["storage"], c["backup"]]
+            parts = [c["software"], c["staff"], hw, c["storage"], c["backup"], c["nonprod"]]
             share = " / ".join(f"%{p / c['total'] * 100:4.1f}" for p in parts)
             rec.update(mid_software=c["software"], mid_staff=c["staff"],
                        mid_hw_maint_energy=hw, mid_storage=c["storage"], mid_backup=c["backup"],
+                       mid_nonprod=c["nonprod"],
                        mid_total=c["total"])
         else:
             share = "-"

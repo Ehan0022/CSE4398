@@ -101,6 +101,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
 | 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
+| 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
 
 ---
 
@@ -646,3 +647,48 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - ~~Üretim dışı ortamlar~~ → Emirhan aynı gün karar verdi: iki tarafa ayrı, aralıklı `NONPROD_FACTOR` eklenecek (Adım 6). Düşük uç 0 alınarak kapsam dışı senaryo da gösterilecek. Orta değerler için IBM dışında bir kaynak aranmalı.
 - Barroso & Hölzle, Gray 2005 ve Walker 2009 sayılarının birincil metinle doğrulanması.
 - K6 ölçümünün analitik model kapsamıyla ilişkisi güncel x86 model dokümanında yazılmalı (justification §5.2 düzenlenmeyecek).
+
+---
+
+## 2026-11-02 — Oturum 6: Adım 6 — Ortak modül, iki fiyat modu ve üretim dışı ortamlar
+
+### 1. Aksiyon
+- **Altın sonuç kümesi:** Taşımadan önce mevcut kodla 7 statik durum, 10K ve 50K TPS aralık köşeleri, 9 yıllık strateji ve 3 NPV ölçüsü donduruldu (`src/tools/golden_snapshot.py --write` → `data/test/golden_step5.json`).
+- **Ortak modül (`src/common_model.py`):** İki platformun paylaştığı parametre ve kurallar buraya taşındı:
+  - saha olayları ve elle geçiş karar süresi;
+  - yüklü ücret (`WAGE_LEVEL`) ve taban ekip;
+  - elektrik fiyatı;
+  - on-prem nesne depolama, AWS S3, Direct Connect ve WAN fiyatları;
+  - storage fiyat sözleşmesi (`price_per_raw_tb`, `net_price`);
+  - emtia bileşen fiyat dönemi (`PRICE_EPOCH`: 2025-mid / 2026-Q3);
+  - NPV kuralları (artış, iskonto, kalan değer, seviyelendirme);
+  - üretim dışı kalem kuralı;
+  - fiyat kaydı ve kullanıcı fiyat dosyası.
+- **Tek sahip kuralı:** Her parametre tek bir modülde tanımlı. Mainframe kodu ortak değerleri çağrı anında `cm.X` olarak okuyor. Aynı adın iki modülde tanımlı olması test hatası.
+- **M2 kurtarma süresi ayrıştırıldı:** teknik süre (15 / 30 / 60 dk) + ortak elle geçiş karar süresi (45 / 90 / 180 dk). Toplam değişmedi (60 / 120 / 240 dk).
+- **Personel ikiye ayrıldı:** ekip büyüklüğü (`STAFF_SCENARIO`) ve ücret (`WAGE_LEVEL`). Aralık parametresi sayısı 20'den 22'ye çıktı (ücret ve üretim dışı).
+- **Üretim dışı ortamlar (`NONPROD_FACTOR` 0 / 0,20 / 0,50):** Çarpan, birincil sahanın yazılım, compute donanım amortismanı, bakım, enerji ve birincil storage maliyetine uygulanıyor. DR, GDPS, yedek ve personel hariç. Statik, yıllık ve NPV modlarının üçünde de var.
+- **İki fiyat modu:** Kaynaklı fiyat seti (varsayılan) veya kullanıcı fiyat dosyası (`--prices dosya.json`, kısmi geçersiz kılma). Verilen fiyatlar aralık ve tornado'dan çıkarılıyor. `--list-prices` şablon listesi, `--price-vintages` fiyat yaşlarını veriyor. 30 fiyat kayıtlı (12 ortak, 18 mainframe).
+- **Dokümanlar:** `docs/ortak_modul_dokumantasyonu_v1.md` (yeni); `docs/mainframe_model_documentation_v3.md` güncellendi (§7.9 üretim dışı, §7.10 iki fiyat modu, sayılar); Değerlendirme #7 yazıldı.
+
+### 2. Sebep
+- Emirhan "devam" dedi: x86 modeline geçmeden önce Adım 6 (ortak modül).
+- Akademik açıdan: iki tarafın aynı varsayımlarla hesaplandığı yalnızca söylenmemeli, kodda yapısal olarak güvence altında olmalı.
+- Üretim dışı ortamlar: Emirhan'ın kararı (Oturum 5). IBM Eagle'ın 24–80 çekirdek/CP oranının bir kısmı dev/test kopyalarından geliyor.
+- İki fiyat modu: Emirhan'ın önerisi (2026-11-02). Gerçek tekliflerle kullanılınca aralık daralır.
+
+### 3. Sonuç
+- **Taşıma sonuçları değiştirmedi:** altın kümede 0 fark (`NONPROD_FACTOR` = 0'da).
+- **Tutarlılık:** sıfır büyüme, sıfır artış ve r = 0'da NPV = 60 × statik ve yıllık NPV = 5 × yıllık. Düz yükte yıllık = 12 × statik. Üretim dışı kalem dahil.
+- **10K TPS (oltp_rw, %99,9, 20 TB):** $84,62 → **$93,10/TPS/ay** (+%10). Aralık $27,06 / $93,10 / $411,28 (low değişmedi, çünkü low = kapsam dışı senaryo).
+- **5 yıllık NPV:** $50,60M → $55,68M; seviyelendirilmiş maliyet $85,31 → $93,89.
+- **Seçimler:** Kademe, topoloji ve yıllık strateji kazananları değişmedi (steady TFP, retail CoD, batch TFP).
+- **Koşullu sonuç çevrildi:** 5 yıllık NPV'de TFP büyüme indirimi kaldırılınca steady_oltp'de artık B (CoD) %0,3 önde (önce C %0,2 öndeydi). Strateji sonucu ince bir farka dayanıyor ve koşullu yazılmalı.
+- **Tornado:** AWLC fiyat seviyesi, okuma SQL CPU'su, personel eğrisi, yazma CPU'su, ücret, üretim dışı çarpan.
+- **Testler:** 23'ten 30'a çıktı, hepsi geçiyor. Bütün duyarlılık araçları yeni kodla çalışıyor. `range_curve` CSV'lerine üretim dışı payı eklendi.
+
+### 4. Açık kalanlar
+- Üretim dışı çarpanın orta değeri için IBM dışında bir kaynak (Değerlendirme #7 tehdit 3.1).
+- Fiyat dönemi mainframe fiyatlarına uygulanmıyor (mainframe lehine yanlılık, tehdit 3.5).
+- Sıradaki: K6 sysbench ölçümü ve USL uyumu, ardından x86 modeli (`x86_model.py`, aynı ortak modülle).
+- Değerlendirme #6'dan açık kalanlar: drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, Parallel Sysplex.
