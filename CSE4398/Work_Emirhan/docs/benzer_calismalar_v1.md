@@ -92,7 +92,7 @@ Doğrudan paralel çalışmaların neredeyse tamamı bu akışta, ve neredeyse t
   - Yöntem: 5 yıllık ufuk; "kısa ufuklar yenileme etkisini yakalamaz."
 - **Bize getirdiği:**
   - **DR payı bir çıktı kontrolü olabilir.** Modelimiz her topoloji için DR maliyetinin toplam içindeki payını raporlarsa, IBM'in %3 / %21 iddiasıyla karşılaştırılabilir. Bizim mainframe DR'ımız CBU ile ucuz (DR çerçevesi kesri 0,3–1,0); x86'da ikinci sahanın tam kopyası. Bu, iddianın mekanizmasını şeffaf biçimde test eder.
-  - **Üretim dışı ortamlar modelimizde yok.** Bu bilinçli bir kapsam kararı olmalı ve iki tarafta simetrik olarak dışarıda olduğu yazılmalı. IBM'in "+%20 vs +%200" iddiası doğruysa bu, x86 aleyhine büyük bir kalem; dışarıda bırakmak sonucu x86 lehine kaydırır. Tezde tehdit olarak yazılmalı; isteğe bağlı bir `NONPROD_FACTOR` (iki tarafta ayrı, aralıklı) Adım 6'da düşünülebilir. **[KARAR]**
+  - **Üretim dışı ortamlar modelimizde yok.** Bu bilinçli bir kapsam kararı olmalı ve iki tarafta simetrik olarak dışarıda olduğu yazılmalı. IBM'in "+%20 vs +%200" iddiası doğruysa bu, x86 aleyhine büyük bir kalem; dışarıda bırakmak sonucu x86 lehine kaydırır. **Karar (Emirhan, 2026-11-02):** iki tarafa ayrı, aralıklı bir `NONPROD_FACTOR` eklenecek (Adım 6 ortak modülünde). Düşük uç 0 alınarak "kapsam dışı" senaryosu da gösterilecek. Mainframe için IBM'in +%20'si, x86 için +%200'ü yüksek uç adayı; orta değerler bağımsız bir kaynakla daraltılmalı.
   - **Yenileme döngüsü** x86 NPV'sinde (5 yıl ufukta bir yenileme olup olmadığı) açık bir varsayım olmalı. Plan §12'deki x86 amortisman süresi (3–5 yıl) bu kaynakla destekleniyor.
   - **Göç maliyeti** kapsam dışında (justification §5.2: uygulama göçü ayrı problem). Ama göç riski, crossover bölgesinin **yorumunu** değiştirir: x86'nın biraz ucuz çıktığı bir bölgede göç maliyeti farkı silebilir. Tezde crossover'ın "yeşil alan (greenfield) ya da kararlı durum" kararı için geçerli olduğu yazılmalı.
 
@@ -243,7 +243,7 @@ Taramanın amacı yalnız kayıt değil; aşağıdakiler model ve tez için öne
 | # | Bulgu | Kaynak | Önerilen eylem | Nereye |
 |---|---|---|---|---|
 | B1 | Literatürdeki 24–80× çekirdek oranının çoğu kullanım oranı ve çoğaltılmış ortamlardan geliyor | Shedletsky 2008; Eagle 2013 | x86 **hedef kullanım oranını** açık, aralıklı parametre yap (düşük uç %15–20 konsolide edilmemiş, yüksek uç %50–70); tornado'da yerini raporla | x86 parametre listesi (plan §12) |
-| B2 | Üretim dışı ortamlar (dev/test, adanmış HA kopyası) IBM'e göre x86'da çok daha büyük | Eagle 2013 | Ya iki tarafta simetrik kapsam dışı olduğunu sınırlılık olarak yaz, ya da iki tarafta ayrı aralıklı `NONPROD_FACTOR` ekle **[KARAR]** | Adım 6 / sınırlılıklar |
+| B2 | Üretim dışı ortamlar (dev/test, adanmış HA kopyası) IBM'e göre x86'da çok daha büyük | Eagle 2013 | İki tarafta ayrı, aralıklı `NONPROD_FACTOR` ekle; düşük uç 0 (kapsam dışı senaryo). **Emirhan onayladı (2026-11-02)** | Adım 6 / sınırlılıklar |
 | B3 | DR payı %3 (z) vs %21 (dağıtık) iddiası | Eagle 2013 | Her topoloji için **DR'ın toplam içindeki payını** çıktı olarak raporla; iddiayla karşılaştır | Karşılaştırma katmanı |
 | B4 | 2.200 TPS banka benchmark'ında 2,4× | Shedletsky 2008 | 2.200 TPS'te iki tarafı çalıştırıp oranı dış tutarlılık kontrolü olarak raporla (doğruluk iddiası değil) | Değerlendirme #7 |
 | B5 | Barroso: donanım fiyat/performansında küçük sunucu 3–20× önde | Barroso & Hölzle | Maliyet dökümünde x86 donanım avantajının hangi katmanlarda geri alındığını göster (uzlaştırma analizi) | Karşılaştırma katmanı / tez tartışma |

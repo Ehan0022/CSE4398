@@ -643,6 +643,6 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - 12 somut öneri (§8). Bunlardan biri (üretim dışı ortamlar) Emirhan'ın kararını bekliyor. 4 yeni tehdit yazıldı: yayın yanlılığı, sistematik olmayan tarama, K6 ile justification §5.2 arasındaki gerilim, eski veriler.
 
 ### 4. Açık kalanlar
-- Üretim dışı ortamlar: iki tarafta simetrik kapsam dışı mı, yoksa aralıklı `NONPROD_FACTOR` mı?
+- ~~Üretim dışı ortamlar~~ → Emirhan aynı gün karar verdi: iki tarafa ayrı, aralıklı `NONPROD_FACTOR` eklenecek (Adım 6). Düşük uç 0 alınarak kapsam dışı senaryo da gösterilecek. Orta değerler için IBM dışında bir kaynak aranmalı.
 - Barroso & Hölzle, Gray 2005 ve Walker 2009 sayılarının birincil metinle doğrulanması.
 - K6 ölçümünün analitik model kapsamıyla ilişkisi güncel x86 model dokümanında yazılmalı (justification §5.2 düzenlenmeyecek).
