@@ -100,6 +100,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 3 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` | Compute katmanı sağlam (kademeler, köprü, CoD/TFP); storage dahil edilmeli (shared-disk vs shared-nothing, DR, CPU, latency asimetrisi); en büyük eksik yazılım yığını ve kademeli MLC; öncelik sırası |
 | 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
+| 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi |
 
 ---
 
@@ -491,3 +492,51 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Adım 5 (TS7700 yedekleme + 5 yıllık NPV) ve Adım 6 (ortak modül) Emirhan'ın onayını bekliyor.
 - Drawer maliyeti, GDPS Metro topolojisi, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları.
 
+---
+
+## 2026-11-02 — Oturum 3: Adım 5 — Yedekleme (TS7770) ve 5 yıllık NPV
+
+### 1. Aksiyon
+- **Yedekleme katmanı:** `backup_plan` eklendi (kodda BOLUM 6b, v3 §8.10).
+  - Db2 image copy'leri (haftalık tam + günlük artımlı) ve arşiv loglar iki sitelik IBM TS7770 disk-only grid'inde 4 hafta saklanıyor.
+  - Cache (image copy + log) / sıkıştırma ile 20 TB adımlarla boyutlanıyor.
+  - Küme sayısı hem 3,9 PB cache sınırını hem 8 saatlik penceredeki 4.000 MB/s verimi karşılıyor.
+  - Maliyet: küme tabanı $493.080 + cache $2.000/TB, DS8900F ile aynı indirim; 5 yıl amortisman, 1 yıl garanti sonrası %15 bakım, küme başına 4 kW.
+  - Statik, yıllık ve aralık moduna bağlandı.
+  - Aralığa 3 parametre eklendi (saklama süresi, sıkıştırma, cache fiyatı). Toplam 18 parametre.
+- **5 yıllık NPV:** `solve_npv`, `solve_npv_yearly`, `solve_npv_range`, `npv_tornado` ve CLI'da `--npv`, `--tps-growth`, `--discount-rate`, `--years` eklendi (kodda BOLUM 10, v3 §9.10).
+  - Yük yılda %10 büyüyor. Kademe yalnızca yükseliyor (`is_permanent_upgrade`); topoloji 1. yılda sabit.
+  - Storage ve yedek t = 0 ve t = 3'te alınıyor. Capex yıl başı, opex yıl sonu.
+  - Fiyat artışları: yazılım ve GDPS %3, bakım %3, ücret %3,3, enerji %4.
+  - TFP'de 1. yılın MSU-saati taban; tabanın üstü 0,5 büyüme fiyatıyla faturalanıyor. Kalan değer 0.
+  - Çıktılar: NPV, EAC, seviyelendirilmiş $/TPS/ay.
+- **Testler:** `test_backup_layer` ve `test_npv_consistency_and_direction` eklendi; CLI testi `--npv` ve `--years 0` kontrolüyle genişletildi. Toplam 22/22.
+- **Araçlar:** `src/tools/npv_sensitivity.py` eklendi (yedek veri ekseni, statik NPV, r × g, yıllık stratejiler, fiyat artışları, NPV aralığı ve tornado). `range_curve.py`'a yedek sütunu eklendi. Bütün araç çıktıları ve `data/out/` CSV'leri yeniden üretildi.
+- **Dokümantasyon:**
+  - v3'e §8.10 (yedekleme: savunma, hacim, boyutlandırma, maliyet, sonuçlar, tehditler) ve §9.10 (5 yıllık ufuk: gerekçe, formül, büyüme yolu, parametreler, tutarlılık, sonuçlar, tehditler) eklendi.
+  - §0–2, 7.5–7.8, 8.1, 8.4, 8.7, 8.9, 9.6–9.8, 10, 11.5–11.6 (yeni referanslar), 12 ve README güncellendi.
+- **Değerlendirme #6:** `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md`.
+
+### 2. Sebep
+- Emirhan'ın isteği: "adım 5'e geç", sonuçlar detaylı dokümante edilsin.
+- Yedekleme projenin maliyet kategorilerinden biri ve M1'in RPO/RTO iddiasının dayanağı. NPV, 5 yıllık bir satın alma kararının (büyüme, yükseltme, fiyat artışı, TFP büyüme fiyatı) karşılaştırma ölçüsü.
+
+### 3. Sonuç
+- **Statik, 10K TPS, 20 TB:**
+  - Aylık $852.343 = $85,23/TPS (önce $84,06). Fark yedek kalemidir (aylık $11.790, %1,4).
+  - Aralık $27,17 / $85,23 / $341,23.
+- **Veri ekseni (10K TPS):** Storage + yedek payı 5 TB'ta %1,5, 500 TB'ta %22, 2.000 TB'ta %52.
+- **Statik NPV (10K TPS):** $50,98M. EAC $12,43M. Seviyelendirilmiş $85,96/TPS/ay (statikten +%0,9). NPV aralığı $32,07 / $85,96 / $409,24.
+- **r ve g:** r %5 → %10'da NPV −%12, seviyelendirilmiş maliyet ±%1. Büyüme %0 → %20'de seviyelendirilmiş maliyet $91,54 → $81,12.
+- **Yıllık NPV (10K ortalama, M$):**
+  - steady: P 69,40 / B 68,11 / **T 65,86**
+  - retail: P 115,54 / B 113,15 / **T 112,49**
+  - batch: P 92,25 / B 88,33 / **T 87,20**
+  - Büyüme indirimi yoksa ya da büyüme 0 ise retail'de B kazanıyor.
+- **Yıllık tek yıl:** Yedek her stratejiye ~$141K/yıl ekliyor. Kazananlar değişmedi (steady C, retail B, batch C).
+- **Tutarlılık:** r = 0, büyüme ve artış 0 iken NPV = 60 × statik aylık ve 5 × yıllık toplam (10⁻⁹ içinde).
+- **Bulgu:** retail_bursty'de 5. yılda Max39 drawer sınırı base'i 716 → 740'a zorluyor (~$6,5M capex). Drawer maliyeti eksikliğinin somut bir sonucu.
+
+### 4. Açık kalanlar
+- Adım 6 (ortak modül). İçeriği Değerlendirme #6 Bölüm 4'te: yedek girdileri, r/g/zamanlama, fiyat artışı sınıfları, genişleme kuralı, teknoloji yenileme kuralı. Emirhan'ın onayını bekliyor.
+- Drawer maliyeti (önceliği yükseldi), GDPS Metro topolojisi, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, gerçek bir TS7770 teklifi.

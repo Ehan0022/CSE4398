@@ -2,6 +2,7 @@
 mainframe_model.py icin hizli tutarlilik testleri (sadece standard library).
 Calistirma:  python test_mainframe_model.py
 """
+import math
 import mainframe_model as m
 
 LATENCIES_MS = [500, 200, 100, 50, 20, 15, 12, 10, 8, 6, 5, 4, 3]
@@ -299,7 +300,8 @@ def test_static_equals_yearly_on_flat_load():
     tier, topo, cost = r[0], r[1], r[2]
     sim = m.simulate_yearly(flat, tier, topo, strategy="permanent",
                             storage_monthly=cost["storage"],
-                            staff_monthly=cost["staff"])
+                            staff_monthly=cost["staff"],
+                            backup_monthly=cost["backup"])
     assert abs(sim["yearly_total"] - 12 * cost["total"]) / (12 * cost["total"]) < 1e-3
 
 
@@ -329,6 +331,8 @@ def test_cli_edge_cases():
     assert run("--yearly", "--avg-tps", "0").returncode != 0
     assert run("--tps", "1000", "--availability", "1.5").returncode != 0
     assert run("--tps", "1000", "--sql-reads", "0", "--sql-writes", "0").returncode == 0
+    assert run("--tps", "1000", "--npv").returncode == 0
+    assert run("--tps", "1000", "--npv", "--years", "0").returncode != 0
     custom = m.WorkloadProfile("c", 0, 0, 1, False, "", "")
     assert m.ziip_fraction(custom) == 0
     with_db2 = m.WorkloadProfile("c", 2, 1, 1, True, "", "")
@@ -353,6 +357,60 @@ def test_io_delay_uses_profile_mix():
     redp = m.get_workload("redp_light")
     assert redp.sync_read_io() == 0
     assert m.io_delay_seconds("redp_light", m2) > m.io_delay_seconds("redp_light", m1)
+
+
+ZERO_GROWTH = {"NPV_TPS_GROWTH": 0.0, "DEFAULT_DATA_GROWTH": 0.0, "SW_PRICE_ESCALATION": 0.0,
+               "HW_SERVICE_ESCALATION": 0.0, "WAGE_ESCALATION": 0.0, "ENERGY_ESCALATION": 0.0}
+
+
+def test_backup_layer():
+    """TS7770: hacim veri, saklama ve TPS ile artar; sikistirma cache'i azaltir;
+    iki site; cok buyuk veride verim siniri kume sayisini arttirir; topolojiden bagimsiz."""
+    b = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)
+    assert b["clusters"] == 2 * b["clusters_per_site"] and b["clusters_per_site"] >= 1
+    assert b["cache_tb_per_site"] % m.BACKUP_CACHE_INCREMENT_TB == 0
+    assert m.backup_plan(20000, data_tb=20)["log_tb"] > m.backup_plan(10000, data_tb=20)["log_tb"]
+    assert m.backup_plan(10000, data_tb=200)["capex"] > b["capex"]
+    with m.use_values({"BACKUP_RETENTION_WEEKS": 8}):
+        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)["image_copy_tb"] > b["image_copy_tb"]
+    with m.use_values({"BACKUP_COMPRESSION": 3.0}):
+        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)["cache_tb_per_site"] <= b["cache_tb_per_site"]
+    big = m.backup_plan(10000, data_tb=2000)
+    window_tb = m.BACKUP_CLUSTER_MB_S * m.BACKUP_WINDOW_HOURS * 3600 / 1e6
+    assert big["clusters_per_site"] >= math.ceil(big["daily_tb"] / window_tb) > 1
+    m1, m4 = m.TOPOLOGIES[0], m.TOPOLOGIES[3]
+    assert m.backup_plan(5000, topology=m1)["monthly_total"] == m.backup_plan(5000, topology=m4)["monthly_total"]
+    r = m.solve(10000, 0.999, verbose=False, data_tb=20)
+    assert r[2]["backup"] > 0 and abs(r[2]["total"] - sum(
+        r[2][k] for k in ("software", "hardware_amort", "maintenance", "energy", "gdps",
+                          "staff", "storage", "backup"))) < 1e-6
+
+
+def test_npv_consistency_and_direction():
+    """r = 0, buyume 0, artis 0 iken NPV = 60 x statik aylik toplam ve
+    = 5 x yillik toplam (her strateji). Yuksek iskonto NPV'yi dusurur; kademe
+    yalnizca yukselir; TFP buyume fiyati 1,0'da TFP'nin NPV'si artar."""
+    with m.use_values(ZERO_GROWTH):
+        st = m.solve(10000, 0.999, verbose=False, data_tb=20)
+        n = m.solve_npv(10000, data_tb=20, discount_rate=0.0)
+        assert abs(n["npv"] - 60 * st[2]["total"]) / n["npv"] < 1e-9
+        for strat in ("permanent", "tfp"):
+            y = m.solve_yearly("steady_oltp", 10000, strategies=(strat,), verbose=False, data_tb=20)
+            ny = m.solve_npv_yearly("steady_oltp", 10000, strat, data_tb=20, discount_rate=0.0)
+            assert abs(ny["npv"] - 5 * y["yearly_total"]) / ny["npv"] < 1e-9
+    a = m.solve_npv(10000, discount_rate=0.05)
+    b = m.solve_npv(10000, discount_rate=0.10)
+    assert b["npv"] < a["npv"]
+    g = m.solve_npv(10000, tps_growth=0.15)
+    tiers = [r["tier"] for r in g["years"]]
+    assert all(m.is_permanent_upgrade(p, t) for p, t in zip(tiers, tiers[1:]))
+    assert tiers[-1].pci > tiers[0].pci
+    assert all(r["capex"] >= 0 for r in g["years"])
+    t05 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.10)
+    with m.use_values({"TFP_GROWTH_PRICE_FACTOR": 1.0}):
+        t10 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.10)
+    assert t10["npv"] > t05["npv"]
+    assert t05["monotonic_base"]
 
 
 if __name__ == "__main__":
