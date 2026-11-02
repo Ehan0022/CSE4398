@@ -8,18 +8,36 @@ Teknik dokumantasyon: docs/mainframe_model_documentation_v3.md.
 
 Akis:
   1. Kademe tablosu (data/z16_a01_capacity.csv, 317 kademe) yuklenir.
-  2. Kapasite koprusu: kademe TPS'i = PCI x TPS_PER_PCI x RNI carpani.
+  2. Kapasite koprusu: kademe TPS'i = PCI x TPS_PER_PCI / w. TPS_PER_PCI
+     REDP-5320 islemi icindir; w, is yuku profilinin (okuma/yazma SQL
+     bilesimi) REDP islemine goreli CPU agirligidir.
      TPS_PER_PCI, REDP-5320 z13 benchmark'inin ayni LSPR/PCI olcegindeki
      z13 kapasitesine bolunmesiyle bulunur (nesiller arasi LSPR oranlari
      zaten bu olcege gomulu).
   3. Latency hedefi varsa per-CP M/M/1 + sabit I/O gecikmesinden dinamik
      utilization tavani; operasyonel %90 tavan her zaman gecerli.
-  4. Availability hedefini karsilayan topolojiler (M1-M4) filtrelenir
-     (ITIC alt siniri + planli kesinti duzeltmesi).
-  5. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir.
-  6. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
+  4. Availability, RPO ve RTO hedeflerini karsilayan topolojiler (M1-M4)
+     filtrelenir. Availability olay tabanlidir: saha olayi sikligi x
+     topolojinin kurtarma suresi + planli kesinti. DR frame'i CBU ile,
+     GDPS sabit aylik kalem olarak fiyatlanir.
+  5. Storage (IBM DS8900F): veri hacmi, IOPS ve topolojiye bagli kopya
+     sayisindan boyutlandirma ve maliyet; I/O gecikmesi (D_io) storage
+     yolundan (zHyperLink, zHPF/FICON, senkron Metro Mirror) hesaplanir.
+     Yedekleme: Db2 image copy + arsiv log icin uc hedef (TS7770 sanal teyp,
+     on-prem nesne depolama, AWS S3); pencere, M1 geri yukleme ve TCT verimi
+     kisitlarini karsilayan en ucuzu secilir (BOLUM 6b).
+  6. Maliyet: yazilim yigini (z/OS + CICS TS + Db2) IBM AWLC kumulatif
+     kademeli fiyatla, faturalanan (sub-capacity) MSU uzerinden; zIIP payi
+     MSU'ya sayilmaz, zIIP motorlari donanima eklenir.
+     Altyapi personeli kapasiteyle alt-dogrusal FTE egrisinden (3 senaryo).
+  7. Tum (kademe x topoloji) kombinasyonlarindan en ucuzu secilir. Kesin
+     fiyati olmayan parametreler icin --range low/mid/high aralik verir.
+  8. Yillik modda 8760 saatlik profil ve uc fiyatlama stratejisi: Permanent,
      Base + On/Off CoD, Tailored Fit Pricing (base + corridor + CoD). Gecici
      kapasite SC28-7025 sinirlarina tabidir (%100 kurali, drawer, alt-kapasite).
+  9. --npv: 5 yillik ufuk. Yuk her yil buyur, kademe yalnizca yukselir,
+     storage/yedek dongulerle alinir, fiyat artislari bilesik; nakit akislari
+     iskonto edilir (NPV, EAC, seviyelendirilmis $/TPS/ay; BOLUM 10).
 
 KAPSAM DISI: z16 A02 / AGZ (3932, rack-mount) modelleri ve 3931-400 (yalnizca
   CF). Bkz. dokumantasyon, Bolum 3.4.
@@ -36,9 +54,13 @@ KAYNAK ETIKETLERI:
                (200 tam-hiz + 117 alt-kapasite, ilk 39 CP icin)
   [REDP]     = IBM Redpaper REDP-5320 "CICS TS V5.3 Benchmark on IBM z13"
                (18 CP -> 174000 TPS ; 26 CP -> 227000 TPS)
-  [REDBOOK]  = IBM Resiliency Redbook SG24-8446, Table 1-4 + Section 2
-  [ITIC]     = ITIC Global Server Reliability Surveys 2020-2024
-  [PRECISELY]= Precisely HA Definition: total downtime'in %90'i planned
+  [SG24-8446]= IBM Z Resiliency Redbook: desenler, genel RTO/RPO araliklari
+  [SG24-6374]= IBM GDPS Redbook, Tablo 1-1 (DR seceneklerinin RPO/RTO'su)
+  [GDPS-2026]= S. Cook (IBM GDPS Dev.), VM Workshop 2026: GDPS RPO/RTO degerleri
+  [GDPS-CA-2021] = IBM GDPS CA sunumu: planli kesinti 4 saat -> <30 sn
+  [CBU]      = SC28-7025 CBU bolumu: test/aktivasyon kurallari, DR yazilim kurali
+  [UPTIME-2025], [UPTIME-2022] = Uptime Institute Annual Outage Analysis
+  [ITIC-2023]= ITIC sunucu donanim guvenilirligi (yalnizca D_cpc terimi)
   [QUEUE]    = Kuyruk teorisi (per-CP M/M/1); WLM/RMF percentile metodolojisiyle uyumlu
   [CFCC]     = Coupling Facility / ICF: specialty engine, yazilim lisansini etkilemez
   [R4HA]     = IBM MLC sub-capacity: aylik en yuksek 4-saatlik kayan ortalama
@@ -46,9 +68,27 @@ KAYNAK ETIKETLERI:
   [TFP-HW]   = IBM Tailored Fit Pricing, Hardware Consumption Solution (corridor)
   [TFP-TCO]  = IBM IT Economics, TFP for IBM Z Hardware maliyet calismasi (2021)
   [TFP-SW]   = IBM Tailored Fit Pricing, Software Consumption Solution
+  [REDP-5554]= IBM Storage DS8900F Product Guide R9.3.2 (storage, BOLUM 6)
+  [ITCANDOR], [TT-2019], [ITJUNGLE-22], [VENDORBENCH] = DS8900F IOPS / fiyat kaynaklari (BOLUM 6)
   [PRICE]    = Mainframe fiyat rehberleri (donanim ~$0.5M-10M+; bakim %10-15/yil)
-  [LIC]      = MSU lisanslama: ~$25-55 / MSU / ay
+  [AWLC]     = IBM AWLC kademe sinirlari (zNALC ZSL03508, CMG 2020), kumulatif fiyat
+  [IBM-2004] = IBM WLC sunumu (vm.ibm.com 2005-Z24): Db2 kademe fiyatlari ve
+               ornek fatura (z/OS, CICS, Db2) -> egri + urun katsayilari
+  [LONGPELA] = Longpela: L7 MSU fiyati L6'dan ~%20 dusuk (L4+ dusus varsayimi)
+  [REDP-PROFILE] = REDP-5320 sayac tablolari: islem basina 4.76 okuma, 0.047
+               guncelleme, 0.062 CF log yazimi, 85.9 us CPU (data/raw/)
+  [CATTERALL-2019/2012] = R. Catterall (IBM) Db2 blogu: CICS-Db2 islemi ~1.3 ms
+               Db2 CPU; CICS'te tek INSERT ~68 us
+  [SYSBENCH], [TPC-B] = profil bilesimleri (oltp_rw, tpcb_like)
+  [IBM-EAGLE] = IBM Eagle TCO: "5 FTE + her 625 MIPS icin 1 FTE" (17 musteri)
+  [GARTNER-ITKMD] = Gartner IT Key Metrics 2016: MIPS/FTE 152 -> 268
+  [BLS-OEWS], [BLS-ECEC] = BLS maas medyanlari (2025) ve yan hak payi (%30)
+  [ZIIP]     = z16 zIIP kurallari (SG24-8950): MSU disi, tam hiz, zIIP:CP <= 2:1
   [PWR]      = Enerji: 20-40 kW/frame
+  [TS7700-2024], [TS7700-2006], [DB2-BACKUP], [IDUG-2024], [SG24-8381] (DS8000 TCT),
+  [AWS-S3-2026], [AWS-DX-2026], [MINIO-TCO] = yedekleme (BOLUM 6b)
+  [DAMODARAN-2026], [IBM-PRICE-2026], [BLS-ECI-2026], [EIA-EPM],
+  [TFP-SW-2021], [KYNE-2022] = 5 yillik ufuk ve NPV (BOLUM 10)
   [ASSUME]   = Kalibre edilmemis varsayim
 ================================================================================
 """
@@ -132,16 +172,119 @@ def cp_equivalents(tier):
     return tier.pci / 2253.0   # 3931-701 = 2253 PCI [LSPR]
 
 
-# [ASSUME] Islem karmasikligi carpanlari (TPS kapasitesine uygulanir).
-# average = 1.0 = REDP benchmark is yuku. low/high kalibre edilmedi.
-# Not: LSPR'nin Low/High RNI sutunlari ayni is icin "nest intensity" etkisini
-# olcer (39-way'de ~+%15 / -%10); buradaki carpan ise transaction basina is
-# miktarindaki farki da temsil ediyor. Iki kavramin ayrilmasi acik is.
-RNI_MULTIPLIER = {
-    "low":     1.25,   # hafif islem -> daha fazla TPS   [ASSUME]
-    "average": 1.00,   # REDP benchmark noktasi          [REDP baz]
-    "high":    0.70,   # agir islem -> daha az TPS       [ASSUME]
+# ------------------------------------------------------------------------------
+# IS YUKU PROFILI — "1 islem"in bilesimle tanimi (eski RNI carpanlarinin yerine)
+# ------------------------------------------------------------------------------
+# Kopru (TPS_PER_PCI) REDP-5320 islemiyle kalibre: 1 STARTBROWSE + 5 READNEXT,
+# bellekteki CICS shared data table (VSAM KSDS), ~%4 guncelleme, Db2 yok,
+# neredeyse sifir DASD I/O, ~86 us CPU (z13) [REDP-PROFILE]. Bu islem cok hafif.
+# Gercekci bir OLTP islemi, bilesimiyle tanimlanir ve CPU agirligi w REDP
+# islemine goreli hesaplanir:
+#     CPU(us) = CPU_US_TM_BASE + reads x CPU_US_PER_SQL_READ + writes x CPU_US_PER_SQL_WRITE
+#     w = CPU / CPU_US_TM_BASE                   (REDP profili: w = 1)
+# Ayni bilesim I/O'yu da verir (Db2 buffer pool modeli):
+#     sync_io = reads x GETPAGES_PER_SQL_READ x (1 - BP_HIT_RATIO) + LOG_SYNC_IO_PER_COMMIT
+#     storage_iops = sync_io + writes x ASYNC_WRITE_IO_PER_SQL_WRITE
+# Clustered taraf AYNI bilesimi (reads, writes, commit) kullanir; boylece TPS
+# iki tarafta ayni isi ifade eder (Degerlendirme #1, tehdit 1).
+CPU_US_TM_BASE = 85.9          # REDP islemi, z13 CP-us (CICS + 5 bellek okumasi) [REDP-PROFILE]
+CPU_US_PER_SQL_READ = 30.0     # Db2 tekil/indeksli SELECT, z13-donemi CP-us [ASSUME, aralik 15-60]
+CPU_US_PER_SQL_WRITE = 70.0    # Db2 INSERT/UPDATE/DELETE; CICS'te INSERT ~68 us [CATTERALL-2012]
+GETPAGES_PER_SQL_READ = 4.0    # indeks seviyeleri + veri sayfasi [ASSUME]
+BP_HIT_RATIO = 0.95            # Db2 buffer pool isabet orani, OLTP [ASSUME, aralik 0.90-0.99]
+LOG_SYNC_IO_PER_COMMIT = 1.0   # commit'te senkron log yazimi (dual log paralel) [ASSUME]
+ASYNC_WRITE_IO_PER_SQL_WRITE = 0.5   # deferred write, sayfa birlestirme [ASSUME]
+
+
+class WorkloadProfile:
+    """Bir islem tipinin bilesimi. Override alanlari (sync_io, storage_iops)
+    yalnizca dogrudan olculmus profiller icindir (REDP)."""
+    def __init__(self, name, reads, writes, commits, ziip_eligible, label,
+                 source, sync_io=None, storage_iops=None):
+        self.name, self.reads, self.writes, self.commits = name, reads, writes, commits
+        self.ziip_eligible = ziip_eligible   # Db2 isi var mi (zIIP'e kayabilir mi)
+        self.label, self.source = label, source
+        self._sync_io, self._storage_iops = sync_io, storage_iops
+
+    def cpu_us(self):
+        return (CPU_US_TM_BASE + self.reads * CPU_US_PER_SQL_READ
+                + self.writes * CPU_US_PER_SQL_WRITE)
+
+    def cpu_weight(self):
+        return self.cpu_us() / CPU_US_TM_BASE
+
+    def sync_read_io(self):
+        """Senkron okuma I/O'su: buffer pool iskasi. Olculmus profilde 0
+        (REDP'nin senkron I/O'su VSAM rewrite, yani yazma)."""
+        if self._sync_io is not None:
+            return 0.0
+        return self.reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
+
+    def sync_write_io(self):
+        """Senkron yazma I/O'su: commit'te log yazimi (olculmus profilde rewrite)."""
+        if self._sync_io is not None:
+            return self._sync_io
+        return self.commits * LOG_SYNC_IO_PER_COMMIT
+
+    def sync_io(self):
+        return self.sync_read_io() + self.sync_write_io()
+
+    def storage_iops(self):
+        if self._storage_iops is not None:
+            return self._storage_iops
+        return self.sync_io() + self.writes * ASYNC_WRITE_IO_PER_SQL_WRITE
+
+    def __repr__(self):
+        return (f"{self.name}: {self.reads:g} okuma + {self.writes:g} yazma SQL, "
+                f"w={self.cpu_weight():.2f}, sync I/O={self.sync_io():.2f}, "
+                f"IOPS={self.storage_iops():.2f}")
+
+
+WORKLOAD_PROFILES = {
+    # Kopru isleminin kendisi. Db2 yok; DASD: VSAM rewrite 0.047 (senkron) +
+    # CF log yazimi 0.062 (sonradan DASD'ye offload) [REDP-PROFILE].
+    "redp_light": WorkloadProfile("redp_light", 0, 0, 1, False,
+                                  "REDP-5320 islemi (CICS bellek tablosu, Db2 yok)",
+                                  "REDP-PROFILE", sync_io=0.047, storage_iops=0.109),
+    # TPC-B / debit-credit bileseni: 1 SELECT + 3 UPDATE + 1 INSERT.
+    "tpcb_like":  WorkloadProfile("tpcb_like", 1, 4, 1, True,
+                                  "Debit-credit (TPC-B bileseni)", "TPC-B"),
+    # sysbench oltp_read_write: 10 point + 4 range SELECT, 2 UPDATE, 1 DELETE,
+    # 1 INSERT, 1 COMMIT. x86 tarafinda yaygin olculen bilesim -> varsayilan.
+    "oltp_rw":    WorkloadProfile("oltp_rw", 14, 4, 1, True,
+                                  "Okuma-yazma OLTP (sysbench oltp_read_write bileseni)",
+                                  "SYSBENCH"),
+    # Agir CICS-Db2 islemi: ~1.3 ms Db2 CPU'luk bir saha olcumunun buyuklugu
+    # [CATTERALL-2019]; bilesim bu buyuklugu verecek sekilde secildi [ASSUME].
+    "oltp_heavy": WorkloadProfile("oltp_heavy", 30, 6, 1, True,
+                                  "Agir CICS-Db2 islemi (~1.3 ms CPU)",
+                                  "CATTERALL-2019"),
 }
+DEFAULT_WORKLOAD = "oltp_rw"
+
+
+def get_workload(workload):
+    """Profil adi veya WorkloadProfile nesnesi -> WorkloadProfile."""
+    if isinstance(workload, WorkloadProfile):
+        return workload
+    return WORKLOAD_PROFILES[workload]
+
+
+def ziip_fraction(workload=DEFAULT_WORKLOAD):
+    """Profilin zIIP'e kayan CPU payi: Db2 isi yoksa 0."""
+    return ZIIP_OFFLOAD_FRACTION if get_workload(workload).ziip_eligible else 0.0
+
+
+# [ZIIP] zIIP (z Integrated Information Processor): Db2 DRDA istekleri, Java,
+# XML ve bazi Db2 sistem gorevleri (prefetch, log, utility) zIIP'te calisir.
+# zIIP kapasitesi MSU'ya sayilmaz -> MLC faturasina girmez; donanimi GP'den
+# ucuzdur; alt-kapasite (4xx/5xx/6xx) modellerde bile tam hizda calisir.
+# Uygunluk is yukune baglidir: yerel CICS-COBOL-Db2 OLTP'de dusuk (~%0-10),
+# DRDA/Java agirlikli OLTP'de %40'a cikabilir. Varsayilan muhafazakar.
+ZIIP_OFFLOAD_FRACTION = 0.10   # CPU isinin zIIP'e kayan payi [ASSUME, aralik 0-0.40]
+ZIIP_ENGINE_PCI = 2253.0       # tek tam-hiz motor = 3931-701 PCI [LSPR]
+ZIIP_PER_CP_LIMIT = 2          # z16: zIIP sayisi <= 2 x GP CP [ZIIP]
+ZIIP_HW_PRICE_FACTOR = 0.25    # zIIP motor fiyati / esdeger GP fiyati [ASSUME]
 
 # ------------------------------------------------------------------------------
 # BOLUM 4 — LATENCY MODELI (per-CP M/M/1 kuyrugu + sabit I/O gecikmesi)
@@ -155,10 +298,12 @@ RNI_MULTIPLIER = {
 #     Paylasimli kuyruktan (M/M/c) daha kotu yanit verir -> gercek bir ust sinir.
 #       R_cpu(p) = E[X_cpu] / (1 - rho) * ln(1/(1-p))
 #   - Sabit I/O gecikmesi (kuyruktan bagimsiz, deterministik):
-#       D_io = IOPS_PER_TX[rni] * IO_SERVICE_TIME_S
-#     IOPS_PER_TX proje kararindan (RNI hem CPU hem I/O yogunlugunu temsil eder,
-#     low ~5, avg ~10, high ~20 IOPS/tx). Tum I/O'lar sirali/senkron sayilir
-#     (tutucu; gercekte bir kismi paralel ve buffer pool'dan karsilanir).
+#       D_io = sync_io(profil) * t_io(topoloji)
+#     t_io, storage katmanindan gelir (BOLUM 6): okuma/yazma orani, DS8900F
+#     onbellek isabeti, zHyperLink / zHPF-FICON servis sureleri ve senkron
+#     replikasyonun (Metro Mirror) mesafe gecikmesi.
+#     sync_io, is yuku profilinin bilesiminden gelir (BOLUM 3, Db2 buffer pool
+#     isabeti + commit log yazimi). Senkron I/O'lar sirali sayilir (tutucu).
 #   - Toplam: R(p) = D_io + R_cpu(p)
 #   - Cozum:  rho_max = 1 - E[X_cpu] * ln(1/(1-p)) / (latency_target - D_io)
 #   - Operasyonel tavan HER ZAMAN gecerli: rho = min(rho_latency, 0.90).
@@ -174,44 +319,74 @@ RNI_MULTIPLIER = {
 # riskini artirir. [ASSUME, pratik dayanak]
 DEFAULT_UTILIZATION_CEILING = 0.90
 # Geriye uyumluluk icin eski isim; ayni deger.
-HARD_UTILIZATION_CAP = DEFAULT_UTILIZATION_CEILING
 
-# [ASSUME] Transaction basina I/O sayisi (proje karari, RNI'ya bagli).
-# Bu deger Phase 2'de DS8900F IOPS boyutlandirmasinda da kullanilacak;
-# clustered tarafa da ayni tablo tasinmali.
-IOPS_PER_TX = {
-    "low":      5,
-    "average": 10,
-    "high":    20,
-}
-
-# [ASSUME] DS8900F + FICON/zHPF tek I/O servis suresi. Sektor araligi
-# ~0.1-0.5 ms (zHyperLink okumalarinda ~0.02 ms). Orta deger 0.3 ms.
-IO_SERVICE_TIME_S = 0.0003
+# I/O servis suresi parametreleri (mainframe storage yolu: z16 <-> DS8900F)
+CACHE_HIT_RATIO = 0.90         # [ASSUME] DS8900F onbellek isabet orani (okuma)
+ZHYPERLINK_ENABLED = True      # z16 + DS8900F zHyperLink [REDP-5554]
+ZHYPERLINK_READ_SHARE = 0.80   # [ASSUME] isabetli okumalarin zHyperLink'e uygun payi
+                               #   (Db2 senkron rastgele okumalar; digerleri zHPF/FICON)
+T_ZHYPERLINK_S = 20e-6         # [REDP-5554] zHyperLink kucuk blok okuma < 20 us (~18 us)
+T_FICON_HIT_S = 90e-6          # [TT-2019] zHPF/FICON, DS8900F onbellek isabeti ~90 us
+T_FLASH_MISS_S = 300e-6        # [ASSUME] onbellek iskasi: flash arka uc + FICON
+REPLICATION_S_PER_KM = 10e-6   # [FIZIK] fiberde isik ~5 us/km tek yon -> 10 us/km gidis-donus
+METRO_DISTANCE_KM = 20.0       # [ASSUME] senkron Metro Mirror siteleri arasi mesafe
 
 
-def io_delay_seconds(rni="average"):
-    """Transaction basina deterministik I/O gecikmesi (saniye)."""
-    return IOPS_PER_TX[rni] * IO_SERVICE_TIME_S
+def io_read_time_seconds():
+    """Senkron okuma I/O'sunun servis suresi (saniye):
+    isabet x (zHyperLink payi x t_zHL + kalan x t_FICON) + iska x t_miss."""
+    z = ZHYPERLINK_READ_SHARE if ZHYPERLINK_ENABLED else 0.0
+    return (CACHE_HIT_RATIO * (z * T_ZHYPERLINK_S + (1.0 - z) * T_FICON_HIT_S) +
+            (1.0 - CACHE_HIT_RATIO) * T_FLASH_MISS_S)
 
 
-def raw_tier_tps(tier, rni="average"):
-    """Kademenin %100 utilization'daki ham TPS kapasitesi."""
-    return tier.pci * TPS_PER_PCI * RNI_MULTIPLIER[rni]
+def io_write_time_seconds(topology=None):
+    """Senkron yazma I/O'sunun servis suresi (saniye): t_FICON (DS8900F NVS'e
+    hizli yazma) + topolojide senkron kopya varsa replikasyon gecikmesi."""
+    t = T_FICON_HIT_S
+    if topology is not None and getattr(topology, "sync_replication", False):
+        t += METRO_DISTANCE_KM * REPLICATION_S_PER_KM
+    return t
 
 
-def avg_service_time_seconds(tier, rni="average"):
+def io_delay_seconds(workload=DEFAULT_WORKLOAD, topology=None):
+    """Transaction basina deterministik I/O gecikmesi (saniye): okuma ve yazma
+    I/O'lari profilin kendi bilesimiyle ve kendi servis sureleriyle."""
+    w = get_workload(workload)
+    return (w.sync_read_io() * io_read_time_seconds()
+            + w.sync_write_io() * io_write_time_seconds(topology))
+
+
+def io_service_time_seconds(topology=None, workload=DEFAULT_WORKLOAD):
+    """Profilin I/O basina ortalama servis suresi (raporlama icin)."""
+    n = get_workload(workload).sync_io()
+    return io_delay_seconds(workload, topology) / n if n > 0 else 0.0
+
+
+def raw_tier_tps(tier, workload=DEFAULT_WORKLOAD):
+    """Kademenin %100 utilization'daki ham TPS kapasitesi.
+
+    TPS_PER_PCI REDP islemi icindir; profilin CPU agirligi w'ye bolunur.
+    zIIP'e kayan is (ziip_fraction) genel amacli CP'yi tuketmez; bu yuzden
+    ayni GP kademesi 1/(1-f) kat daha fazla transaction tasir. zIIP
+    motorlarinin donanim maliyeti monthly_cost icinde ayrica eklenir."""
+    w = get_workload(workload)
+    return tier.pci * TPS_PER_PCI / w.cpu_weight() / (1.0 - ziip_fraction(w))
+
+
+def avg_service_time_seconds(tier, workload=DEFAULT_WORKLOAD):
     """
     CP basina ortalama CPU servis suresi E[X_cpu] = c / raw_tps (saniye).
     c = fiziksel CP sayisi. Bir transaction tek bir CP'de islenir.
     """
-    raw_tps = raw_tier_tps(tier, rni)
+    raw_tps = raw_tier_tps(tier, workload)
     if raw_tps <= 0:
         return float('inf')
     return tier.cps / raw_tps
 
 
-def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile):
+def max_utilization_for_latency(tier, workload, latency_target_seconds, percentile,
+                                topology=None):
     """
     Latency hedefini saglayan maksimum utilization (0 ile 0.90 arasi).
     Latency hedefi yoksa operasyonel tavan (0.90) doner.
@@ -220,8 +395,8 @@ def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile):
     if latency_target_seconds is None:
         return DEFAULT_UTILIZATION_CEILING
 
-    ex = avg_service_time_seconds(tier, rni)
-    budget = latency_target_seconds - io_delay_seconds(rni)
+    ex = avg_service_time_seconds(tier, workload)
+    budget = latency_target_seconds - io_delay_seconds(workload, topology)
     ln_term = math.log(1.0 / (1.0 - percentile))
     if budget <= 0 or ex * ln_term >= budget:
         # I/O gecikmesi ya da bos sistemdeki CPU suresi bile hedefi asiyor
@@ -231,185 +406,776 @@ def max_utilization_for_latency(tier, rni, latency_target_seconds, percentile):
     return max(0.0, min(rho_max, DEFAULT_UTILIZATION_CEILING))
 
 
-def expected_latency_at(tier, rni, tps, percentile):
+def expected_latency_at(tier, workload, tps, percentile, topology=None):
     """
     Verilen TPS yukunde tahmini percentile yanit suresi (saniye):
     D_io + per-CP M/M/1 percentile. Bilgi amacli.
     """
-    raw_tps = raw_tier_tps(tier, rni)
+    raw_tps = raw_tier_tps(tier, workload)
     if raw_tps <= 0:
         return float('inf')
     rho = tps / raw_tps
     if rho >= 1.0:
         return float('inf')
-    ex = avg_service_time_seconds(tier, rni)
+    ex = avg_service_time_seconds(tier, workload)
     ln_term = math.log(1.0 / (1.0 - percentile))
-    return io_delay_seconds(rni) + ex * (1.0 / (1.0 - rho)) * ln_term
+    return io_delay_seconds(workload, topology) + ex * (1.0 / (1.0 - rho)) * ln_term
 
 # ------------------------------------------------------------------------------
-# AVAILABILITY MODELI — IBM Z Resiliency Models (Redbook SG24-8446)
+# AVAILABILITY MODELI — OLAY TABANLI, KURTARMA SURESINE BAGLI
 # ------------------------------------------------------------------------------
-# IBM'in resmi 4-model availability cercevesi. Bizim simulasyonumuzda Model 1
-# (sysplex'siz tek frame) gercek dunya production'da bulunmadigindan, Model 1'i
-# "single-frame sysplex (icinde ICF)" olarak ele aliyoruz - bu hala tek hardware
-# frame ama icinde sysplex var (rolling IPL ile planli kesintilerde fayda).
+# Hizmetin yillik kesintisi, kesinti doguran olaylarin sikligi ile topolojinin
+# bu olaylardan kurtarma suresinin carpimidir:
 #
-# Her topoloji icin iki availability rakami:
-#   hw_low:  ITIC bagimsiz endustri olcumu (gercek musteri raporlari)
-#            [ITIC] = Information Technology Intelligence Consulting,
-#                     2020-2024 Global Server Reliability Surveys
-#   hw_high: IBM Redbook resmi tasarim hedefi
-#            [REDBOOK] = IBM Resiliency Redbook SG24-8446, Table 1-4 + Sec 2
+#   D(topo) = lam_saha x [(1-p_uzun) x min(d_kisa, T_rec) + p_uzun x min(d_uzun, T_rec)]
+#           + lam_planli x T_planli(topo)
+#           + D_cpc (yalnizca tek CPC'li topolojide)
+#   A(topo) = 1 - D / 8760 saat
 #
-# Bu rakamlar HARDWARE-ONLY (planned outage haric). Gercek end-user
-# availability'si planned maintenance nedeniyle daha dusuk olur.
+#   lam_saha, d_kisa, d_uzun, p_uzun : veri merkezi duzeyinde hizmet kesintisi
+#       (guc, ag/BT, insan hatasi) sikligi ve suresi  [UPTIME-2025, UPTIME-2022]
+#   T_rec  : hizmetin alternatif CPC/sitede geri gelme suresi (RTO)
+#            [GDPS-2026, SG24-8446, SG24-6374]; M1'de alternatif site yok (T = sonsuz)
+#   T_planli: kesinti gerektiren planli islem (POR, nesil gecisi) basina hizmet
+#            kesintisi; sysplex icinde rolling IPL z/OS bakimini maskeler [ASSUME]
+#   D_cpc  : CPC donaniminin kendi plansiz kesintisi [ITIC-2023]; yilda 0,03-3 sn,
+#            pratikte ihmal edilebilir oldugu gostermek icin modelde tutulur.
 #
-# PLANNED OUTAGE INDIRIMI [PRECISELY]:
-# Endustri verisi: toplam downtime'in ~%90'i planned outage'lardan kaynaklanir.
-# Kaynak: Precisely HA Definition (precisely.com/glossary/high-availability-ha)
-# Formul: total_downtime = hardware_downtime / 0.10 = hardware_downtime x 10
-#         total_availability = 1 - 10 x (1 - hw_availability)
-#
-# Istisna: Model 4 (GDPS Continuous Availability) tanim geregi planned outage'i
-# da maskeler [REDBOOK], bu yuzden onun rakamlari planned dahil zaten.
-# ------------------------------------------------------------------------------
+# Onceki surumdeki "ITIC + x10 planli kesinti" yaklasimi birakildi: ITIC
+# rakamlari sunucu donaniminin kesintisini olcer (z16: yilda 31,56 ms), hizmetin
+# degil; SG24-8446 ise desenlere "nine" degeri atamaz. Her parametre low / mid /
+# high aralik olarak tanimlidir; "low" mainframe lehine (az kesinti) uctur.
+
+SITE_EVENT_SCENARIOS = {
+    # rate: olay/yil; d_short_h / d_long_h: saat; p_long: uzun olay payi
+    #  [UPTIME-2025] operatorlerin %53'u son 3 yilda kesinti bildirdi -> ~0,25/yil
+    #  (ust uc); ciddi/agir pay %9 -> alt uc. [UPTIME-2022] kamuya yansiyan
+    #  kesintilerin >24 saat suren payi %8 (2017) -> ~%30 (2021).
+    "low":  {"rate": 0.05, "d_short_h": 1.0, "p_long": 0.08, "d_long_h": 24.0},
+    "mid":  {"rate": 0.15, "d_short_h": 2.0, "p_long": 0.15, "d_long_h": 48.0},
+    "high": {"rate": 0.25, "d_short_h": 4.0, "p_long": 0.30, "d_long_h": 72.0},
+}
+# Saha olayinda hizmetin geri gelme suresi, dakika (M1: alternatif site yok)
+RECOVERY_MINUTES = {
+    "M2": {"low": 60.0, "mid": 120.0, "high": 240.0},   # [SG24-6374 T1-1: depolama
+          # replikasyonuyla "one or more hours"; SG24-8446: <2 saat GDPS ister]
+    "M3": {"low": 2.0, "mid": 30.0, "high": 60.0},      # [GDPS-2026] GDPS Metro / MGM:
+          # cok-siteli is yukunde ~2 dk, tek siteli is yukunde <1 saat
+    "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-2026] GDPS CA: 20-30 sn;
+          # portfoy slaydi <60 sn
+}
+PLANNED_EVENTS_PER_YEAR = {"low": 0.25, "mid": 0.5, "high": 1.0}   # [ASSUME] kesinti
+          # gerektiren CPC duzeyi planli islem (POR, nesil gecisi, kapasite disi upgrade)
+PLANNED_OUTAGE_MINUTES = {                                        # olay basina kesinti
+    "M1": {"low": 120.0, "mid": 240.0, "high": 480.0},  # [ASSUME] tek CPC durur
+    "M2": {"low": 15.0, "mid": 30.0, "high": 60.0},     # [ASSUME] planli, elle gecis
+    "M3": {"low": 2.0, "mid": 10.0, "high": 30.0},      # [ASSUME] GDPS planli site gecisi
+    "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-CA-2021] planli kesinti
+          # "4 saatten 30 saniyenin altina" (banka ornegi)
+}
+CPC_HW_DOWNTIME_SECONDS = {"low": 0.0316, "mid": 0.315, "high": 3.15}  # [ITIC-2023]
+          # z16 9 nine / IBM ortalamasi 8 nine / z13-z15 7 nine
+SITE_EVENT_LEVEL = "mid"    # aralik parametreleri (RANGE_PARAMETERS)
+RECOVERY_LEVEL = "mid"
+PLANNED_LEVEL = "mid"
+HOURS_PER_YEAR = 8760.0
+
 
 class Topology:
-    """Bir mainframe availability topolojisi."""
-    def __init__(self, code, name, n_frames, hw_low, hw_high,
-                 masks_planned, cost_multiplier, software_premium=1.0,
-                 description=""):
+    """Bir mainframe availability topolojisi (IBM Z Resiliency desenlerine eslenir)."""
+    def __init__(self, code, name, n_frames, pattern, gdps=None, rpo_seconds=0.0,
+                 description="", storage_copies=1, sync_replication=False):
         self.code = code                # 'M1', 'M2', 'M3', 'M4'
         self.name = name
-        self.n_frames = n_frames        # ana frame sayisi (donanim carpani)
-        self.hw_low = hw_low            # ITIC bagimsiz alt sinir (HW-only)
-        self.hw_high = hw_high          # Redbook tasarim hedefi (HW-only)
-        self.masks_planned = masks_planned  # planned outage'i da maskeler mi?
-        self.cost_multiplier = cost_multiplier  # frame sayisi + ek donanim
-        self.software_premium = software_premium  # GDPS gibi ek yazilim
+        self.n_frames = n_frames        # birincil + DR (CBU) frame sayisi
+        self.pattern = pattern          # SG24-8446 deseni
+        self.gdps = gdps                # GDPS teklifi (None, "metro_global", "ca")
+        self.rpo_seconds = rpo_seconds  # tek site kaybinda RPO  [GDPS-2026]
         self.description = description
+        self.storage_copies = storage_copies      # DS8900F veri kopyasi (dizi) sayisi
+        self.sync_replication = sync_replication  # senkron Metro Mirror var mi
+        # Yazilim primi yok: DR (CBU) makinesinin IBM yazilim faturasi yalnizca
+        # kalici kapasitesine gore kesilir [CBU]; GDPS ayri kalemdir (gdps_monthly_cost).
+        self.software_premium = 1.0
 
-    def effective_availability_low(self):
-        """%90 planned outage kuralini uygula (Model 4 haric)."""
-        if self.masks_planned:
-            return self.hw_low  # GDPS CA zaten planned'i de maskeler
-        # total_downtime = hardware_downtime / 0.10
-        hw_downtime = 1.0 - self.hw_low
-        total_downtime = hw_downtime * 10.0
-        return max(0.0, 1.0 - total_downtime)
+    @property
+    def cost_multiplier(self):
+        """Donanim amortismani ve bakim carpani: birincil frame + DR frame'leri.
+        DR frame'i CBU ile alinir: fiziksel donanim kurulu, kapasitenin kucuk bir
+        kismi kalici, geri kalani CBU kaydi [CBU]. Bedeli tam frame'in
+        DR_FRAME_COST_FRACTION'i kadar [ASSUME]; 1.0 = CBU'suz tam ayna."""
+        return 1.0 + (self.n_frames - 1) * DR_FRAME_COST_FRACTION
 
-    def effective_availability_high(self):
-        """Vendor iddiasinin planned-dahil halı."""
-        if self.masks_planned:
-            return self.hw_high
-        hw_downtime = 1.0 - self.hw_high
-        total_downtime = hw_downtime * 10.0
-        return max(0.0, 1.0 - total_downtime)
+    def recovery_minutes(self, level=None):
+        """Saha olayinda hizmetin geri gelme suresi (dk); M1'de sonsuz."""
+        r = RECOVERY_MINUTES.get(self.code)
+        return float("inf") if r is None else r[level or RECOVERY_LEVEL]
+
+    @property
+    def rto_minutes(self):
+        """RTO kisitinda kullanilan deger. M1: alternatif site yok; yedekten geri
+        donus SG24-8446'nin GDPS'siz DR araliginin (2-72 saat) ust ucu."""
+        r = self.recovery_minutes()
+        return 72 * 60.0 if r == float("inf") else r
+
+    def annual_downtime_hours(self, site=None, recovery=None, planned=None):
+        """Yillik beklenen hizmet kesintisi (saat), olay tabanli."""
+        s = SITE_EVENT_SCENARIOS[site or SITE_EVENT_LEVEL]
+        t_rec = self.recovery_minutes(recovery) / 60.0
+        unplanned = s["rate"] * ((1 - s["p_long"]) * min(s["d_short_h"], t_rec)
+                                 + s["p_long"] * min(s["d_long_h"], t_rec))
+        p = planned or PLANNED_LEVEL
+        planned_h = PLANNED_EVENTS_PER_YEAR[p] * PLANNED_OUTAGE_MINUTES[self.code][p] / 60.0
+        hw = (CPC_HW_DOWNTIME_SECONDS[site or SITE_EVENT_LEVEL] / 3600.0
+              if self.n_frames == 1 else 0.0)
+        return unplanned + planned_h + hw
+
+    def availability(self, site=None, recovery=None, planned=None):
+        return 1.0 - self.annual_downtime_hours(site, recovery, planned) / HOURS_PER_YEAR
+
+    def availability_range(self):
+        """(en kotu, en iyi): tum availability parametreleri high / low ucunda."""
+        return (self.availability("high", "high", "high"),
+                self.availability("low", "low", "low"))
 
     def __repr__(self):
         return f"{self.code}: {self.name}"
 
 
-# IBM Z Resiliency Model topolojileri:
+# IBM Z Resiliency desenleri [SG24-8446]: Reliable base / Failover capable /
+# Fault tolerant / Adaptive continuity. Saf tek-imaj (sysplex'siz) production
+# disinda birakildi; M1 tek CPC uzerinde sysplex'tir (rolling IPL).
 TOPOLOGIES = [
     Topology(
         code="M1",
         name="Single-frame sysplex (ICF)",
         n_frames=1,
-        # ITIC: 2020'de %83 musteri 5-6 nine basardi (tek-frame deployment'lar
-        # bu kategoride agirlikli). Tek-frame icin alt sinir 5 nine.
-        hw_low=0.99999,           # [ITIC 2020-2021]
-        hw_high=0.999999,         # [REDBOOK] Sec 2: tek frame RAS hedef ~6 nine
-        masks_planned=False,
-        cost_multiplier=1.0,      # 1 frame
-        software_premium=1.0,     # ICF specialty engine, lisans etkisiz [CFCC]
-        description="Tek mainframe + icindeki ICF ile sysplex. "
-                    "Tek hardware riski; planli kesintide rolling IPL faydasi."
+        pattern="Reliable base",
+        gdps=None,
+        rpo_seconds=86400.0,      # [ASSUME] uzak kopya yok: gunluk saha disi yedek
+        description="Tek mainframe + icindeki ICF ile sysplex. Tek site; saha "
+                    "olayinda hizmet olay suresince durur.",
+        storage_copies=1, sync_replication=False,   # tek DS8900F
     ),
     Topology(
         code="M2",
         name="Multi-frame failover (peer sysplex)",
         n_frames=2,
-        # ITIC 2023: z13/z14/z15 ortalamasi 7-8 nine; cogu M2/M3 deployment.
-        # M2 alt sinirini 7 nine olarak aliyoruz.
-        hw_low=0.9999999,         # [ITIC 2023] 7 nine
-        hw_high=0.99999999,       # [REDBOOK] Model 2-3 hedef ~8 nine
-        masks_planned=False,
-        cost_multiplier=2.0,      # 2 frame
-        software_premium=1.0,     # ICF her frame'de, lisans etkisiz
-        description="Iki ayri mainframe, ICF ile peer coupling, "
-                    "sync/async remote copy. Bir frame coker, digeri devralir."
+        pattern="Failover capable",
+        gdps=None,
+        rpo_seconds=0.0,          # Metro Mirror senkron
+        description="Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; "
+                    "gecis otomasyonsuz, elle (saatler).",
+        storage_copies=2, sync_replication=True,    # Metro Mirror cifti (HyperSwap)
     ),
     Topology(
         code="M3",
         name="Fault-tolerant + GDPS Metro/Global",
         n_frames=2,
-        # ITIC 2024 z16: %96 musteri 9 nine basardi. M3/M4 dahil rakam.
-        # M3 alt siniri 8 nine.
-        hw_low=0.99999999,        # [ITIC 2024 z16] 8 nine
-        hw_high=0.999999999,      # [REDBOOK] Model 3 hedef ~9 nine
-        masks_planned=False,      # planli outage hala maskelenmiyor
-        cost_multiplier=2.0,      # 2 frame
-        software_premium=1.15,    # [ASSUME] GDPS Metro/Global lisans +%15
-        description="2 frame + GDPS Metro/Global otomasyonu + HyperSwap. "
-                    "RTO <1 saat. Planlanmamis outage'a otomatik tepki."
+        pattern="Fault tolerant",
+        gdps="metro_global",
+        rpo_seconds=0.0,          # [GDPS-2026] tek site kaybinda Metro Mirror: RPO 0
+                                  # (bolgesel felakette Global Mirror bacagi 2-5 sn)
+        description="Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu "
+                    "ve HyperSwap. RTO dakikalar - <1 saat.",
+        storage_copies=4, sync_replication=True,    # H1+H2 (Metro) + H3+J3 (Global Mirror) [GDPS]
     ),
     Topology(
         code="M4",
         name="GDPS Continuous Availability (geo-redundant)",
         n_frames=2,
-        # ITIC 2024 z16 en yuksek deployment'lar 9 nine; Redbook M4 tasarim 7 nine
-        # NOT: M4 planned outage'i da maskeler, hardware rakamı zaten planned dahil
-        hw_low=0.9999999,         # [REDBOOK] Model 4 tasarim 7 nine (planned dahil)
-        hw_high=0.99999999,       # [ITIC 2024] z16 ileri deployment 8 nine
-        masks_planned=True,       # planned outage'i da maskeler [REDBOOK]
-        cost_multiplier=2.0,      # 2 ayri site, ikinci site tam mainframe
-        software_premium=1.30,    # [ASSUME] GDPS CA premium lisans +%30
-        description="Iki coğrafi site, GDPS Continuous Availability. "
-                    "Hem planned hem unplanned outage maskelenir. RTO 1-2 dakika."
+        pattern="Adaptive continuity",
+        gdps="ca",
+        rpo_seconds=5.0,          # [GDPS-2026] GDPS CA: RPO 0-5 sn
+        description="Iki cografi site, GDPS Continuous Availability. Plansiz ve "
+                    "planli gecis saniyeler (20-60 sn).",
+        storage_copies=4, sync_replication=True,    # her sitede Metro Mirror cifti [GDPS]
     ),
 ]
 
 
-def find_feasible_topologies(availability_target):
+def find_feasible_topologies(availability_target, rpo_seconds=None, rto_minutes=None):
     """
-    Hedef uptime'i karsilayan topolojileri dondurur (en ucuzdan en pahaliya).
-    Feasibility: low (ITIC bagimsiz) availability hedefi karsilamali.
+    Hedef uptime'i ve (verilmisse) RPO / RTO hedeflerini karsilayan topolojiler.
+    Feasibility: gecerli senaryo (varsayilan mid) availability'si hedefi
+    karsilamali; topolojinin
+    saha felaketindeki tutucu RPO / RTO degeri hedefi asmamali.
     """
     feasible = []
     for topo in TOPOLOGIES:
-        if topo.effective_availability_low() >= availability_target:
-            feasible.append(topo)
+        if topo.availability() < availability_target:
+            continue
+        if rpo_seconds is not None and topo.rpo_seconds > rpo_seconds:
+            continue
+        if rto_minutes is not None and topo.rto_minutes > rto_minutes:
+            continue
+        feasible.append(topo)
     return feasible
+
+
+# ------------------------------------------------------------------------------
+# DR KAPASITESI (CBU) VE GDPS
+# ------------------------------------------------------------------------------
+# [CBU] SC28-7025: CBU kaydi kurulu ama kapali PU'lari yalnizca LICCC ile acar;
+# donanim onceden kurulu olmalidir. Kayit 1-5 yillik, yil basina bir 10 gunluk
+# ucretsiz test, tek bir 90 gunluk gercek aktivasyon. "Software charges for the
+# designated CBU machine are based on its permanent configuration": DR
+# makinesinin yazilim faturasi kalici kapasitesine gore kesilir. CBU fiyati
+# yayimlanmaz -> DR frame bedeli tam frame'in orani olarak bir aralik.
+DR_FRAME_COST_FRACTION = 0.50   # [ASSUME] aralik 0.30-1.00 (1.00 = CBU'suz tam ayna)
+
+# [GDPS] GDPS, lisansli otomasyon kodu + IBM hizmetlerinden olusan bir tekliftir;
+# fiyati MSU'ya degil, otomatiklestirdigi sistem/sysplex/site kapsamina baglidir
+# ve yayimlanmaz. Bu yuzden kapasiteden bagimsiz sabit aylik kalem. Orta degerler
+# onceki surumdeki yazilim priminin (M3 x1.15, M4 x1.30) 10K TPS referans
+# noktasindaki karsiligina esitlendi; seviye GDPS_COST_LEVEL ile taranir.
+GDPS_MONTHLY_BASE = {"metro_global": 50000.0, "ca": 100000.0}   # USD/ay [ASSUME]
+GDPS_COST_LEVEL = 1.0           # [ASSUME] aralik 0.5-2.0
+
+
+def gdps_monthly_cost(topology):
+    """Topolojinin GDPS teklifinin aylik bedeli (kapasiteden bagimsiz)."""
+    return GDPS_MONTHLY_BASE.get(topology.gdps, 0.0) * GDPS_COST_LEVEL
 
 # ------------------------------------------------------------------------------
 # BOLUM 5 — MALIYET PARAMETRELERI
 # ------------------------------------------------------------------------------
-# [LIC] Yazilim lisansi: ~$25-55 / MSU / ay. Orta deger aliyoruz.
-SOFTWARE_COST_PER_MSU_MONTH = 40.0     # USD/MSU/ay  [LIC, orta deger]
+# [AWLC] Yazilim yigini: z/OS + CICS TS + Db2 (MQ kapsam disi). IBM Advanced
+# Workload License Charges kademeli aylik ucrettir: MSU arttikca marjinal
+# MSU fiyati duser. Kademe sinirlari resmidir (IBM AWLC: Base 1-3, L0 4-45,
+# L1 46-175, L2 176-315, L3 316-575, L4 576-875, L5 876-1315, L6 1316-1975,
+# L7 1976+). Guncel liste fiyati kamuya acik degil; bu yuzden:
+#   1) kademe dusus egrisi IBM'in yayimlanmis Db2 liste fiyatindan [IBM-2004]:
+#      Base $3,960 (ilk 3 MSU dahil), L0 $208, L1 $88, L2 $66, L3 $50 /MSU/ay;
+#      L4+ icin kademe basina x0.80 [ASSUME; Longpela: "L7, L6'dan %20 ucuz"],
+#   2) urun katsayilari IBM'in ornek faturasina kalibre [IBM-2004],
+#   3) mutlak seviye SW_PRICE_LEVEL_FACTOR ile (1.0 = 2004 nominal liste),
+#      duyarlilik analizinde 0.5-1.5 araliginda taranir.
+AWLC_BASE_CHARGE = 3960.0              # USD/ay, ilk 3 MSU dahil [IBM-2004]
+AWLC_LEVELS_SOURCED = [                # (kademe ust siniri MSU, marjinal USD/MSU/ay)
+    (3,     0.0),                      # Base (sabit ucrete dahil)
+    (45,    208.0),                    # L0  [IBM-2004]
+    (175,   88.0),                     # L1  [IBM-2004]
+    (315,   66.0),                     # L2  [IBM-2004]
+    (575,   50.0),                     # L3  [IBM-2004]
+]
+AWLC_UPPER_BOUNDS = [875, 1315, 1975, float("inf")]   # L4..L7 sinirlari [AWLC]
+AWLC_UPPER_DECAY = 0.80                # L4+ kademe basina marjinal fiyat carpani
+                                       # [ASSUME, LONGPELA; aralik 0.70-1.00]
 
-# [PRICE] Donanim: kapasiteyle olcekleniyor. Liste fiyati yok; MIPS basina
-# kaba bir donanim fiyati turetiyoruz. Aralik ~$0.5M (giris) - $10M+ (tam).
-# Tam-hiz tek-frame ust kapasite ~ 7xx 32CP ~ 48637 MIPS. Kaba dogrusal cikarim:
-# [ASSUME] donanim ~ $200 / MIPS (0.5M-10M araligina kabaca oturuyor)
-HARDWARE_COST_PER_MIPS = 200.0         # USD/MIPS (satin alma)  [PRICE -> ASSUME]
+
+def awlc_levels():
+    """Tam kademe listesi: kaynakli L0-L3 + L4..L7 icin AWLC_UPPER_DECAY ile
+    geometrik dusus (L4 = L3 x decay, ...)."""
+    levels = list(AWLC_LEVELS_SOURCED)
+    rate = levels[-1][1]
+    for upper in AWLC_UPPER_BOUNDS:
+        rate *= AWLC_UPPER_DECAY
+        levels.append((upper, rate))
+    return levels
+# IBM ornek faturasi (aylik, sub-capacity): urun -> (USD/ay, faturalanan MSU)
+SW_PRODUCT_ANCHORS = {
+    "z/OS":    (75459.0, 265),         # [IBM-2004]
+    "CICS TS": (32978.0, 210),         # [IBM-2004] CICS ayri LPAR'da 210 MSU
+    "Db2":     (31876.0, 265),         # [IBM-2004]
+}
+SW_PRICE_LEVEL_FACTOR = 1.0            # 2004 nominal = 1.0 [ASSUME, aralik 0.5-1.5]
+
+# [PRICE] Donanim: liste fiyati yayimlanmaz; kaynak araligi ~$0.5M (giris) -
+# $10M+ (buyuk yapilandirma). Model: frame basina sabit taban (cerceve, CPC
+# drawer, bellek, I/O, HMC) + kapasiteyle dogrusal artis.
+#   satin_alma = HW_FRAME_BASE_COST + PCI x HARDWARE_COST_PER_MIPS (+ zIIP)
+# Taban, kaynak araliginin giris ucuna esitlendi; egim aralikla taranir.
+# Not: 200 CP'lik 7K0 icin ~$44M verir; buyuk uc icin egim muhtemelen yuksektir
+# (mainframe aleyhine), bu yuzden low ucu $150/PCI.
+HW_FRAME_BASE_COST = 500000.0          # USD/frame [PRICE -> ASSUME, aralik 250K-1M]
+HARDWARE_COST_PER_MIPS = 200.0         # USD/PCI (satin alma)  [PRICE -> ASSUME, aralik 150-300]
 HARDWARE_AMORTIZATION_YEARS = 5        # [ASSUME] amortisman suresi
 MAINTENANCE_RATE_ANNUAL = 0.125        # donanim degerinin %12.5'i/yil [PRICE]
+HW_WARRANTY_YEARS = 1                  # [ASSUME] ilk yil garanti; storage ile ayni kural
+                                       # (bakim 5 yila ortalanir: x (5-1)/5)
+
+
+def maintenance_factor():
+    """Garanti sonrasi bakimin amortisman suresine ortalanmis payi."""
+    y = HARDWARE_AMORTIZATION_YEARS
+    return max(0.0, y - HW_WARRANTY_YEARS) / y
 
 # [PWR] Enerji: ~20-40 kW/frame. Orta deger + elektrik fiyati.
 POWER_KW_PER_SYSTEM = 30.0             # kW/frame  [PWR, orta deger]
 ELECTRICITY_USD_PER_KWH = 0.12         # [ASSUME] tipik ticari elektrik
 HOURS_PER_MONTH = 730.0
 
-# [PRICE] Ekonomik alt esik: <150 MIPS altinda mainframe mantikli degil.
-MAINFRAME_MIN_VIABLE_MIPS = 150.0      # [PRICE]
+
+
+# ------------------------------------------------------------------------------
+# PERSONEL (altyapi ekibi: z/OS ve CICS sistem programcilari, Db2 sistem DBA'lari,
+# storage, otomasyon/operasyon, kapasite/performans, guvenlik/RACF)
+# ------------------------------------------------------------------------------
+# Personel kurulu kapasiteyle ALT-DOGRUSAL olceklenir: kucuk kurulumlarda sabit
+# bir cekirdek ekip baskin, buyuk kurulumlarda MIPS/FTE artar [GARTNER-ITKMD].
+# Model: FTE = max(TABAN, FTE_1000 x (PCI/1000)^b) x topoloji carpani.
+# Capalar (Bolum 7.7):
+#   - IBM Eagle TCO ekibi, 17 musteri: "5 FTE + her 625 MIPS icin 1 FTE"
+#     (kucuk/orta kurulumlar, ~3.000 MIPS'e kadar) [IBM-EAGLE].
+#   - Gartner IT Key Metrics 2016: kurulu MIPS/FTE 152 -> 268 (5 yil, ortalama)
+#     [GARTNER-ITKMD]; yillik ~%12 verimlilik artisi.
+#   - IBM ornek karsilastirmasi: 3.192 MIPS'i ~4 FTE yonetiyor (~790 MIPS/FTE)
+#     [IBM-TPF-2007]; uretici kaynagi, alt sinira yakin.
+# Uc senaryo (dusuk / orta / yuksek), 20.000 PCI'da MIPS/FTE: ~830 / ~450 / ~260.
+STAFF_SCENARIOS = {
+    #            FTE_1000, b,    taban, yuklu maliyet USD/yil
+    "low":  dict(fte_1000=4.0, exp=0.60, floor=3.0, loaded=122000.0),
+    "mid":  dict(fte_1000=5.5, exp=0.70, floor=4.0, loaded=162000.0),
+    "high": dict(fte_1000=7.0, exp=0.80, floor=5.0, loaded=215000.0),
+}
+# Yuklu maliyet = brut maas x yan hak carpani. Brut maas: BLS OEWS Mayis 2025
+# medyanlari (DBA/mimar $126.760, sistem yoneticisi $99.130, guvenlik $129.180)
+# ve mainframe ilanlari/anketleri (Payscale ~$90K, Glassdoor Db2 z/OS DBA
+# $104-163K) -> karma brut $95K / $120K / $150K. Yan hak carpani: IDC %28
+# [IDC-2016], BLS ECEC'te maas toplam maliyetin %70'i -> x1.43 [BLS-ECEC];
+# 1.28 / 1.35 / 1.43.
+STAFF_SCENARIO = "mid"
+# DR ve sysplex karmasikligi: ikinci CEC, GDPS, ikinci site operasyonu [ASSUME]
+STAFF_TOPOLOGY_FACTOR = {"M1": 1.00, "M2": 1.05, "M3": 1.15, "M4": 1.25}
+
+
+def staff_fte(tier, topology=None, scenario=None):
+    """Kademeyi (birincil CEC kapasitesi) isletmek icin gereken altyapi FTE'si."""
+    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
+    fte = max(p["floor"], p["fte_1000"] * (tier.pci / 1000.0) ** p["exp"])
+    if topology is not None:
+        fte *= STAFF_TOPOLOGY_FACTOR.get(topology.code, 1.0)
+    return fte
+
+
+def staff_monthly_cost(tier, topology=None, scenario=None):
+    """Altyapi personelinin AYLIK yuklu maliyeti (USD)."""
+    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
+    return staff_fte(tier, topology, scenario) * p["loaded"] / 12.0
+
+
+# ------------------------------------------------------------------------------
+# BOLUM 6 — STORAGE KATMANI (IBM DS8900F)
+# ------------------------------------------------------------------------------
+# Mainframe tarafinin sabit storage'i DS8900F (z16 ile ayni nesil, all-flash).
+# Mainframe'e ozgu yapilar:
+#   - Shared-disk: Db2 data sharing uyeleri ayni diske erisir; site basina
+#     verinin tek kopyasi vardir. Kopya sayisini topoloji (DR) belirler.
+#   - DR replikasyonu storage katmaninda: Metro Mirror (senkron), Global Mirror
+#     (asenkron + journal), GDPS yonetir. Senkron kopya yazma gecikmesine
+#     mesafe kadar eklenir (BOLUM 4, io_service_time_seconds).
+#   - Baglanti: FICON/zHPF (~90 us) ve zHyperLink (< 20 us, 150 m'ye kadar).
+#   - I/O islemcisi: I/O, z16'nin kanal alt sistemi ve SAP'lerinde islenir; genel
+#     amacli CP'yi (MSU'yu) cok az tuketir. Kapasite koprusu (CICS benchmark'i)
+#     z/OS I/O'sunun CPU maliyetini zaten icerir, ek CPU yuku eklenmez.
+#     (Clustered tarafta storage yiginin host CPU'su ayrica eklenmeli.)
+#   - CKD hacimlerde dizi tarafinda veri azaltma (sikistirma/dedup) yok;
+#     sikistirma host'ta (Db2, z16 on-chip hizlandirici) yapilir.
+#   - Safeguarded Copy: fidye yazilimina karsi degistirilemez anlik kopyalar;
+#     birincil dizide ek kapasite ister.
+#   - Lisanslar (TB basina kademeli, fiyat yayimlanmiyor) [REDP-5554]:
+#     Base Function (tum kapasite), z-synergy Services (FICON, PAV/HyperPAV/
+#     SuperPAV, zHPF, zHyperLink; CKD), Copy Services (FlashCopy, Safeguarded
+#     Copy, Metro/Global Mirror).
+#
+# KAYNAKLAR:
+#   [REDP-5554]   IBM Storage DS8900F Product Guide R9.3.2: modeller, kapasite,
+#                 guc, zHyperLink, lisans paketleri ve TB kademeleri
+#   [ITCANDOR]    DS8900F maks. IOPS: 860K (DS8910F), 2,320K (DS8950F)
+#   [TT-2019]     TechTarget: baslangic fiyatlari $134K / $196K; zHPF 90 us
+#   [ITJUNGLE-22] IT Jungle (IBM duyurusu 322-396, Mayis 2022): 15.36 TB flash
+#                 karti liste fiyati $132,381 = $8.62/GB (kontrolcu haric)
+#   [VENDORBENCH] Kurumsal all-flash pazar karsilastirmalari: liste fiyatindan
+#                 %35-65 indirim; yillik destek donanimin %10-25'i
+#   [IBM-122-037] DS8900F bir yillik garanti teklifi
+#   [GDPS]        IBM GDPS mimarisi: Metro Mirror cifti (HyperSwap), Metro/Global
+#                 Mirror'da uzak sitede Global Mirror journal (FlashCopy) kopyasi
+#                 (doğrulanmalı: kopya sayilari)
+
+DS8900F_CSV = os.path.join(_DATA_DIR, "ds8900f_models.csv")
+
+
+class StorageModel:
+    """Bir DS8900F modeli [REDP-5554, ITCANDOR, TT-2019]."""
+    def __init__(self, model, family, max_raw_tb, max_iops, base_price_list_usd,
+                 power_kw, expansion_threshold_tb, expansion_power_kw):
+        self.model = model
+        self.family = family
+        self.max_raw_tb = max_raw_tb
+        self.max_iops = max_iops
+        self.base_price_list_usd = base_price_list_usd
+        self.power_kw = power_kw
+        self.expansion_threshold_tb = expansion_threshold_tb
+        self.expansion_power_kw = expansion_power_kw
+
+    def __repr__(self):
+        return f"{self.family}-{self.model}"
+
+
+def load_storage_models(path=DS8900F_CSV):
+    rows = []
+    with open(path, newline="") as f:
+        lines = [ln for ln in f if not ln.startswith("#")]
+    for r in csv.DictReader(lines):
+        rows.append(StorageModel(
+            r["model"], r["family"], float(r["max_raw_tb"]), float(r["max_iops"]),
+            float(r["base_price_list_usd"]), float(r["power_kw"]),
+            float(r["expansion_threshold_tb"]) if r["expansion_threshold_tb"] else None,
+            float(r["expansion_power_kw"]) if r["expansion_power_kw"] else 0.0))
+    return rows
+
+
+DS8900F_MODELS = load_storage_models()
+
+# --- Kapasite zinciri ---------------------------------------------------------
+DEFAULT_DATA_VOLUME_TB = 20.0    # [ASSUME] ornek mantiksal Db2 veri hacmi (indeksler dahil)
+DEFAULT_DATA_GROWTH = 0.15       # [ASSUME] yillik veri buyumesi
+STORAGE_PLANNING_YEARS = 3       # [ASSUME] dizi, bu kadar yillik buyumeye gore boyutlanir
+DB_OVERHEAD_FACTOR = 1.5         # [ASSUME] Db2 log/arsiv log, image copy, work alani,
+                                 #   z/OS sistem hacimleri ve bos alan
+HOST_COMPRESSION_RATIO = 1.0     # [ASSUME] Db2 sikistirmasi (z16 on-chip); 1.0 = yok
+SAFEGUARDED_COPY = True          # [REDP-5554] fidye yazilimi korumasi (birincil dizide)
+SAFEGUARDED_RESERVE = 0.25       # [ASSUME] Safeguarded Copy icin ek kapasite orani
+RAID_USABLE_FRACTION = 0.75      # [ASSUME] RAID 6 (6+P+Q) kullanilabilir/ham (doğrulanmalı)
+STORAGE_IOPS_CEILING = 0.70      # [ASSUME] dizi, ureticinin tepe IOPS'unun bu oranina kadar
+                                 #   yuklenir (tepe deger onbellek isabetli kucuk blok olcumu;
+                                 #   compute'taki %90 operasyonel tavanin storage karsiligi)
+
+# --- Fiyat --------------------------------------------------------------------
+DS8900F_FLASH_LIST_USD_PER_TB = 8620.0   # [ITJUNGLE-22] ham TB, liste
+STORAGE_DISCOUNT = 0.70          # [ASSUME] liste fiyatindan indirim (pazar %35-65+ [VENDORBENCH])
+STORAGE_LICENSE_RATE_BASE = 0.15 # [ASSUME] BF + z-synergy Services, donanima oran
+STORAGE_LICENSE_RATE_COPY = 0.10 # [ASSUME] Copy Services (Safeguarded Copy/replikasyon varsa)
+STORAGE_MAINT_RATE_ANNUAL = 0.15 # [VENDORBENCH] yillik destek, donanim degerinin %10-25'i
+STORAGE_WARRANTY_YEARS = 1       # [IBM-122-037]
+STORAGE_AMORTIZATION_YEARS = 5   # [ASSUME] mainframe donanimiyla ayni
+
+
+def storage_capacity_tb(data_tb=None, growth=None):
+    """Bir kopyanin (dizinin) ham kapasite ihtiyaci, Safeguarded rezervi haric.
+    mantiksal veri -> planlama ufkundaki veri -> Db2/z/OS ek yuku -> host
+    sikistirmasi -> RAID 6 ham kapasitesi."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    usable = planned * DB_OVERHEAD_FACTOR / HOST_COMPRESSION_RATIO
+    return usable / RAID_USABLE_FRACTION
+
+
+def _size_array(raw_tb, iops):
+    """Bir kopya icin en ucuz DS8900F konfigurasyonu: (model, adet, liste capex, kW)."""
+    best = None
+    for sm in DS8900F_MODELS:
+        n = max(1, math.ceil(raw_tb / sm.max_raw_tb),
+                math.ceil(iops / (sm.max_iops * STORAGE_IOPS_CEILING)))
+        per_array_tb = raw_tb / n
+        kw = sm.power_kw
+        if sm.expansion_threshold_tb and per_array_tb > sm.expansion_threshold_tb:
+            kw += sm.expansion_power_kw
+        capex_list = n * sm.base_price_list_usd + raw_tb * DS8900F_FLASH_LIST_USD_PER_TB
+        cand = (sm, n, capex_list, n * kw)
+        if best is None or capex_list < best[2]:
+            best = cand
+    return best
+
+
+def storage_plan(peak_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=None, growth=None):
+    """DS8900F storage boyutlandirmasi ve aylik maliyeti.
+
+    Her kopya ayri bir dizi (veya dizi grubu) olarak boyutlanir; ikincil kopyalar
+    failover icin birincille ayni IOPS'u tasiyabilmelidir. Safeguarded Copy
+    rezervi yalnizca birincil dizidedir.
+    """
+    copies = topology.storage_copies if topology is not None else 1
+    base_raw = storage_capacity_tb(data_tb, growth)
+    iops = peak_tps * get_workload(workload).storage_iops()
+    discount = 1.0 - STORAGE_DISCOUNT
+
+    arrays = []
+    for i in range(copies):
+        raw = base_raw * (1.0 + SAFEGUARDED_RESERVE) if (i == 0 and SAFEGUARDED_COPY) else base_raw
+        sm, n, capex_list, kw = _size_array(raw, iops)
+        arrays.append({"model": sm, "count": n, "raw_tb": raw,
+                       "hw_capex": capex_list * discount, "power_kw": kw})
+
+    hw_capex = sum(a["hw_capex"] for a in arrays)
+    lic_rate = STORAGE_LICENSE_RATE_BASE
+    if SAFEGUARDED_COPY or copies > 1:
+        lic_rate += STORAGE_LICENSE_RATE_COPY
+    license_capex = hw_capex * lic_rate
+    capex = hw_capex + license_capex
+    amort = capex / (STORAGE_AMORTIZATION_YEARS * 12)
+    maint_years = max(0, STORAGE_AMORTIZATION_YEARS - STORAGE_WARRANTY_YEARS)
+    maint = (hw_capex * STORAGE_MAINT_RATE_ANNUAL * maint_years /
+             STORAGE_AMORTIZATION_YEARS / 12)
+    power_kw = sum(a["power_kw"] for a in arrays)
+    energy = power_kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
+    return {
+        "copies": copies,
+        "arrays": arrays,
+        "raw_tb_total": sum(a["raw_tb"] for a in arrays),
+        "iops_required": iops,
+        "hw_capex": hw_capex,
+        "license_capex": license_capex,
+        "capex": capex,
+        "amortization": amort,
+        "maintenance": maint,
+        "energy": energy,
+        "power_kw": power_kw,
+        "monthly_total": amort + maint + energy,
+        "io_service_time_s": io_service_time_seconds(topology, workload),
+        "io_delay_s": io_delay_seconds(workload, topology),
+    }
+
+
+def describe_storage(plan):
+    parts = []
+    for i, a in enumerate(plan["arrays"]):
+        role = "birincil" if i == 0 else f"kopya {i}"
+        parts.append(f"{role}: {a['count']}x {a['model']} ({a['raw_tb']:,.0f} TB ham)")
+    return "; ".join(parts)
+
+
+# ------------------------------------------------------------------------------
+# BOLUM 6b — YEDEKLEME: UC HEDEF (TS7770 / ON-PREM NESNE DEPOLAMA / AWS S3)
+# ------------------------------------------------------------------------------
+# Db2 image copy'leri ve arsiv loglari icin uc aday hedef vardir; model
+# kisitlari karsilayanlar arasindan aylik maliyeti en dusuk olani secer
+# (BACKUP_TARGET = "auto"; ya da hedef zorlanir).
+#   ts7770      : IBM TS7770 sanal teyp, disk-only grid, iki site. FICON.
+#   cos_onprem  : S3 uyumlu kurum ici nesne depolama (IBM COS / Ceph / MinIO
+#                 sinifi), iki site. Image copy'ler DASD'ye yazilir, DFSMShsm
+#                 ile DS8900F Transparent Cloud Tiering (TCT) uzerinden nesne
+#                 depolamaya goc ettirilir [SG24-8381].
+#   aws_s3      : Ayni TCT yolu, hedef AWS S3 (Standard-IA), Direct Connect
+#                 hattiyla. Kamu bulutu: sonuc "hibrit" diye isaretlenir.
+# Her yedek seviyesinin iki kopyasi tutulur [DB2-BACKUP]: TS7770 ve on-prem
+# nesne depolamada iki sitede birer kopya; S3'te tek nesne kopyasi (bolge
+# icinde en az uc AZ'ye dagitilmis; saglayicinin kendi yedekliligi).
+# Yedek hacmi:
+#   image copy = veri x hafta x (1 tam + 6 artimli x gunluk degisim)   [IDUG-2024]
+#   arsiv log  = ort. TPS x islem basina log bayti x 86400 x 7 x hafta
+# Kisitlar:
+#   pencere   : gunluk yazma / hedef verimi <= BACKUP_WINDOW_HOURS
+#   geri donus: yalnizca alternatif sitesi olmayan topolojide (M1) yedek DR
+#               yolundadir: tam geri yukleme suresi <= RTO x BACKUP_RESTORE_RTO_FRACTION.
+#               M2-M4'te saha kaybini replikasyon karsilar.
+#   TCT verimi: nesne hedefleri DS8900F'in Ethernet portlarindan gecer;
+#               TCT_MAX_MB_S'yi asan ihtiyac bu hedefleri eler.
+# TS7700 disindaki hedeflerde DS8000 sikistirma yapmaz [SG24-8381].
+# Fiziksel teyp (TS4500/TS1160), uzun sureli arsiv ve grid/LAN agi kapsam disi;
+# bulut hattinin (Direct Connect portu + tasiyici devre) bedeli ise yalnizca
+# o secenege ozgu oldugu icin dahildir.
+BACKUP_TARGET = "auto"               # "auto" | "ts7770" | "cos_onprem" | "aws_s3"
+BACKUP_TARGETS = ("ts7770", "cos_onprem", "aws_s3")
+BACKUP_SITES = 2                     # [DB2-BACKUP] her yedek seviyesinin iki kopyasi
+BACKUP_RETENTION_WEEKS = 4           # [ASSUME] aralik 2-8; tam kopya + loglarin saklanma suresi
+BACKUP_DAILY_CHANGE = 0.03           # [ASSUME] gunluk degisen veri payi (artimli kopya)
+                                     #  haftada %10'u asan degisimde tam kopya onerilir [IDUG-2024]
+LOG_BYTES_PER_SQL_WRITE = 400.0      # [ASSUME] Db2 log kaydi: once/sonra goruntusu + baslik
+LOG_BYTES_PER_COMMIT = 200.0         # [ASSUME] commit/begin-UR kayitlari
+STATIC_PEAK_TO_AVG = 1.5             # [ASSUME] statik modda TPS tepe kabul edilir; log hacmi
+                                     #  ortalama yukle (steady_oltp orani) hesaplanir
+BACKUP_WINDOW_HOURS = 8.0            # [ASSUME] gunluk yedek penceresi
+BACKUP_RESTORE_RTO_FRACTION = 0.5    # [ASSUME] M1 RTO'sunun geri yuklemeye ayrilan payi
+                                     #  (geri kalani donanim, IPL, log uygulama)
+BACKUP_RESTORES_PER_YEAR = 1.0       # [ASSUME] yillik tam geri yukleme testi (S3 cikis ucreti)
+# --- TS7770 ---
+BACKUP_COMPRESSION = 2.0             # [TS7700-2024 -> ASSUME] IBM nominal 3:1; aralik 1,5-3,0
+BACKUP_CACHE_INCREMENT_TB = 20.0     # [TS7700-2024] cache CoD adimi
+BACKUP_CLUSTER_MAX_CACHE_TB = 3900.0 # [TS7700-2024] taban + iki genisleme cercevesi
+BACKUP_CLUSTER_MB_S = 4000.0         # [TS7700-2024] kume basina host verimi
+BACKUP_CLUSTER_LIST_USD = 493080.0   # [TS7700-2006] baslangic liste fiyati (sunucu + taban cache)
+BACKUP_CACHE_LIST_USD_PER_TB = 2000.0  # [ASSUME] nearline HDD cache, DS8900F flash listesinin ~1/4'u
+BACKUP_KW_PER_CLUSTER = 4.0          # [ASSUME] tek fazli 30 A besleme; tipik tuketim
+# --- Nesne hedefleri (TCT yolu) ---
+TCT_MAX_MB_S = 5000.0                # [SG24-8381 -> ASSUME] sunucu basina en fazla 6 Ethernet
+                                     #  portu (10 GbE kartlarla); ~%40 verimle tek DS8900F
+OBJECT_COMPRESSION = 1.0             # [SG24-8381] TS7700 disi hedefte DS8000 sikistirmasi yok
+# on-prem nesne depolama (iki site)
+COS_HW_USD_PER_TB = 100.0            # [MINIO-TCO] 60 x 16 TB HDD sistem $70K, 720 TB kullanilabilir
+COS_MIN_SITE_CAPEX_USD = 70000.0     # [MINIO-TCO] site basina en kucuk sistem
+COS_SW_USD_PER_TB_MONTH = 5.0        # [MINIO-TCO -> ASSUME] yazilim/destek aboneligi; acik kaynak 0,
+                                     #  ticari liste ~$10/TB-ay; aralik 0-10
+COS_KW_PER_PB = 1.5                  # [ASSUME] HDD yogun 2U sistemler
+# AWS S3 (us-east-1, 2026)
+S3_USD_PER_GB_MONTH = 0.0125         # [AWS-S3-2026] Standard-IA
+S3_MIN_STORAGE_DAYS = 30             # [AWS-S3-2026] Standard-IA en kisa faturalanan sure
+S3_RETRIEVAL_USD_PER_GB = 0.01       # [AWS-S3-2026] Standard-IA geri getirme
+S3_PUT_USD_PER_1000 = 0.01           # [AWS-S3-2026] Standard-IA PUT
+S3_OBJECT_MB = 256.0                 # [ASSUME] TCT nesne boyutu (istek sayisi icin)
+DX_PORT_USD_PER_HOUR = 2.25          # [AWS-DX-2026] 10 Gbps dedicated port
+DX_LINK_MB_S = 1000.0                # 10 Gbps x %80 verim [ASSUME]
+DX_EGRESS_USD_PER_GB = 0.02          # [AWS-DX-2026] ABD ici DX cikis; giris ucretsiz
+WAN_CIRCUIT_USD_PER_MONTH = 2000.0   # [ASSUME] 10 Gbps tasiyici devre + cross-connect; aralik 1-4K
+
+
+def backup_volume_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
+    """Bir sitede saklanan yedek hacmi (sikistirma oncesi, TB):
+    (image copy TB, arsiv log TB, gunluk yazma TB)."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    w = get_workload(workload)
+    ic = planned * BACKUP_RETENTION_WEEKS * (1.0 + 6.0 * BACKUP_DAILY_CHANGE)
+    log_per_tx = w.writes * LOG_BYTES_PER_SQL_WRITE + w.commits * LOG_BYTES_PER_COMMIT
+    log_day = avg_tps * log_per_tx * 86400.0 / 1e12
+    logs = log_day * 7.0 * BACKUP_RETENTION_WEEKS
+    # gunluk yazma: tam kopyalar haftaya yayilir + artimli + log
+    daily = planned / 7.0 + planned * BACKUP_DAILY_CHANGE + log_day
+    return ic, logs, daily
+
+
+def backup_restore_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
+    """En kotu durumda tam geri yukleme hacmi (TB): son tam kopya + 6 artimli
+    + bir haftalik log."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    _, logs, _ = backup_volume_tb(avg_tps, workload, data_tb, growth)
+    return planned * (1.0 + 6.0 * BACKUP_DAILY_CHANGE) + logs / BACKUP_RETENTION_WEEKS
+
+
+def _hours(tb, mb_s):
+    return tb * 1e6 / mb_s / 3600.0 if mb_s > 0 else float("inf")
+
+
+def _restore_budget_hours(topology):
+    """Yedek DR yolundaysa (alternatif site yok) geri yukleme butcesi, yoksa None."""
+    topo = TOPOLOGIES[0] if topology is None else topology
+    if topo.recovery_minutes() != float("inf"):
+        return None
+    return topo.rto_minutes / 60.0 * BACKUP_RESTORE_RTO_FRACTION
+
+
+def _hw_monthly(hw_capex):
+    amort = hw_capex / (STORAGE_AMORTIZATION_YEARS * 12)
+    maint_years = max(0, STORAGE_AMORTIZATION_YEARS - STORAGE_WARRANTY_YEARS)
+    maint = hw_capex * STORAGE_MAINT_RATE_ANNUAL * maint_years / STORAGE_AMORTIZATION_YEARS / 12
+    return amort, maint
+
+
+def _plan_ts7770(ic, logs, daily, restore_tb, budget_h):
+    cache = (ic + logs) / BACKUP_COMPRESSION
+    cache = max(BACKUP_CACHE_INCREMENT_TB,
+                math.ceil(cache / BACKUP_CACHE_INCREMENT_TB) * BACKUP_CACHE_INCREMENT_TB)
+    window_tb = BACKUP_CLUSTER_MB_S * BACKUP_WINDOW_HOURS * 3600.0 / 1e6
+    n = max(1, math.ceil(cache / BACKUP_CLUSTER_MAX_CACHE_TB), math.ceil(daily / window_tb))
+    if budget_h is not None:   # geri yukleme bir sitedeki kumelerden okunur
+        n = max(n, math.ceil(restore_tb * 1e6 / (BACKUP_CLUSTER_MB_S * budget_h * 3600.0)))
+    clusters = n * BACKUP_SITES
+    hw = (clusters * BACKUP_CLUSTER_LIST_USD
+          + BACKUP_SITES * cache * BACKUP_CACHE_LIST_USD_PER_TB) * (1.0 - STORAGE_DISCOUNT)
+    amort, maint = _hw_monthly(hw)
+    kw = clusters * BACKUP_KW_PER_CLUSTER
+    mb_s = n * BACKUP_CLUSTER_MB_S
+    return {"target": "ts7770", "feasible": True, "hybrid": False,
+            "stored_tb_per_site": cache, "cache_tb_per_site": cache,
+            "clusters_per_site": n, "clusters": clusters, "throughput_mb_s": mb_s,
+            "hw_capex": hw, "capex": hw, "amortization": amort, "maintenance": maint,
+            "service": 0.0, "power_kw": kw,
+            "energy": kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH}
+
+
+def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
+    stored = (ic + logs) / OBJECT_COMPRESSION
+    need = BACKUP_WINDOW_HOURS * 3600.0
+    req_mb_s = daily * 1e6 / need
+    if budget_h is not None:
+        req_mb_s = max(req_mb_s, restore_tb * 1e6 / (budget_h * 3600.0))
+    base = {"target": target, "hybrid": target == "aws_s3", "stored_tb_per_site": stored,
+            "required_mb_s": req_mb_s, "clusters": 0, "clusters_per_site": 0,
+            "cache_tb_per_site": 0.0}
+    if req_mb_s > TCT_MAX_MB_S:
+        base.update(feasible=False, reason=f"TCT verimi yetmez ({req_mb_s:,.0f} > "
+                                           f"{TCT_MAX_MB_S:,.0f} MB/s)")
+        return base
+    if target == "cos_onprem":
+        hw_site = max(COS_MIN_SITE_CAPEX_USD, stored * COS_HW_USD_PER_TB)
+        hw = BACKUP_SITES * hw_site
+        amort, maint = _hw_monthly(hw)
+        service = BACKUP_SITES * stored * COS_SW_USD_PER_TB_MONTH
+        kw = BACKUP_SITES * max(1.0, stored / 1000.0 * COS_KW_PER_PB)
+        base.update(feasible=True, throughput_mb_s=TCT_MAX_MB_S, hw_capex=hw, capex=hw,
+                    amortization=amort, maintenance=maint, service=service, power_kw=kw,
+                    energy=kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH, links=0)
+        return base
+    # aws_s3: tek kopya; hat sayisi verim ihtiyacindan
+    links = max(1, math.ceil(req_mb_s / DX_LINK_MB_S))
+    min_factor = max(1.0, S3_MIN_STORAGE_DAYS / (7.0 * BACKUP_RETENTION_WEEKS))
+    storage_fee = stored * 1000.0 * S3_USD_PER_GB_MONTH * min_factor
+    puts = daily * 1e6 / S3_OBJECT_MB * (HOURS_PER_MONTH / 24.0) * S3_PUT_USD_PER_1000 / 1000.0
+    restore_fee = (BACKUP_RESTORES_PER_YEAR * restore_tb * 1000.0
+                   * (DX_EGRESS_USD_PER_GB + S3_RETRIEVAL_USD_PER_GB) / 12.0)
+    network = links * (DX_PORT_USD_PER_HOUR * HOURS_PER_MONTH + WAN_CIRCUIT_USD_PER_MONTH)
+    base.update(feasible=True, throughput_mb_s=min(TCT_MAX_MB_S, links * DX_LINK_MB_S),
+                hw_capex=0.0, capex=0.0, amortization=0.0, maintenance=0.0,
+                service=storage_fee + puts + restore_fee + network, power_kw=0.0, energy=0.0,
+                links=links, s3_storage=storage_fee, s3_requests=puts, s3_restore=restore_fee,
+                network=network)
+    return base
+
+
+def backup_plan(avg_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=None, growth=None,
+                target=None):
+    """Yedek hedeflerini boyutlandirir, kisitlari uygular ve en ucuz feasible
+    olani dondurur (target=None -> BACKUP_TARGET). Donen sozlukte
+    'alternatives' her adayin planini (feasible olmayanlar dahil) tasir.
+    topology=None, en siki durum olan M1 kabul edilir."""
+    ic, logs, daily = backup_volume_tb(avg_tps, workload, data_tb, growth)
+    restore = backup_restore_tb(avg_tps, workload, data_tb, growth)
+    budget = _restore_budget_hours(topology)
+    alts = {"ts7770": _plan_ts7770(ic, logs, daily, restore, budget),
+            "cos_onprem": _plan_object("cos_onprem", ic, logs, daily, restore, budget),
+            "aws_s3": _plan_object("aws_s3", ic, logs, daily, restore, budget)}
+    for a in alts.values():
+        if a["feasible"]:
+            a["monthly_total"] = a["amortization"] + a["maintenance"] + a["energy"] + a["service"]
+            a["restore_hours"] = _hours(restore, a["throughput_mb_s"])
+    want = BACKUP_TARGET if target is None else target
+    if want == "auto":
+        ok = [a for a in alts.values() if a["feasible"]]
+        best = min(ok, key=lambda a: a["monthly_total"])
+    else:
+        if want not in alts:
+            raise ValueError(f"bilinmeyen yedek hedefi: {want}")
+        best = alts[want]
+        if not best["feasible"]:   # zorlanan hedef kisiti karsilamazsa TS7770'e duser
+            best = dict(alts["ts7770"], forced_fallback=want)
+    plan = dict(best)
+    plan.update({"image_copy_tb": ic, "log_tb": logs, "daily_tb": daily,
+                 "restore_tb": restore, "restore_budget_hours": budget,
+                 "alternatives": alts})
+    return plan
+
+
+BACKUP_TARGET_LABELS = {"ts7770": "TS7770 sanal teyp", "cos_onprem": "on-prem nesne depolama",
+                        "aws_s3": "AWS S3 (hibrit)"}
+
+
+def describe_backup(plan):
+    t = plan["target"]
+    head = f"{BACKUP_TARGET_LABELS[t]}"
+    if t == "ts7770":
+        head += (f": {plan['clusters']}x TS7770 ({BACKUP_SITES} site), site basina "
+                 f"{plan['cache_tb_per_site']:,.0f} TB cache")
+    elif t == "cos_onprem":
+        head += f": {BACKUP_SITES} site x {plan['stored_tb_per_site']:,.0f} TB"
+    else:
+        head += f": {plan['stored_tb_per_site']:,.0f} TB Standard-IA, {plan['links']}x 10G DX"
+    if plan.get("forced_fallback"):
+        head += f" [{plan['forced_fallback']} kisiti karsilamadi]"
+    return (head + f"; image copy {plan['image_copy_tb']:,.0f} TB + log "
+            f"{plan['log_tb']:,.0f} TB; geri donus ~{plan['restore_hours']:,.1f} sa")
 
 
 # ==============================================================================
 # MODEL FONKSIYONLARI
 # ==============================================================================
 
-def tier_max_tps(tier, rni="average", latency_target_seconds=None, percentile=0.99):
+def tier_max_tps(tier, workload=DEFAULT_WORKLOAD, latency_target_seconds=None, percentile=0.99,
+                 topology=None):
     """
     Bir kademenin verilen RNI ve latency hedefi altinda saglayabilecegi
     MAKSIMUM TPS (dinamik utilization tavani uygulanmis).
@@ -418,66 +1184,134 @@ def tier_max_tps(tier, rni="average", latency_target_seconds=None, percentile=0.
     Latency hedefi varsa, M/M/1 formulunden o kademenin destekleyebilecegi
     max utilization hesaplanir; gercek tavan budur.
     """
-    raw_tps = raw_tier_tps(tier, rni)
-    rho_max = max_utilization_for_latency(tier, rni, latency_target_seconds, percentile)
+    raw_tps = raw_tier_tps(tier, workload)
+    rho_max = max_utilization_for_latency(tier, workload, latency_target_seconds, percentile,
+                                          topology)
     return raw_tps * rho_max
 
 
-def is_capacity_feasible(tier, tps_required, rni="average",
-                          latency_target_seconds=None, percentile=0.99):
+def is_capacity_feasible(tier, tps_required, workload=DEFAULT_WORKLOAD,
+                          latency_target_seconds=None, percentile=0.99, topology=None):
     """Asama 3: kademe, latency hedefi altinda gereken TPS'i karsilar mi?"""
-    return tier_max_tps(tier, rni, latency_target_seconds, percentile) >= tps_required
+    return tier_max_tps(tier, workload, latency_target_seconds, percentile,
+                        topology) >= tps_required
 
 
-def consumed_msu(tier, load_tps, rni="average"):
+def consumed_msu(tier, load_tps, workload=DEFAULT_WORKLOAD):
     """
     Sub-capacity MLC icin faturalanan MSU: kademenin kurulu MSU'sunun, verilen
     yukun (R4HA) kullandigi kismi. Kurulu kapasiteyi asamaz.  [R4HA]
     """
-    raw = raw_tier_tps(tier, rni)
+    raw = raw_tier_tps(tier, workload)
     if raw <= 0:
         return tier.msu
     return min(load_tps / raw, 1.0) * tier.msu
 
 
-def monthly_cost(tier, topology, billed_msu=None):
+def ziip_engines(tier, workload=DEFAULT_WORKLOAD):
+    """Kademenin GP tam-kapasitesine eslik eden zIIP motor sayisi.
+    GP'de calisan is (1-f), zIIP'te calisan f oraninda ise zIIP PCI ihtiyaci
+    = GP PCI x f/(1-f). Motor sayisi yukari yuvarlanir, 2:1 sinirina kirpilir."""
+    f = ziip_fraction(workload)
+    if f <= 0:
+        return 0
+    need = tier.pci * f / (1.0 - f) / ZIIP_ENGINE_PCI
+    return min(math.ceil(need - 1e-9), ZIIP_PER_CP_LIMIT * tier.cps)
+
+
+def ziip_hw_purchase(tier, workload=DEFAULT_WORKLOAD):
+    """zIIP motorlarinin satin alma bedeli (USD)."""
+    return (ziip_engines(tier, workload) * ZIIP_ENGINE_PCI * HARDWARE_COST_PER_MIPS
+            * ZIIP_HW_PRICE_FACTOR)
+
+
+# ------------------------------------------------------------------------------
+# Yazilim yigini: AWLC kademeli MLC (z/OS + CICS TS + Db2)
+# ------------------------------------------------------------------------------
+def _awlc_reference_curve(msu):
+    """Referans urunun (Db2, IBM 2004 liste fiyati) aylik bedeli, kumulatif
+    kademeli: her MSU kendi kademesinin marjinal fiyatiyla ucretlenir."""
+    if msu <= 0:
+        return 0.0
+    cost = AWLC_BASE_CHARGE
+    levels = awlc_levels()
+    lower = levels[0][0]                # ilk 3 MSU sabit ucrete dahil
+    for upper, rate in levels[1:]:
+        if msu <= lower:
+            break
+        cost += (min(msu, upper) - lower) * rate
+        lower = upper
+    return cost
+
+
+def _calibrate_products():
+    """Urun olcek katsayilarini IBM'in 2004 ornek faturasina kalibre eder:
+    katsayi = urunun ornek aylik bedeli / referans egrinin ayni MSU'daki degeri."""
+    return {name: bill / _awlc_reference_curve(msu)
+            for name, (bill, msu) in SW_PRODUCT_ANCHORS.items()}
+
+
+SW_PRODUCT_FACTORS = _calibrate_products()   # z/OS ~2.5, CICS ~1.25, Db2 ~1.06
+
+
+def software_monthly_cost(msu, breakdown=False):
+    """Faturalanan MSU icin yazilim yiginin AYLIK MLC bedeli (GDPS premium haric).
+    Her urun ayri kademelenir (IBM AWLC'de kademe urun basinadir)."""
+    curve = _awlc_reference_curve(msu) * SW_PRICE_LEVEL_FACTOR
+    parts = {name: curve * k for name, k in SW_PRODUCT_FACTORS.items()}
+    total = sum(parts.values())
+    return (total, parts) if breakdown else total
+
+
+def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
-      - software:     billed_msu x USD/MSU x software_premium (GDPS gibi)
+      - software:     software_monthly_cost(billed_msu)
+                      (AWLC kademeli z/OS + CICS TS + Db2)
                       billed_msu verilmezse kademenin tam kurulu MSU'su
                       (full-capacity fiyatlama) kullanilir. Sub-capacity
                       fiyatlamada billed_msu = aylik R4HA tepesinde tuketilen
                       MSU'dur (bkz. consumed_msu).
-                      ICF specialty engine oldugundan ek frame'ler software
-                      premium'a girmez; sadece GDPS yazilimi premium ekler.
-      - hardware:     tam fiyat x cost_multiplier (frame sayisi)
-      - maintenance:  hardware'a oranli
+                      DR (CBU) frame'inin yazilimi kalici kapasitesine gore
+                      faturalanir; bu modelde ihmal edilir [CBU].
+      - hardware:     tam fiyat x cost_multiplier (1 + DR frame x DR_FRAME_COST_FRACTION)
+      - maintenance:  hardware'a oranli, garanti yili sonrasi
       - energy:       frame sayisi x kW x elektrik
+      - gdps:         GDPS teklifinin sabit aylik bedeli (M3, M4)
+      - staff:        altyapi personeli, birincil kademenin PCI'sina gore
+                      alt-dogrusal (STAFF_SCENARIOS), topoloji carpaniyla
     """
     msu = tier.msu if billed_msu is None else billed_msu
-    # Yazilim lisansi - GDPS premium dahil  [LIC + ASSUME premium]
-    software = msu * SOFTWARE_COST_PER_MSU_MONTH * topology.software_premium
-    # Donanim amortismani - frame carpani  [PRICE/ASSUME]
-    hw_purchase = tier.mips * HARDWARE_COST_PER_MIPS
+    # Yazilim lisansi: AWLC kademeli  [AWLC, IBM-2004]
+    software = software_monthly_cost(msu)
+    # Donanim amortismani: frame tabani + kapasite + zIIP  [PRICE/ASSUME]
+    hw_purchase = (HW_FRAME_BASE_COST + tier.mips * HARDWARE_COST_PER_MIPS
+                   + ziip_hw_purchase(tier, workload))
     hw_monthly = hw_purchase / (HARDWARE_AMORTIZATION_YEARS * 12)
-    # Bakim  [PRICE]
-    maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL / 12
+    # Bakim: garanti sonrasi, amortisman suresine ortalanmis  [PRICE]
+    maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12
     # Enerji - her frame ayri  [PWR]
     energy = POWER_KW_PER_SYSTEM * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
 
     mult = topology.cost_multiplier
+    staff = staff_monthly_cost(tier, topology)
+    gdps = gdps_monthly_cost(topology)
     return {
-        "software": software,                       # GDPS premium varsa zaten cikti
-        "hardware_amort": hw_monthly * mult,        # frame sayisi kadar
+        "software": software,
+        "hardware_amort": hw_monthly * mult,        # birincil + DR (CBU) frame
         "maintenance": maint_monthly * mult,
-        "energy": energy * mult,
-        "total": software + (hw_monthly + maint_monthly + energy) * mult,
+        "energy": energy * topology.n_frames,       # DR frame de acik
+        "gdps": gdps,                               # sabit, kapasiteden bagimsiz
+        "staff": staff,                             # birincil CEC kapasitesine gore
+        "total": (software + (hw_monthly + maint_monthly) * mult
+                  + energy * topology.n_frames + gdps + staff),
     }
 
 
-def solve(tps, availability=0.999, rni="average",
-          latency_ms=None, latency_percentile=99, verbose=True):
+def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+          latency_ms=None, latency_percentile=99, verbose=True,
+          data_tb=None, data_growth=None, rpo_seconds=None, rto_minutes=None):
     """
     Verilen girdi icin minimum maliyetli feasible (z16 kademesi + topoloji)
     kombinasyonunu bulur.
@@ -485,40 +1319,52 @@ def solve(tps, availability=0.999, rni="average",
     Parametreler:
       tps                 : Hedef throughput (saniyedeki islem)
       availability        : Hedef uptime (0-1 arasi)
-      rni                 : Islem karmasikligi: 'low' / 'average' / 'high'
+      workload            : Is yuku profili adi (WORKLOAD_PROFILES) veya WorkloadProfile
       latency_ms          : Hedef latency milisaniye olarak (None ise %90 sabit tavan)
       latency_percentile  : Hedef percentile (orn. 99 -> p99 latency hedefi)
+      data_tb, data_growth: Mantiksal veri hacmi (TB) ve yillik buyume (storage)
+      rpo_seconds, rto_minutes: Saha felaketinde kabul edilen en fazla veri kaybi
+                          ve kurtarma suresi (None = kisit yok)
 
     Akis:
-      1. Hedef availability'yi karsilayan topolojileri filtrele [ITIC low]
+      1. Availability / RPO / RTO hedeflerini karsilayan topolojileri filtrele
       2. Latency hedefini de hesaba katarak her kademe icin max utilization hesapla
       3. Her topoloji icin: kapasiteyi karsilayan kademeleri aday yap
       4. Tum topoloji+kademe kombinasyonlari arasinda EN UCUZ olani sec
     """
+    if not tps > 0:
+        raise ValueError("tps pozitif olmali")
+    if not 0.0 < availability < 1.0:
+        raise ValueError("availability 0 ile 1 arasinda olmali")
     # Latency parametrelerini saniyeye ve fraction'a cevir
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     percentile_frac = latency_percentile / 100.0
 
-    # 1. Feasible topolojiler (effective_availability_low >= hedef)
-    feasible_topos = find_feasible_topologies(availability)
+    # 1. Feasible topolojiler (olay tabanli availability >= hedef, RPO/RTO)
+    feasible_topos = find_feasible_topologies(availability, rpo_seconds, rto_minutes)
 
     if verbose:
-        print(f"  Girdi: {tps:,.0f} TPS | RNI={rni} | uptime hedefi={availability:.6%}")
+        wp = get_workload(workload)
+        print(f"  Girdi: {tps:,.0f} TPS | is yuku={wp.name} | uptime hedefi={availability:.6%}")
         if latency_target_s is not None:
             print(f"         latency hedefi: p{latency_percentile} < {latency_ms:g} ms "
                   f"(M/M/1 kuyruk modeli)")
         else:
             print(f"         latency hedefi: yok -> default %{DEFAULT_UTILIZATION_CEILING*100:.0f} "
                   f"utilization tavani")
-        print(f"  -> Kapasite koprusu: ~{TPS_PER_PCI:.2f} TPS / PCI "
-              f"(average RNI) [REDP+LSPR]")
-        print(f"     RNI carpani: x{RNI_MULTIPLIER[rni]}")
-        print(f"  -> Feasible topolojiler (ITIC low + planned indirimi):")
+        print(f"  -> Kapasite koprusu: ~{TPS_PER_PCI:.2f} REDP-islemi / s / PCI [REDP+LSPR]")
+        print(f"     is yuku profili: {wp}")
+        print(f"     -> {TPS_PER_PCI / wp.cpu_weight():.2f} islem / s / PCI (zIIP payi "
+              f"f={ziip_fraction(wp):.2f} haric)")
+        if rpo_seconds is not None or rto_minutes is not None:
+            print(f"         RPO hedefi: {rpo_seconds if rpo_seconds is not None else '-'} s | "
+                  f"RTO hedefi: {rto_minutes if rto_minutes is not None else '-'} dk")
+        print(f"  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):")
         for t in feasible_topos:
-            eff_low = t.effective_availability_low()
-            eff_high = t.effective_availability_high()
-            print(f"       {t.code}: effective availability "
-                  f"{eff_low:.6%} (low) - {eff_high:.6%} (high)")
+            a_worst, a_best = t.availability_range()
+            print(f"       {t.code}: availability {t.availability():.5%} "
+                  f"(aralik {a_worst:.5%} - {a_best:.5%}) | "
+                  f"RPO {t.rpo_seconds:g} s, RTO {t.rto_minutes:g} dk")
 
     if not feasible_topos:
         if verbose:
@@ -528,14 +1374,22 @@ def solve(tps, availability=0.999, rni="average",
     # 2. Her topoloji icin feasible kademeler (latency-aware)
     candidates = []  # liste: (tier, topology, cost, util, rho_max)
     for topo in feasible_topos:
+        splan = storage_plan(tps, workload, topo, data_tb, data_growth)
+        bplan = backup_plan(tps / STATIC_PEAK_TO_AVG, workload, topo, data_tb, data_growth)
         for tier in Z16_TIERS:
-            if is_capacity_feasible(tier, tps, rni, latency_target_s, percentile_frac):
+            if is_capacity_feasible(tier, tps, workload, latency_target_s, percentile_frac, topo):
                 # Sabit yukte R4HA = tps -> sub-capacity faturasi  [R4HA]
                 cost = monthly_cost(tier, topo,
-                                    billed_msu=consumed_msu(tier, tps, rni))
-                rho_max = max_utilization_for_latency(tier, rni,
-                                                      latency_target_s, percentile_frac)
-                max_t = tier_max_tps(tier, rni, latency_target_s, percentile_frac)
+                                    billed_msu=consumed_msu(tier, tps, workload),
+                                    workload=workload)
+                cost["storage"] = splan["monthly_total"]
+                cost["storage_plan"] = splan
+                cost["backup"] = bplan["monthly_total"]
+                cost["backup_plan"] = bplan
+                cost["total"] += splan["monthly_total"] + bplan["monthly_total"]
+                rho_max = max_utilization_for_latency(tier, workload,
+                                                      latency_target_s, percentile_frac, topo)
+                max_t = tier_max_tps(tier, workload, latency_target_s, percentile_frac, topo)
                 util = tps / max_t * rho_max if max_t > 0 else 0
                 candidates.append((tier, topo, cost, util, rho_max))
 
@@ -549,19 +1403,21 @@ def solve(tps, availability=0.999, rni="average",
     tier, topo, cost, util, rho_max = best
 
     if verbose:
-        max_tps = tier_max_tps(tier, rni, latency_target_s, percentile_frac)
+        max_tps = tier_max_tps(tier, workload, latency_target_s, percentile_frac, topo)
         cp_eq = cp_equivalents(tier)
         # Gercek latency tahmini bilgi olarak goster
         if latency_target_s is not None:
-            actual_lat_s = expected_latency_at(tier, rni, tps, percentile_frac)
+            actual_lat_s = expected_latency_at(tier, workload, tps, percentile_frac, topo)
         else:
             actual_lat_s = None
 
         print(f"  -> SECILEN TOPOLOJI: {topo}")
         print(f"     {topo.description}")
-        print(f"     effective availability: {topo.effective_availability_low():.6%} "
-              f"(low) - {topo.effective_availability_high():.6%} (high)")
-        print(f"  -> SECILEN KADEME: {tier} (her frame'de)")
+        a_worst, a_best = topo.availability_range()
+        print(f"     availability: {topo.availability():.5%} "
+              f"({topo.annual_downtime_hours():.2f} saat/yil kesinti; "
+              f"aralik {a_worst:.5%} - {a_best:.5%})")
+        print(f"  -> SECILEN KADEME: {tier} (birincil frame)")
         print(f"     tam-hiz CP esdegeri: {cp_eq:.2f}")
         print(f"     dinamik utilization tavani: %{rho_max*100:.1f} "
               f"(latency hedefinden turetildi)")
@@ -572,11 +1428,23 @@ def solve(tps, availability=0.999, rni="average",
         print(f"     utilization: {util:.1%}  (x{topo.n_frames} frame)")
         print(f"     AYLIK maliyet: ${cost['total']:,.0f}")
         print(f"       yazilim:  ${cost['software']:,.0f}  "
-              f"(premium x{topo.software_premium})")
+              f"(z/OS + CICS TS + Db2, AWLC kademeli)")
+        dr = (f" + {topo.n_frames - 1} DR frame (CBU, x{DR_FRAME_COST_FRACTION:.2f})"
+              if topo.n_frames > 1 else "")
         print(f"       donanim:  ${cost['hardware_amort']:,.0f}  "
-              f"({topo.n_frames} frame)")
+              f"(1 frame{dr}; {ziip_engines(tier, workload)} zIIP, "
+              f"f={ziip_fraction(workload):.2f})")
+        if cost["gdps"]:
+            print(f"       GDPS:     ${cost['gdps']:,.0f}  ({topo.gdps})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
-        print(f"       enerji:   ${cost['energy']:,.0f}\n")
+        print(f"       personel: ${cost['staff']:,.0f}  "
+              f"({staff_fte(tier, topo):.1f} FTE, senaryo={STAFF_SCENARIO})")
+        print(f"       enerji:   ${cost['energy']:,.0f}")
+        sp = cost["storage_plan"]
+        print(f"       storage:  ${cost['storage']:,.0f}  ({describe_storage(sp)})")
+        print(f"     I/O: {sp['iops_required']:,.0f} IOPS, I/O basina {sp['io_service_time_s']*1e6:.0f} us, "
+              f"islem basina D_io = {sp['io_delay_s']*1000:.2f} ms")
+        print(f"       yedekleme: ${cost['backup']:,.0f}  ({describe_backup(cost['backup_plan'])})\n")
     return best
 
 
@@ -670,7 +1538,7 @@ WORKLOAD_PRESETS = {
 }
 
 
-def generate_hourly_profile(preset_name=None, yearly_avg_tps=50000,
+def generate_hourly_profile(preset_name=None, yearly_avg_tps=10000,
                              peak_avg_ratio=None, peak_days=None):
     """8760 saatlik deterministik TPS profili."""
     if preset_name is not None:
@@ -686,6 +1554,8 @@ def generate_hourly_profile(preset_name=None, yearly_avg_tps=50000,
             peak_days = 15
 
     HOURS = 8760
+    if peak_avg_ratio < 1.0:
+        raise ValueError("peak_avg_ratio >= 1 olmali")
     # Gunluk desen: 14:00 peak, 03:00 dip
     daily = [1.0 + 0.5 * math.cos((h - 14) * 2 * math.pi / 24) for h in range(24)]
     # Haftalik desen: is gunu / hafta sonu
@@ -696,17 +1566,47 @@ def generate_hourly_profile(preset_name=None, yearly_avg_tps=50000,
         step = max(1, 365 // peak_days)
         for i in range(peak_days):
             peak_day_set.add(i * step)
-    peak_day_multiplier = peak_avg_ratio / 1.5
 
-    profile = [0.0] * HOURS
-    for h in range(HOURS):
-        d = h // 24
-        hod = h % 24
-        wd = d % 7
-        factor = daily[hod] * weekly[wd]
-        if d in peak_day_set:
-            factor *= peak_day_multiplier
-        profile[h] = factor
+    base = [daily[h % 24] * weekly[(h // 24) % 7] for h in range(HOURS)]
+    is_peak = [(h // 24) in peak_day_set for h in range(HOURS)]
+
+    def shaped(alpha, mult):
+        """alpha: gunluk/haftalik dalgalanmanin genligi (1 = tam desen);
+        mult: peak gunlerin carpani."""
+        mean_b = sum(base) / HOURS
+        return [(mean_b + alpha * (b - mean_b)) * (mult if pk else 1.0)
+                for b, pk in zip(base, is_peak)]
+
+    def ratio_of(prof):
+        return max(prof) / (sum(prof) / HOURS)
+
+    # Profilin tepe/ortalama orani istenen degere esitlenir:
+    #  1) tam desenle, peak gun carpani m kapali formdan: tepe = max(b) x m,
+    #     ortalama = (S_normal + m x S_peak) / 8760  ->  m = r S_n / (8760 max(b) - r S_p)
+    #  2) istenen oran desenin kendi oranindan dusukse (orn. steady 1.5x),
+    #     peak gun etkisiz kalir ve dalgalanma genligi alpha ile kucultulur.
+    b_max = max(b for b, pk in zip(base, is_peak))
+    s_peak = sum(b for b, pk in zip(base, is_peak) if pk)
+    s_norm = sum(base) - s_peak
+    denom = HOURS * b_max - peak_avg_ratio * s_peak
+    mult = peak_avg_ratio * s_norm / denom if (peak_day_set and denom > 0) else 0.0
+    if mult >= 1.0:
+        profile = shaped(1.0, mult)
+    else:
+        # genlik ust siniri: profil negatife dusmemeli
+        mean_b = sum(base) / HOURS
+        a_max = mean_b / (mean_b - min(base))
+        if ratio_of(shaped(a_max, 1.0)) < peak_avg_ratio:
+            raise ValueError("bu peak_avg_ratio peak gunler olmadan elde edilemez; "
+                             "peak_days > 0 verin")
+        lo, hi = 0.0, a_max
+        for _ in range(60):
+            mid = (lo + hi) / 2
+            if ratio_of(shaped(mid, 1.0)) < peak_avg_ratio:
+                lo = mid
+            else:
+                hi = mid
+        profile = shaped((lo + hi) / 2, 1.0)
 
     current_avg = sum(profile) / HOURS
     scale = yearly_avg_tps / current_avg
@@ -792,18 +1692,21 @@ def corridor_tier_for(base, fraction=None, feature_max_cps=None):
 def hw_monthly_cost_per_pci():
     """Permanent donanimin PCI basina aylik maliyeti (amortisman + bakim)."""
     return (HARDWARE_COST_PER_MIPS / (HARDWARE_AMORTIZATION_YEARS * 12) +
-            HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL / 12)
+            HARDWARE_COST_PER_MIPS * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12)
 
 
-def consumed_pci(load_tps, rni="average"):
-    """Bir yukun tukettigi kapasite, PCI cinsinden (%100 utilization esdegeri)."""
-    return load_tps / (TPS_PER_PCI * RNI_MULTIPLIER[rni])
+def consumed_pci(load_tps, workload=DEFAULT_WORKLOAD):
+    """Bir yukun tukettigi GENEL AMACLI (GP) kapasite, PCI cinsinden
+    (%100 utilization esdegeri). zIIP'e kayan pay dusulur."""
+    w = get_workload(workload)
+    return load_tps * w.cpu_weight() * (1.0 - ziip_fraction(w)) / TPS_PER_PCI
 
 
-def simulate_yearly(profile, tier, topology, rni="average",
+def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
                     latency_ms=None, latency_percentile=99,
                     strategy="permanent", corridor_tier=None,
-                    feature_max_cps=None, sw_price_per_msu_hour=None):
+                    feature_max_cps=None, sw_price_per_msu_hour=None,
+                    storage_monthly=0.0, staff_monthly=0.0, backup_monthly=0.0):
     """Bir yillik saat-saat simulasyon ve maliyet.
 
     strategy:
@@ -816,9 +1719,9 @@ def simulate_yearly(profile, tier, topology, rni="average",
     aktive edilir (CoD 24 saatlik periyotla faturalanir [COD]). Yuk
     izinli en buyuk gecici kademeyi de asarsa None doner (strateji infeasible).
 
-    Gecici kapasite ucretleri tek frame icin hesaplanir: coklu-frame
-    topolojilerde ikinci frame yalnizca failover icindir ve onun gecici
-    kapasitesi CBU'nun konusudur (yol haritasi M5).
+    Gecici kapasite ucretleri birincil frame icin hesaplanir: coklu-frame
+    topolojilerde DR frame'i yalnizca failover icindir ve felaketteki
+    kapasitesi CBU kaydidir (DR_FRAME_COST_FRACTION).
     """
     latency_target_s = (latency_ms / 1000.0) if latency_ms is not None else None
     pct = latency_percentile / 100.0
@@ -826,7 +1729,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     DAYS = HOURS // 24
 
     def max_tps(t):
-        return tier_max_tps(t, rni, latency_target_s, pct)
+        return tier_max_tps(t, workload, latency_target_s, pct, topology)
 
     if strategy == "tfp":
         if corridor_tier is None:
@@ -862,13 +1765,21 @@ def simulate_yearly(profile, tier, topology, rni="average",
     cod_days = sum(1 for t in day_tier if t is not always_on)
 
     # --- permanent donanim (her frame) ---------------------------------------
-    base_cost = monthly_cost(tier, topology)
+    base_cost = monthly_cost(tier, topology, workload=workload)
     base_other_monthly = (base_cost["hardware_amort"] + base_cost["maintenance"] +
-                          base_cost["energy"])
+                          base_cost["energy"] + base_cost["gdps"])
+    # zIIP motorlari, yilin en buyuk aktif kademesindeki (CoD / corridor) GP
+    # kapasitesine eslik edecek sayida kalici kurulur: zIIP payi f, gecici GP
+    # kapasitesinde de ayni oranda zIIP ister. Ek motorlarin bedeli donanima.
+    top_tier = max(set(day_tier) | {always_on}, key=lambda t: t.pci)
+    ziip_extra = max(0.0, ziip_hw_purchase(top_tier, workload) - ziip_hw_purchase(tier, workload))
+    base_other_monthly += (ziip_extra / (HARDWARE_AMORTIZATION_YEARS * 12)
+                           + ziip_extra * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12
+                           ) * topology.cost_multiplier
     monthly_other = [base_other_monthly] * 12
 
     # --- On/Off CoD: gun basina, aktif gecici kapasite (always-on'un ustu) ----
-    hw_pci_day = hw_monthly_cost_per_pci() / 30.0
+    hw_pci_day = hw_monthly_cost_per_pci() / (HOURS_PER_MONTH / 24.0)
     cod_cost_total = sum((t.pci - always_on.pci) * hw_pci_day * COD_DAILY_MULTIPLIER
                          for t in day_tier if t is not always_on)
 
@@ -877,7 +1788,7 @@ def simulate_yearly(profile, tier, topology, rni="average",
     if strategy == "tfp":
         hw_pci_hour = hw_monthly_cost_per_pci() / HOURS_PER_MONTH
         for load in profile:
-            used = min(consumed_pci(load, rni), corridor_tier.pci) - tier.pci
+            used = min(consumed_pci(load, workload), corridor_tier.pci) - tier.pci
             if used > 0:
                 corridor_cost_total += used * hw_pci_hour * CORRIDOR_PREMIUM
         corridor_cost_total += ((corridor_tier.pci - tier.pci) * hw_monthly_cost_per_pci()
@@ -891,22 +1802,26 @@ def simulate_yearly(profile, tier, topology, rni="average",
     for m in range(12):
         hours = range(m * month_len, min((m + 1) * month_len, HOURS))
         if strategy == "tfp":
-            mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], rni)
+            mh = sum(consumed_msu(day_tier[min(h // 24, DAYS - 1)], profile[h], workload)
                      for h in hours)
             msu_hours += mh
-            monthly_software.append(mh * (sw_price_per_msu_hour or 0.0)
-                                    * topology.software_premium)
+            monthly_software.append(mh * (sw_price_per_msu_hour or 0.0))
         else:
             # ayin en buyuk aktif kademesi faturalanabilir tavandir
             cap_tier = max((day_tier[min(h // 24, DAYS - 1)] for h in hours),
                            key=lambda t: t.pci)
-            billed = consumed_msu(cap_tier, r4ha_peaks[m], rni)
+            billed = consumed_msu(cap_tier, r4ha_peaks[m], workload)
             monthly_software.append(
-                monthly_cost(cap_tier, topology, billed_msu=billed)["software"])
+                monthly_cost(cap_tier, topology, billed_msu=billed,
+                             workload=workload)["software"])
 
     yearly_software = sum(monthly_software)
     yearly_other = sum(monthly_other)
-    yearly_total = yearly_software + yearly_other + cod_cost_total + corridor_cost_total
+    yearly_storage = 12.0 * storage_monthly
+    yearly_staff = 12.0 * staff_monthly
+    yearly_backup = 12.0 * backup_monthly
+    yearly_total = (yearly_software + yearly_other + yearly_storage + yearly_backup +
+                    yearly_staff + cod_cost_total + corridor_cost_total)
 
     return {
         "hourly_load": profile,
@@ -922,6 +1837,9 @@ def simulate_yearly(profile, tier, topology, rni="average",
         "corridor_cost_total": corridor_cost_total,
         "yearly_software": yearly_software,
         "yearly_other": yearly_other,
+        "yearly_storage": yearly_storage,
+        "yearly_backup": yearly_backup,
+        "yearly_staff": yearly_staff,
         "yearly_total": yearly_total,
         "base_tier": tier,
         "corridor_tier": corridor_tier if strategy == "tfp" else None,
@@ -942,24 +1860,27 @@ STRATEGY_LABELS = {
 }
 
 
-def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, rni="average"):
+def tfp_software_price_per_msu_hour(profile, reference_sim, reference_tier, workload=DEFAULT_WORKLOAD):
     """TFP-SW efektif MSU-saat fiyati [TFP-SW]: IBM fiyati musterinin gecmis
     12 ayindan belirler. Burada 'gecmis yil' = ayni profilin permanent
     konfigurasyondaki R4HA faturasi; fiyat bu faturayi ayni yilin tuketilen
     MSU-saatine bolerek bulunur (gelir-notr), sonra TFP_SW_DISCOUNT uygulanir."""
-    msu_hours = sum(consumed_msu(reference_tier, load, rni) for load in profile)
-    base_sw = reference_sim["yearly_software"] / reference_sim["topology"].software_premium
+    msu_hours = sum(consumed_msu(reference_tier, load, workload) for load in profile)
+    base_sw = reference_sim["yearly_software"]
     return base_sw / msu_hours * (1.0 - TFP_SW_DISCOUNT)
 
 
-def solve_yearly(preset_name=None, yearly_avg_tps=50000,
+def solve_yearly(preset_name=None, yearly_avg_tps=10000,
                  peak_avg_ratio=None, peak_days=None,
-                 availability=0.999, rni="average",
+                 availability=0.999, workload=DEFAULT_WORKLOAD,
                  latency_ms=None, latency_percentile=99,
                  strategies=("permanent", "base_cod", "tfp"),
-                 verbose=True):
+                 verbose=True, data_tb=None, data_growth=None,
+                 rpo_seconds=None, rto_minutes=None, only_topology=None, base_floor=None):
     """Yillik simulasyon + strateji karsilastirmasi. En ucuz strateji, diger
     stratejilerin en iyi sonuclari 'alternatives' listesinde doner."""
+    if not yearly_avg_tps > 0:
+        raise ValueError("avg_tps pozitif olmali")
     profile = generate_hourly_profile(preset_name=preset_name,
                                       yearly_avg_tps=yearly_avg_tps,
                                       peak_avg_ratio=peak_avg_ratio,
@@ -967,7 +1888,9 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
     peak_load = max(profile)
     avg_load = sum(profile) / len(profile)
 
-    feasible_topos = find_feasible_topologies(availability)
+    feasible_topos = find_feasible_topologies(availability, rpo_seconds, rto_minutes)
+    if only_topology is not None:
+        feasible_topos = [t for t in feasible_topos if t.code == only_topology.code]
     if not feasible_topos:
         if verbose:
             print("HATA: hicbir topoloji bu availability hedefini saglayamiyor")
@@ -982,49 +1905,70 @@ def solve_yearly(preset_name=None, yearly_avg_tps=50000,
         print(f"  Workload: {preset_name or 'custom'} - {desc}")
         print(f"    yillik ortalama: {avg_load:,.0f} TPS  |  peak saat: {peak_load:,.0f} TPS")
         print(f"    peak/avg orani: {peak_load/avg_load:.2f}x")
-        print(f"  Availability hedefi: {availability:.6%}  |  RNI: {rni}")
+        print(f"  Availability hedefi: {availability:.6%}  |  is yuku: {get_workload(workload)}")
         if latency_ms is not None:
             print(f"  Latency hedefi: p{latency_percentile} < {latency_ms:g} ms")
         print()
 
     best_by_strategy = {}
     for topo in feasible_topos:
+        # base_floor: cok yillik modda onceki yilin kademesi; kalici kapasite
+        # yalnizca yukseltilebilir (is_permanent_upgrade)
         perm_tier = next((t for t in Z16_TIERS
-                          if is_capacity_feasible(t, peak_load, rni, latency_target_s, pct)),
+                          if (base_floor is None or is_permanent_upgrade(base_floor, t))
+                          and is_capacity_feasible(t, peak_load, workload, latency_target_s,
+                                                   pct, topo)),
                          None)
         if perm_tier is None:
             continue
-        sim_perm = simulate_yearly(profile, perm_tier, topo, rni, latency_ms,
-                                   latency_percentile, strategy="permanent")
-        sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, rni)
+        splan = storage_plan(peak_load, workload, topo, data_tb, data_growth)
+        st_m = splan["monthly_total"]
+        bplan = backup_plan(avg_load, workload, topo, data_tb, data_growth)
+        bk_m = bplan["monthly_total"]
+        # personel tepe yuku tasiyan kademeye gore: stratejiden bagimsiz
+        stf_m = staff_monthly_cost(perm_tier, topo)
+        sim_perm = simulate_yearly(profile, perm_tier, topo, workload, latency_ms,
+                                   latency_percentile, strategy="permanent",
+                                   storage_monthly=st_m, staff_monthly=stf_m,
+                                   backup_monthly=bk_m)
+        sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, workload)
 
         candidates = {"permanent": [sim_perm]} if "permanent" in strategies else {}
         for base in Z16_TIERS:
             if base.pci >= perm_tier.pci:
                 break
-            if not is_capacity_feasible(base, avg_load * BASE_MIN_AVG_FACTOR, rni,
-                                        latency_target_s, pct):
+            if base_floor is not None and not is_permanent_upgrade(base_floor, base):
+                continue
+            if not is_capacity_feasible(base, avg_load * BASE_MIN_AVG_FACTOR, workload,
+                                        latency_target_s, pct, topo):
                 continue
             # hizli eleme: izinli en buyuk gecici kademe bile peak'i tasimiyorsa atla
-            if tier_max_tps(max_temporary_tier(base), rni, latency_target_s, pct) < peak_load:
+            if tier_max_tps(max_temporary_tier(base), workload, latency_target_s, pct,
+                            topo) < peak_load:
                 continue
             if "base_cod" in strategies:
-                s = simulate_yearly(profile, base, topo, rni, latency_ms,
-                                    latency_percentile, strategy="base_cod")
+                s = simulate_yearly(profile, base, topo, workload, latency_ms,
+                                    latency_percentile, strategy="base_cod",
+                                    storage_monthly=st_m, staff_monthly=stf_m,
+                                   backup_monthly=bk_m)
                 if s is not None:
                     candidates.setdefault("base_cod", []).append(s)
             if "tfp" in strategies:
                 corr = corridor_tier_for(base)
                 if corr is not None:
-                    s = simulate_yearly(profile, base, topo, rni, latency_ms,
+                    s = simulate_yearly(profile, base, topo, workload, latency_ms,
                                         latency_percentile, strategy="tfp",
                                         corridor_tier=corr,
-                                        sw_price_per_msu_hour=sw_price)
+                                        sw_price_per_msu_hour=sw_price,
+                                        storage_monthly=st_m, staff_monthly=stf_m,
+                                   backup_monthly=bk_m)
                     if s is not None:
                         candidates.setdefault("tfp", []).append(s)
 
         for name, sims in candidates.items():
             best = min(sims, key=lambda s: s["yearly_total"])
+            best["storage_plan"] = splan
+            best["backup_plan"] = bplan
             if (name not in best_by_strategy or
                     best["yearly_total"] < best_by_strategy[name]["yearly_total"]):
                 best_by_strategy[name] = best
@@ -1073,6 +2017,14 @@ def _print_strategy_detail(sim):
     sw_label = "consumption, MSU-saat" if sim["strategy"] == "tfp" else "R4HA"
     print(f"  Yazilim ({sw_label}):".ljust(34) + f"${sim['yearly_software']:>13,.0f}")
     print(f"  Donanim + bakim + enerji:".ljust(34) + f"${sim['yearly_other']:>13,.0f}")
+    if sim.get("yearly_storage"):
+        print(f"  Storage (DS8900F):".ljust(34) + f"${sim['yearly_storage']:>13,.0f}"
+              f"  [{describe_storage(sim['storage_plan'])}]")
+    if sim.get("yearly_backup"):
+        print(f"  Yedekleme:".ljust(34) + f"${sim['yearly_backup']:>13,.0f}"
+              f"  [{describe_backup(sim['backup_plan'])}]")
+    if sim.get("yearly_staff"):
+        print(f"  Personel ({STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
     if sim["corridor_cost_total"]:
         print(f"  TFP corridor kullanimi:".ljust(34) + f"${sim['corridor_cost_total']:>13,.0f}")
     if sim["cod_cost_total"]:
@@ -1105,20 +2057,506 @@ def export_yearly_csv(sim, filepath):
 # Kullanim ornekleri:
 #
 #   python mainframe_model.py --tps 50000
-#   python mainframe_model.py --tps 80000 --availability 0.9993 --rni high
+#   python mainframe_model.py --tps 80000 --availability 0.9993 --workload high
 #   python mainframe_model.py --demo          (5 hazir senaryo)
 #   python mainframe_model.py --calibration   (kalibrasyon kontrolu)
 #
 # Parametreler:
 #   --tps           Saniyedeki islem sayisi (zorunlu, --demo yoksa)
 #   --availability  Hedef uptime, 0-1 arasi (varsayilan: 0.999 = %99.9)
-#   --rni           Islem karmasikligi: low / average / high (varsayilan: average)
+#   --workload      Is yuku profili: redp_light / tpcb_like / oltp_rw / oltp_heavy
+#                   (varsayilan: oltp_rw); --sql-reads/--sql-writes ile ozel bilesim
 #   --demo          5 hazir senaryo calistir
 #   --calibration   Kalibrasyon sabitlerini yazdir
 # ==============================================================================
 
 import argparse
 import sys
+
+
+# ------------------------------------------------------------------------------
+# ARALIK (RANGE) CIKTISI
+# ------------------------------------------------------------------------------
+# Kamuya acik kesin fiyat olmayan parametreler tek bir deger yerine kaynakli bir
+# araliktir. "low" mainframe lehine (dusuk maliyet), "high" aleyhine ucu verir.
+#   - solve_range: tum parametreler ayni anda low / mid / high -> toplam
+#     maliyetin dis sinirlari (koseler; olasilik araligi DEGIL).
+#   - range_tornado: digerleri mid'de iken her parametreyi tek tek low/high'a
+#     cekip toplamdaki salinimi olcer -> hangi varsayim sonucu en cok oynatir.
+# Her kademe secimi senaryo icinde yeniden optimize edilir.
+RANGE_PARAMETERS = [
+    # (degisken, low, mid, high, aciklama)
+    ("STAFF_SCENARIO", "low", "mid", "high", "Personel FTE egrisi + yuklu maliyet"),
+    ("SW_PRICE_LEVEL_FACTOR", 0.5, 1.0, 1.75, "AWLC mutlak fiyat seviyesi (2004 = 1.0)"),
+    ("AWLC_UPPER_DECAY", 0.70, 0.80, 1.00, "AWLC L4+ kademe dusus orani"),
+    ("CPU_US_PER_SQL_READ", 15.0, 30.0, 60.0, "Okuma SQL CPU, us (is yuku agirligi)"),
+    ("CPU_US_PER_SQL_WRITE", 40.0, 70.0, 140.0, "Yazma SQL CPU, us (is yuku agirligi)"),
+    ("ZIIP_OFFLOAD_FRACTION", 0.25, 0.10, 0.0, "zIIP'e kayan CPU payi"),
+    ("HARDWARE_COST_PER_MIPS", 150.0, 200.0, 300.0, "Donanim USD/PCI"),
+    ("HW_FRAME_BASE_COST", 250000.0, 500000.0, 1000000.0, "Donanim frame tabani, USD"),
+    ("STORAGE_DISCOUNT", 0.85, 0.70, 0.50, "DS8900F liste fiyati indirimi"),
+    ("BP_HIT_RATIO", 0.99, 0.95, 0.90, "Db2 buffer pool isabeti (I/O)"),
+    ("DR_FRAME_COST_FRACTION", 0.30, 0.50, 1.00, "DR frame bedeli (CBU; 1 = tam ayna)"),
+    ("GDPS_COST_LEVEL", 0.5, 1.0, 2.0, "GDPS sabit bedel seviyesi"),
+    ("SITE_EVENT_LEVEL", "low", "mid", "high", "Saha olayi sikligi ve suresi"),
+    ("RECOVERY_LEVEL", "low", "mid", "high", "Kurtarma suresi (RTO)"),
+    ("PLANNED_LEVEL", "low", "mid", "high", "Planli kesinti sikligi ve suresi"),
+    ("BACKUP_RETENTION_WEEKS", 2, 4, 8, "Yedek saklama suresi, hafta"),
+    ("BACKUP_COMPRESSION", 3.0, 2.0, 1.5, "TS7770 sikistirma orani"),
+    ("BACKUP_CACHE_LIST_USD_PER_TB", 1000.0, 2000.0, 4000.0, "TS7770 cache liste fiyati, USD/TB"),
+    ("COS_HW_USD_PER_TB", 60.0, 100.0, 200.0, "On-prem nesne depolama donanimi, USD/TB"),
+    ("COS_SW_USD_PER_TB_MONTH", 0.0, 5.0, 10.0, "On-prem nesne depolama aboneligi, USD/TB-ay"),
+]
+RANGE_LEVELS = ("low", "mid", "high")
+
+
+class use_values:
+    """Modul degiskenlerini gecici olarak degistiren baglam yoneticisi."""
+    def __init__(self, values):
+        self.values, self.old = values, {}
+
+    def __enter__(self):
+        g = globals()
+        missing = [k for k in self.values if k not in g]
+        if missing:
+            raise KeyError(f"bilinmeyen model parametresi: {missing}")
+        for k, v in self.values.items():
+            self.old[k] = g[k]
+            g[k] = v
+        return self
+
+    def __exit__(self, *exc):
+        globals().update(self.old)
+        return False
+
+
+def scenario_values(level):
+    """RANGE_PARAMETERS'in tumu icin low / mid / high degerleri."""
+    i = RANGE_LEVELS.index(level)
+    return {name: vals[i] for name, *vals, _desc in
+            [(r[0], r[1], r[2], r[3], r[4]) for r in RANGE_PARAMETERS]}
+
+
+def solve_range(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+                latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+                rpo_seconds=None, rto_minutes=None):
+    """Toplam aylik maliyetin low / mid / high dis sinirlari. Donus:
+    {level: {"tier", "topology", "cost"}} ya da senaryo infeasible ise None."""
+    out = {}
+    for level in RANGE_LEVELS:
+        with use_values(scenario_values(level)):
+            r = solve(tps, availability, workload, latency_ms, latency_percentile,
+                      verbose=False, data_tb=data_tb, data_growth=data_growth,
+                          rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
+        out[level] = None if r is None else {"tier": r[0], "topology": r[1], "cost": r[2]}
+    return out
+
+
+def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+                  latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+                  rpo_seconds=None, rto_minutes=None):
+    """Tek-parametre salinimi: [(degisken, aciklama, low_toplam, high_toplam)],
+    salinim buyuklugune gore sirali. Digerleri mid'de."""
+    mid = scenario_values("mid")
+    rows = []
+    for name, lo, _m, hi, desc in RANGE_PARAMETERS:
+        totals = []
+        for v in (lo, hi):
+            vals = dict(mid)
+            vals[name] = v
+            with use_values(vals):
+                r = solve(tps, availability, workload, latency_ms, latency_percentile,
+                          verbose=False, data_tb=data_tb, data_growth=data_growth,
+                          rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
+            totals.append(None if r is None else r[2]["total"])
+        rows.append((name, desc, totals[0], totals[1]))
+    rows.sort(key=lambda r: -abs((r[3] or 0) - (r[2] or 0)))
+    return rows
+
+
+def print_range(tps, **kw):
+    rng = solve_range(tps, **kw)
+    print(f"\nARALIK (aylik toplam, {tps:,.0f} TPS):")
+    for level in RANGE_LEVELS:
+        x = rng[level]
+        if x is None:
+            print(f"  {level:<5} infeasible")
+            continue
+        c = x["cost"]
+        print(f"  {level:<5} ${c['total']:>12,.0f}  (${c['total'] / tps:,.2f}/TPS)  "
+              f"{x['topology'].code} {x['tier'].model}  yazilim ${c['software']:,.0f}  "
+              f"personel ${c['staff']:,.0f}")
+    print("  Tek-parametre salinimi (digerleri mid):")
+    for name, desc, lo, hi in range_tornado(tps, **kw):
+        if lo is None or hi is None:
+            print(f"    {desc:<42} infeasible ucu var")
+            continue
+        print(f"    {desc:<42} ${lo:>12,.0f} .. ${hi:>12,.0f}")
+
+
+# ==============================================================================
+# BOLUM 10 — COK YILLIK UFUK: 5 YILLIK NAKIT AKISI VE NPV
+# ==============================================================================
+# Aylik maliyet amortismanla yayilmis bir "kararli durum" olcusudur. NPV ise
+# nakit akisini kullanir: donanim ve storage alimi satin alma aninda (t = 0 ya
+# da yukseltme yili basi), isletme giderleri yil sonunda odenir ve
+#   NPV = sum_t CF_t / (1 + r)^t
+# ile bugune indirgenir. Yil y'de yuk  TPS_y = TPS_1 x (1 + g)^(y-1), veri
+# D_t = D_0 x (1 + g_veri)^t buyur. Kademe yalnizca yukselebilir (MES upgrade:
+# PCI, CP sayisi ve kapasite seviyesi azalamaz); her yil yukseltilmis kademe
+# icin yazilim, personel ve bakim yeniden hesaplanir. Storage ve yedekleme
+# STORAGE_PLANNING_YEARS'lik dongulerle (t = 0, 3) alinir; her dongu kendi
+# sonundaki veriye ve dongudeki en yuksek yuke gore boyutlanir.
+# Fiyat artislari yila gore bilesik: yazilim ve GDPS SW_PRICE_ESCALATION,
+# bakim/CoD/corridor HW_SERVICE_ESCALATION, personel WAGE_ESCALATION,
+# enerji ENERGY_ESCALATION. Donem sonu kalan deger varsayilan 0 (tutucu).
+# Tutarlilik: r = 0, buyume 0, artis 0 iken NPV = 60 x statik aylik toplam.
+# KAYNAKLAR:
+#   [DAMODARAN-2026] = A. Damodaran, Cost of Capital by Sector (US), Ocak 2026:
+#                      toplam piyasa %6,96; bilgisayar hizmetleri %7,83;
+#                      yazilim %9,34; bankalar %4,98
+#   [IBM-PRICE-2026] = IBM yillik fiyat uyumlamasi: IBM Z yazilimi (MLC, S&S)
+#                      2026'da +%6; TLS (bakim) 2025'te +%4-6, 2026'da ~+%6
+#   [BLS-ECI-2026]   = BLS Employment Cost Index, Haziran 2026: ozel sektor
+#                      toplam ucret maliyeti 12 ayda +%3,3 (maas +%3,1)
+#   [EIA-EPM]        = EIA Electric Power Monthly Tablo 5.3: ticari elektrik
+#                      10,59 (2020) -> 13,37 cent/kWh (2025), yillik ~%4,8
+#   [TFP-SW-2021]    = IBM, "Tailored Fit Pricing: A sensible pricing model"
+#                      (05/2021): taban ustu MSU'lar "very aggressive Growth Price"
+#   [KYNE-2022]      = F. Kyne, J. Baker, "How Should I Think About TFP?" (2022):
+#                      "IBM mentions 50% discount for growth MSUs"; taban 12 ayin
+#                      MLC'si, kullanilmasa da odenir
+NPV_YEARS = 5                    # [ASSUME] amortisman suresiyle ayni ufuk
+NPV_DISCOUNT_RATE = 0.07         # [DAMODARAN-2026] nominal; tarama %5 / %7 / %10
+NPV_TPS_GROWTH = 0.10            # senaryo girdisi (yillik TPS buyumesi)
+SW_PRICE_ESCALATION = 0.03       # [IBM-PRICE-2026 -> ASSUME] aralik 0-0,06
+HW_SERVICE_ESCALATION = 0.03     # [IBM-PRICE-2026 -> ASSUME] aralik 0-0,06
+WAGE_ESCALATION = 0.033          # [BLS-ECI-2026] aralik 0,025-0,045
+ENERGY_ESCALATION = 0.04         # [EIA-EPM] aralik 0,015-0,056
+TFP_GROWTH_PRICE_FACTOR = 0.5    # [TFP-SW-2021, KYNE-2022] taban ustu MSU fiyati / taban fiyati
+NPV_RESIDUAL_FRACTION = 0.0      # [ASSUME] donem sonu kalan defter degerinin geri kazanilan payi
+
+NPV_RANGE_PARAMETERS = RANGE_PARAMETERS + [
+    ("SW_PRICE_ESCALATION", 0.0, 0.03, 0.06, "Yazilim + GDPS yillik fiyat artisi"),
+    ("HW_SERVICE_ESCALATION", 0.0, 0.03, 0.06, "Bakim / CoD yillik fiyat artisi"),
+    ("WAGE_ESCALATION", 0.025, 0.033, 0.045, "Personel yillik ucret artisi"),
+    ("ENERGY_ESCALATION", 0.015, 0.04, 0.056, "Elektrik yillik fiyat artisi"),
+    ("TFP_GROWTH_PRICE_FACTOR", 0.5, 0.5, 1.0, "TFP buyume MSU fiyati / taban"),
+]
+
+
+def _esc(rate, year):
+    return (1.0 + rate) ** (year - 1)
+
+
+def is_permanent_upgrade(prev, tier):
+    """MES ile kalici yukseltme: PCI, CP sayisi ve kapasite seviyesi azalamaz."""
+    if prev is None:
+        return True
+    return (tier.pci >= prev.pci and tier.cps >= prev.cps and
+            _SERIES_ORDER[tier.series] >= _SERIES_ORDER[prev.series])
+
+
+def mainframe_hw_value(tier, topology, workload=DEFAULT_WORKLOAD, ziip_tier=None):
+    """Kurulu donanimin satin alma degeri (birincil + DR frame CBU carpani)."""
+    zt = tier if ziip_tier is None else ziip_tier
+    return ((HW_FRAME_BASE_COST + tier.pci * HARDWARE_COST_PER_MIPS
+             + ziip_hw_purchase(zt, workload)) * topology.cost_multiplier)
+
+
+def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
+    """Storage + yedekleme: dongu basinda alim, yil basina kurulu deger ve kW.
+    Donus: yil listesi, her biri {capex, hw_installed, kw, ...}."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    cycle = max(1, STORAGE_PLANNING_YEARS)
+    rows = []
+    cur = {"s_capex": 0.0, "s_hw": 0.0, "b_capex": 0.0, "b_hw": 0.0, "kw": 0.0,
+           "splan": None, "bplan": None, "target": None}
+    for y in range(1, years + 1):
+        t = y - 1
+        add_s = add_b = 0.0
+        if t % cycle == 0:
+            h = min(cycle, years - t)
+            d_t = data_tb * (1.0 + growth) ** t
+            with use_values({"STORAGE_PLANNING_YEARS": h}):
+                sp = storage_plan(max(peaks[t:t + h]), workload, topology, d_t, growth)
+                bp = backup_plan(max(avgs[t:t + h]), workload, topology, d_t, growth,
+                                 target=cur["target"])
+            cur["target"] = cur["target"] or bp["target"]   # hedef 1. dongude sabitlenir
+            # kurulu deger azalmaz; dongunun ek alimi farktir
+            add_s = max(0.0, sp["capex"] - cur["s_capex"])
+            add_b = max(0.0, bp["capex"] - cur["b_capex"])
+            cur["s_capex"] += add_s
+            cur["b_capex"] += add_b
+            cur["s_hw"] = max(cur["s_hw"], sp["hw_capex"])
+            cur["b_hw"] = max(cur["b_hw"], bp["hw_capex"])
+            cur["kw"] = max(cur["kw"], sp["power_kw"] + bp["power_kw"])
+            cur["splan"], cur["bplan"] = sp, bp
+        # kullandikca ode (abonelik, S3, hat): o yilin verisi ve yukuyle
+        with use_values({"STORAGE_PLANNING_YEARS": 0}):
+            svc = backup_plan(avgs[t], workload, topology, data_tb * (1.0 + growth) ** t,
+                              growth, target=cur["target"])["service"]
+        rows.append({"storage_capex": add_s, "backup_capex": add_b, "backup_service": svc,
+                     "backup_target": cur["target"],
+                     "storage_hw": cur["s_hw"], "backup_hw": cur["b_hw"],
+                     "kw": cur["kw"], "storage_plan": cur["splan"],
+                     "backup_plan": cur["bplan"]})
+    return rows
+
+
+def _discount_and_sum(rows, rate, demand):
+    """rows: yil basina {'capex': ..., 'opex': ..., kalemler}. capex t=y-1'de,
+    opex t=y'de indirgenir. demand: yil basina TPS (seviyelendirilmis maliyet)."""
+    npv = 0.0
+    items = {}
+    pv_demand = 0.0
+    for y, r in enumerate(rows, start=1):
+        dc = (1.0 + rate) ** (y - 1)
+        do = (1.0 + rate) ** y
+        r["pv"] = r["capex"] / dc + r["opex"] / do
+        npv += r["pv"]
+        for k in r["capex_items"]:
+            items[k] = items.get(k, 0.0) + r["capex_items"][k] / dc
+        for k in r["opex_items"]:
+            items[k] = items.get(k, 0.0) + r["opex_items"][k] / do
+        pv_demand += 12.0 * demand[y - 1] / do
+    return npv, items, pv_demand
+
+
+def _residual(capex_events, rate, years):
+    """Donem sonu kalan defter degeri x NPV_RESIDUAL_FRACTION (negatif akis)."""
+    if NPV_RESIDUAL_FRACTION <= 0:
+        return 0.0
+    life = HARDWARE_AMORTIZATION_YEARS
+    val = sum(c * max(0.0, 1.0 - (years - t) / life) for t, c in capex_events)
+    return -NPV_RESIDUAL_FRACTION * val / (1.0 + rate) ** years
+
+
+def _finish(rows, rate, years, demand, capex_events, extra):
+    npv, items, pv_demand = _discount_and_sum(rows, rate, demand)
+    res = _residual(capex_events, rate, years)
+    npv += res
+    if res:
+        items["residual"] = res
+    annuity = rate / (1.0 - (1.0 + rate) ** -years) if rate > 0 else 1.0 / years
+    out = {
+        "years": rows,
+        "npv": npv,
+        "items": items,
+        "undiscounted": sum(r["capex"] + r["opex"] for r in rows),
+        "eac": npv * annuity,
+        "levelized_per_tps_month": npv / pv_demand if pv_demand > 0 else None,
+        "discount_rate": rate,
+    }
+    out.update(extra)
+    return out
+
+
+def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
+              latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+              rpo_seconds=None, rto_minutes=None, tps_growth=None, years=None,
+              discount_rate=None):
+    """Statik modun cok yillik hali: yil y'de tasarim tepe yuku
+    TPS x (1 + g)^(y-1). Topoloji 1. yilda secilir ve sabit kalir; kademe her
+    yil izinli kalici yukseltmeler arasinda en ucuz feasible olandir."""
+    g = NPV_TPS_GROWTH if tps_growth is None else tps_growth
+    years = NPV_YEARS if years is None else years
+    rate = NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
+    r1 = solve(tps, availability, workload, latency_ms, latency_percentile, verbose=False,
+               data_tb=data_tb, data_growth=data_growth,
+               rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
+    if r1 is None:
+        return None
+    topo = r1[1]
+    lat_s = latency_ms / 1000.0 if latency_ms is not None else None
+    pct = latency_percentile / 100.0
+    loads = [tps * (1.0 + g) ** (y - 1) for y in range(1, years + 1)]
+    tiers, prev = [], None
+    for load in loads:
+        cands = [t for t in Z16_TIERS if is_permanent_upgrade(prev, t)
+                 and is_capacity_feasible(t, load, workload, lat_s, pct, topo)]
+        if not cands:
+            return None
+        prev = min(cands, key=lambda t: monthly_cost(
+            t, topo, billed_msu=consumed_msu(t, load, workload), workload=workload)["total"])
+        tiers.append(prev)
+    layers = _layer_cycles(loads, [x / STATIC_PEAK_TO_AVG for x in loads], workload, topo,
+                           data_tb, data_growth, years)
+
+    rows, capex_events, v_prev = [], [], 0.0
+    for y, (tier, load, lay) in enumerate(zip(tiers, loads, layers), start=1):
+        v = max(v_prev, mainframe_hw_value(tier, topo, workload))
+        hw_capex = v - v_prev
+        v_prev = v
+        c = monthly_cost(tier, topo, billed_msu=consumed_msu(tier, load, workload),
+                         workload=workload)
+        maint_on = y > HW_WARRANTY_YEARS
+        s_maint_on = y > STORAGE_WARRANTY_YEARS
+        opex = {
+            "software": 12 * c["software"] * _esc(SW_PRICE_ESCALATION, y),
+            "gdps": 12 * c["gdps"] * _esc(SW_PRICE_ESCALATION, y),
+            "staff": 12 * c["staff"] * _esc(WAGE_ESCALATION, y),
+            "maintenance": (v * MAINTENANCE_RATE_ANNUAL if maint_on else 0.0)
+                           * _esc(HW_SERVICE_ESCALATION, y),
+            "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
+                              if s_maint_on else 0.0) * _esc(HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * _esc(
+                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
+            "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
+                       * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
+        }
+        capex = {"hardware": hw_capex, "storage": lay["storage_capex"],
+                 "backup": lay["backup_capex"]}
+        for k, val in capex.items():
+            if val:
+                capex_events.append((y - 1, val))
+        rows.append({"year": y, "tps": load, "tier": tier,
+                     "capex_items": capex, "opex_items": opex,
+                     "capex": sum(capex.values()), "opex": sum(opex.values())})
+    return _finish(rows, rate, years, loads, capex_events,
+                   {"mode": "static", "topology": topo, "tps_growth": g,
+                    "layers": layers})
+
+
+def solve_npv_yearly(preset_name, yearly_avg_tps=10000, strategy="permanent",
+                     availability=0.999, workload=DEFAULT_WORKLOAD,
+                     latency_ms=None, latency_percentile=99, data_tb=None, data_growth=None,
+                     rpo_seconds=None, rto_minutes=None, tps_growth=None, years=None,
+                     discount_rate=None, peak_avg_ratio=None, peak_days=None):
+    """Yillik simulasyonun cok yillik hali, tek bir fiyatlama stratejisi icin.
+    Her yil profil (1 + g)^(y-1) ile buyutulur ve strateji yeniden optimize
+    edilir; topoloji 1. yildakiyle sabittir. TFP'de yazilim, 1. yilin MSU-saat
+    tabani ve efektif fiyatiyla sozlesmelenir: taban her yil odenir, ustu
+    TFP_GROWTH_PRICE_FACTOR ile fiyatlanir [TFP-SW-2021, KYNE-2022]."""
+    g = NPV_TPS_GROWTH if tps_growth is None else tps_growth
+    years = NPV_YEARS if years is None else years
+    rate = NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
+    sims, topo = [], None
+    for y in range(1, years + 1):
+        avg = yearly_avg_tps * (1.0 + g) ** (y - 1)
+        r = solve_yearly(preset_name, avg, peak_avg_ratio, peak_days, availability, workload,
+                         latency_ms, latency_percentile, strategies=(strategy,),
+                         verbose=False, data_tb=data_tb, data_growth=data_growth,
+                         rpo_seconds=rpo_seconds, rto_minutes=rto_minutes,
+                         only_topology=topo,
+                         base_floor=sims[-1]["base_tier"] if sims else None)
+        if r is None:
+            return None
+        topo = r["topology"]
+        sims.append(r)
+    peaks = [max(s["hourly_load"]) for s in sims]
+    avgs = [sum(s["hourly_load"]) / len(s["hourly_load"]) for s in sims]
+    layers = _layer_cycles(peaks, avgs, workload, topo, data_tb, data_growth, years)
+
+    m1 = sims[0]["msu_hours"]
+    p1 = sims[0]["yearly_software"] / m1 if (strategy == "tfp" and m1 > 0) else None
+    rows, capex_events, v_prev = [], [], 0.0
+    monotonic = True
+    for y, (sim, lay) in enumerate(zip(sims, layers), start=1):
+        base = sim["base_tier"]
+        if y > 1 and not is_permanent_upgrade(sims[y - 2]["base_tier"], base):
+            monotonic = False
+        top = max([t for t in (base, sim["corridor_tier"], sim["peak_tier"]) if t is not None],
+                  key=lambda t: t.pci)
+        v = max(v_prev, mainframe_hw_value(base, topo, workload, ziip_tier=top))
+        hw_capex = v - v_prev
+        v_prev = v
+        if strategy == "tfp":
+            sw = p1 * (m1 + TFP_GROWTH_PRICE_FACTOR * max(0.0, sim["msu_hours"] - m1))
+        else:
+            sw = sim["yearly_software"]
+        gdps = 12 * gdps_monthly_cost(topo)
+        opex = {
+            "software": sw * _esc(SW_PRICE_ESCALATION, y),
+            "gdps": gdps * _esc(SW_PRICE_ESCALATION, y),
+            "staff": sim["yearly_staff"] * _esc(WAGE_ESCALATION, y),
+            "temporary_capacity": ((sim["cod_cost_total"] + sim["corridor_cost_total"])
+                                   * _esc(HW_SERVICE_ESCALATION, y)),
+            "maintenance": (v * MAINTENANCE_RATE_ANNUAL if y > HW_WARRANTY_YEARS else 0.0)
+                           * _esc(HW_SERVICE_ESCALATION, y),
+            "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
+                              if y > STORAGE_WARRANTY_YEARS else 0.0)
+                             * _esc(HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * _esc(
+                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
+            "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
+                       * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
+        }
+        capex = {"hardware": hw_capex, "storage": lay["storage_capex"],
+                 "backup": lay["backup_capex"]}
+        for val in capex.values():
+            if val:
+                capex_events.append((y - 1, val))
+        rows.append({"year": y, "tps": avgs[y - 1], "tier": base, "sim": sim,
+                     "capex_items": capex, "opex_items": opex,
+                     "capex": sum(capex.values()), "opex": sum(opex.values())})
+    return _finish(rows, rate, years, avgs, capex_events,
+                   {"mode": "yearly", "strategy": strategy, "topology": topo,
+                    "tps_growth": g, "monotonic_base": monotonic, "layers": layers})
+
+
+def scenario_values_for(level, params):
+    i = RANGE_LEVELS.index(level)
+    return {r[0]: r[1 + i] for r in params}
+
+
+def solve_npv_range(tps, **kw):
+    """Statik NPV'nin low / mid / high dis sinirlari (NPV_RANGE_PARAMETERS)."""
+    out = {}
+    for level in RANGE_LEVELS:
+        with use_values(scenario_values_for(level, NPV_RANGE_PARAMETERS)):
+            out[level] = solve_npv(tps, **kw)
+    return out
+
+
+def npv_tornado(tps, **kw):
+    """Tek-parametre salinimi, statik NPV uzerinde (digerleri mid)."""
+    mid = scenario_values_for("mid", NPV_RANGE_PARAMETERS)
+    rows = []
+    for name, lo, _m, hi, desc in NPV_RANGE_PARAMETERS:
+        vals_out = []
+        for v in (lo, hi):
+            vals = dict(mid)
+            vals[name] = v
+            with use_values(vals):
+                r = solve_npv(tps, **kw)
+            vals_out.append(None if r is None else r["npv"])
+        rows.append((name, desc, vals_out[0], vals_out[1]))
+    rows.sort(key=lambda r: -abs((r[3] or 0) - (r[2] or 0)))
+    return rows
+
+
+NPV_ITEM_LABELS = {
+    "hardware": "donanim alimi (z16 + DR frame + zIIP)", "storage": "storage alimi (DS8900F)",
+    "backup": "yedekleme alimi (TS7770 / nesne depolama)",
+    "backup_service": "yedek hizmeti (abonelik / S3 / bulut hatti)", "software": "yazilim (AWLC)", "gdps": "GDPS",
+    "staff": "personel", "maintenance": "z16 bakim", "storage_maint": "storage + yedek bakim",
+    "energy": "enerji", "temporary_capacity": "gecici kapasite (CoD / corridor)",
+    "residual": "kalan deger",
+}
+
+
+def print_npv(res, title=""):
+    if res is None:
+        print("  NPV: infeasible (bir yilda kapasite / yukseltme yolu yetmiyor)")
+        return
+    print(f"\nNPV {title}| topoloji {res['topology'].code} | iskonto %{res['discount_rate']*100:.1f} | "
+          f"TPS buyumesi %{res['tps_growth']*100:.0f}/yil")
+    print("  yil |      TPS | kademe    |      capex |       opex |   bugunku deger")
+    for r in res["years"]:
+        print(f"  {r['year']:>3} | {r['tps']:>8,.0f} | {r['tier'].model:<9} | "
+              f"${r['capex']:>9,.0f} | ${r['opex']:>9,.0f} | ${r['pv']:>13,.0f}")
+    print(f"  NPV: ${res['npv']:,.0f}   (indirgenmemis ${res['undiscounted']:,.0f}; "
+          f"yillik esdeger ${res['eac']:,.0f})")
+    if res["levelized_per_tps_month"] is not None:
+        print(f"  seviyelendirilmis maliyet: ${res['levelized_per_tps_month']:,.2f} / TPS / ay")
+    print("  kalem dokumu (bugunku deger):")
+    for k, v in sorted(res["items"].items(), key=lambda kv: -abs(kv[1])):
+        if v:
+            print(f"    {NPV_ITEM_LABELS.get(k, k):<46} ${v:>13,.0f}  (%{v / res['npv'] * 100:4.1f})")
+    if res.get("mode") == "yearly" and not res.get("monotonic_base", True):
+        print("  UYARI: base kademe bir yilda kuculdu; donanim degeri kurulu degerde tutuldu")
 
 
 def print_calibration():
@@ -1143,7 +2581,7 @@ def print_calibration():
                  "3931-739", "3931-7A0", "3931-7K0"]:
         t = next(x for x in Z16_TIERS if x.model == code)
         print(f"   {str(t):<45} | ham TPS={raw_tier_tps(t):>10,.0f} | "
-              f"%90'da={tier_max_tps(t, 'average'):>10,.0f} | PCI kaynagi={t.pci_source}")
+              f"%90'da={tier_max_tps(t):>10,.0f} | PCI kaynagi={t.pci_source}")
 
 
 def run_demo():
@@ -1151,22 +2589,25 @@ def run_demo():
     print("DEMO SENARYOLAR")
     print("=" * 70)
     print("\n[A] Orta yuk OLTP (latency hedefi yok, %90 sabit tavan):")
-    solve(tps=50000, availability=0.999, rni="average")
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD)
     print("[B] Ayni yuk, p99 < 200 ms latency hedefi:")
-    solve(tps=50000, availability=0.999, rni="average",
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
-    print("[C] Ayni yuk, sikilastirilmis p99 < 50 ms (trading-seviyesi):")
-    solve(tps=50000, availability=0.999, rni="average",
-          latency_ms=50, latency_percentile=99)
+    print("[C] Ayni yuk, sikilastirilmis p99 < 10 ms:")
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
+          latency_ms=10, latency_percentile=99)
     print("[D] Yuksek yuk + yuksek uptime + p99 < 500 ms:")
-    solve(tps=150000, availability=0.99999, rni="average",
+    solve(tps=100000, availability=0.99999, workload=DEFAULT_WORKLOAD,
           latency_ms=500, latency_percentile=99)
-    print("[E] Agir islemler (high RNI) + p99 < 200 ms:")
-    solve(tps=50000, availability=0.999, rni="high",
+    print("[E] Agir islemler (oltp_heavy) + p99 < 200 ms:")
+    solve(tps=10000, availability=0.999, workload="oltp_heavy",
           latency_ms=200, latency_percentile=99)
     print("[F] Cok dusuk yuk:")
-    solve(tps=2000, availability=0.999, rni="average",
+    solve(tps=2000, availability=0.999, workload=DEFAULT_WORKLOAD,
           latency_ms=200, latency_percentile=99)
+    print("[G] Felaket kurtarma hedefi: RPO <= 5 s, RTO <= 60 dk:")
+    solve(tps=10000, availability=0.999, workload=DEFAULT_WORKLOAD,
+          rpo_seconds=5, rto_minutes=60)
 
 
 if __name__ == "__main__":
@@ -1176,13 +2617,20 @@ if __name__ == "__main__":
         epilog="""
 Ornekler:
   Statik (tek nokta):
-    python mainframe_model.py --tps 50000
-    python mainframe_model.py --tps 80000 --availability 0.9993 --rni high --latency-ms 200
+    python mainframe_model.py --tps 10000
+    python mainframe_model.py --tps 10000 --availability 0.99999 --latency-ms 200 --range
+    python mainframe_model.py --tps 10000 --rpo-seconds 0 --rto-minutes 60
+    python mainframe_model.py --tps 10000 --sql-reads 6 --sql-writes 2
 
   Yillik simulasyon (workload profile + CoD karsilastirmasi):
-    python mainframe_model.py --yearly --preset retail_bursty --avg-tps 50000
-    python mainframe_model.py --yearly --preset steady_oltp --avg-tps 30000 --availability 0.99999
-    python mainframe_model.py --yearly --avg-tps 40000 --peak-ratio 3 --peak-days 25 --csv out
+    python mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000
+    python mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000 --availability 0.99999
+    python mainframe_model.py --yearly --avg-tps 8000 --peak-ratio 3 --peak-days 25 --csv out
+
+  5 yillik NPV (nakit akisi, buyume, fiyat artislari):
+    python mainframe_model.py --tps 10000 --npv
+    python mainframe_model.py --tps 10000 --npv --range --tps-growth 0.05 --discount-rate 0.10
+    python mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000 --npv
 
   Diger:
     python mainframe_model.py --demo
@@ -1200,8 +2648,8 @@ Ornekler:
                         choices=list(WORKLOAD_PRESETS.keys()),
                         default=None,
                         help="(YILLIK) Workload preset: steady_oltp / retail_bursty / batch_heavy")
-    parser.add_argument("--avg-tps", type=float, default=50000,
-                        help="(YILLIK) Yillik ortalama TPS (varsayilan: 50000)")
+    parser.add_argument("--avg-tps", type=float, default=10000,
+                        help="(YILLIK) Yillik ortalama TPS (varsayilan: 10000)")
     parser.add_argument("--peak-ratio", type=float, default=None,
                         help="(YILLIK) Peak/avg orani; preset'i override eder")
     parser.add_argument("--peak-days", type=int, default=None,
@@ -1213,22 +2661,73 @@ Ornekler:
     # Ortak parametreler
     parser.add_argument("--availability", type=float, default=0.999,
                         help="Hedef uptime, 0-1 arasi (varsayilan: 0.999)")
-    parser.add_argument("--rni", choices=["low", "average", "high"],
-                        default="average",
-                        help="Islem karmasikligi (varsayilan: average)")
+    parser.add_argument("--workload", choices=list(WORKLOAD_PROFILES),
+                        default=DEFAULT_WORKLOAD,
+                        help=f"Is yuku profili (varsayilan: {DEFAULT_WORKLOAD})")
+    parser.add_argument("--range", action="store_true",
+                        help="(STATIK) Kaynakli araliklarla low/mid/high toplam ve "
+                             "tek-parametre salinimi")
+    parser.add_argument("--sql-reads", type=float, default=None,
+                        help="Ozel profil: islem basina okuma SQL sayisi")
+    parser.add_argument("--sql-writes", type=float, default=None,
+                        help="Ozel profil: islem basina yazma SQL sayisi")
+    parser.add_argument("--rpo-seconds", type=float, default=None,
+                        help="Saha felaketinde kabul edilen en fazla veri kaybi, saniye")
+    parser.add_argument("--rto-minutes", type=float, default=None,
+                        help="Saha felaketinde kabul edilen en fazla kurtarma suresi, dakika")
     parser.add_argument("--latency-ms", type=float, default=None,
                         help="Hedef latency milisaniye (orn: 200)")
     parser.add_argument("--latency-percentile", type=int, default=99,
                         choices=[50, 90, 95, 99],
                         help="Latency percentile hedefi (varsayilan: 99)")
 
+    # Storage
+    parser.add_argument("--data-tb", type=float, default=None,
+                        help=f"Mantiksal Db2 veri hacmi, TB (varsayilan: {DEFAULT_DATA_VOLUME_TB:g})")
+    parser.add_argument("--data-growth", type=float, default=None,
+                        help=f"Yillik veri buyumesi, oran (varsayilan: {DEFAULT_DATA_GROWTH:g})")
+    parser.add_argument("--backup-target", choices=("auto",) + BACKUP_TARGETS, default=None,
+                        help="Yedek hedefi: auto (kisitlari karsilayan en ucuz; varsayilan), "
+                             "ts7770, cos_onprem (on-prem nesne depolama), aws_s3 (hibrit)")
+
     # Yardimci moDlar
     parser.add_argument("--demo", action="store_true",
                         help="Hazir demo senaryolar calistir")
     parser.add_argument("--calibration", action="store_true",
                         help="Kalibrasyon sabitlerini yazdir")
+    parser.add_argument("--npv", action="store_true",
+                        help="5 yillik nakit akisi ve NPV (statik ya da --yearly ile stratejiler)")
+    parser.add_argument("--tps-growth", type=float, default=None,
+                        help=f"(NPV) yillik TPS buyumesi (varsayilan {NPV_TPS_GROWTH})")
+    parser.add_argument("--discount-rate", type=float, default=None,
+                        help=f"(NPV) nominal iskonto orani (varsayilan {NPV_DISCOUNT_RATE})")
+    parser.add_argument("--years", type=int, default=None,
+                        help=f"(NPV) ufuk, yil (varsayilan {NPV_YEARS})")
 
     args = parser.parse_args()
+    if args.tps is not None and args.tps <= 0:
+        parser.error("--tps pozitif olmali")
+    if args.avg_tps <= 0:
+        parser.error("--avg-tps pozitif olmali")
+    if not 0.0 < args.availability < 1.0:
+        parser.error("--availability 0 ile 1 arasinda olmali (orn. 0.999)")
+    if args.years is not None and args.years < 1:
+        parser.error("--years en az 1 olmali")
+    if args.discount_rate is not None and not -0.5 < args.discount_rate < 1.0:
+        parser.error("--discount-rate makul bir oran olmali (orn. 0.07)")
+    if args.tps_growth is not None and args.tps_growth <= -1.0:
+        parser.error("--tps-growth -1'den buyuk olmali")
+    npv_kw = dict(tps_growth=args.tps_growth, years=args.years,
+                  discount_rate=args.discount_rate)
+    if args.backup_target is not None:
+        globals()["BACKUP_TARGET"] = args.backup_target
+
+    if args.sql_reads is not None or args.sql_writes is not None:
+        r, w = args.sql_reads or 0.0, args.sql_writes or 0.0
+        if r < 0 or w < 0:
+            parser.error("--sql-reads ve --sql-writes negatif olamaz")
+        args.workload = WorkloadProfile("custom", r, w, 1, (r + w) > 0,
+                                        "Ozel bilesim", "USER")
 
     if args.calibration:
         print_calibration()
@@ -1249,14 +2748,32 @@ Ornekler:
             peak_avg_ratio=args.peak_ratio,
             peak_days=args.peak_days,
             availability=args.availability,
-            rni=args.rni,
+            workload=args.workload,
             latency_ms=args.latency_ms,
             latency_percentile=args.latency_percentile,
+            data_tb=args.data_tb,
+            data_growth=args.data_growth,
+            rpo_seconds=args.rpo_seconds,
+            rto_minutes=args.rto_minutes,
         )
         if result is None:
             sys.exit(1)
         if args.csv:
             export_yearly_csv(result, args.csv)
+        if args.npv:
+            npvs = {}
+            for strat in ("permanent", "base_cod", "tfp"):
+                npvs[strat] = solve_npv_yearly(
+                    args.preset, args.avg_tps, strat, args.availability, args.workload,
+                    args.latency_ms, args.latency_percentile, args.data_tb, args.data_growth,
+                    args.rpo_seconds, args.rto_minutes, peak_avg_ratio=args.peak_ratio,
+                    peak_days=args.peak_days, **npv_kw)
+                print_npv(npvs[strat], STRATEGY_LABELS[strat] + " ")
+            ok = {k: v for k, v in npvs.items() if v is not None}
+            if ok:
+                win = min(ok, key=lambda k: ok[k]["npv"])
+                print(f"\n5 yillik NPV'de en ucuz: {STRATEGY_LABELS[win]} "
+                      f"(${ok[win]['npv']:,.0f})")
         sys.exit(0)
 
     # STATIK MOD (varsayilan)
@@ -1270,9 +2787,38 @@ Ornekler:
     print("=" * 70)
     result = solve(tps=args.tps,
                    availability=args.availability,
-                   rni=args.rni,
+                   workload=args.workload,
                    latency_ms=args.latency_ms,
-                   latency_percentile=args.latency_percentile)
+                   latency_percentile=args.latency_percentile,
+                   data_tb=args.data_tb,
+                   data_growth=args.data_growth,
+                   rpo_seconds=args.rpo_seconds,
+                   rto_minutes=args.rto_minutes)
+    if args.range:
+        print_range(args.tps, availability=args.availability, workload=args.workload,
+                    latency_ms=args.latency_ms, latency_percentile=args.latency_percentile,
+                    data_tb=args.data_tb, data_growth=args.data_growth,
+                    rpo_seconds=args.rpo_seconds, rto_minutes=args.rto_minutes)
+    npv_common = dict(availability=args.availability, workload=args.workload,
+                      latency_ms=args.latency_ms, latency_percentile=args.latency_percentile,
+                      data_tb=args.data_tb, data_growth=args.data_growth,
+                      rpo_seconds=args.rpo_seconds, rto_minutes=args.rto_minutes, **npv_kw)
+    if args.npv and result is not None:
+        print_npv(solve_npv(args.tps, **npv_common))
+        if args.range:
+            rng = solve_npv_range(args.tps, **npv_common)
+            print("\nNPV ARALIGI (statik, low / mid / high):")
+            for level in RANGE_LEVELS:
+                x = rng[level]
+                print(f"  {level:<5} " + ("infeasible" if x is None else
+                      f"${x['npv']:>14,.0f}  (${x['levelized_per_tps_month']:,.2f}/TPS/ay, "
+                      f"{x['topology'].code})"))
+            print("  Tek-parametre salinimi (NPV, digerleri mid):")
+            for name, desc, lo, hi in npv_tornado(args.tps, **npv_common)[:10]:
+                if lo is None or hi is None:
+                    print(f"    {desc:<42} infeasible ucu var")
+                else:
+                    print(f"    {desc:<42} ${lo:>14,.0f} .. ${hi:>14,.0f}")
     if result is None:
-        print("Tek z16 frame bu is yukunu karsilayamiyor.")
+        print("Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).")
         sys.exit(1)
