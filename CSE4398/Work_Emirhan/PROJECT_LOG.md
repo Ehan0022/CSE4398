@@ -611,3 +611,38 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Emirhan'ın kararları (§13): storage tipi, sunucu nesli, tek yazıcı tavanının üstü (Citus), X4'ün PostgreSQL karşılığı, üç üretici mi tek referans mı, kendi sysbench ölçümümüz, DB'nin VM'de mi Kubernetes'te mi çalıştığı.
 - Bağımsız dağıtık personel oranı; Oracle standby lisans kuralının birincil kaynakla teyidi; Active Data Guard güncel liste fiyatı; sunucu bütün fiyatı için kamu ihale kaydı.
 - Kapsam asimetrisi: mainframe'de CICS modelde, x86'da uygulama sunucusu katmanı dışarıda (§14.4).
+
+---
+
+## 2026-11-02 — Oturum 5: x86 kararlarının onayı ve benzer çalışmalar taraması
+
+### 1. Aksiyon
+- Emirhan x86 planındaki yedi kararın (§13) hepsinde öneriyi onayladı. Plan §13'ün başına karar kaydı eklendi:
+  - K1: storage DB'ye bağlı (RAC → SAN, Patroni → yerel NVMe × replika).
+  - K2: z16 dönemi sunucular ana senaryo, Gen12 duyarlılık.
+  - K3: Citus yok; tek yazıcı tavanı sınırlama olarak yazılır.
+  - K4: PostgreSQL için X4 infeasible.
+  - K5: tek referans sunucu, üretici farkı aralık.
+  - K6: kendi sysbench ölçümümüz yapılacak.
+  - K7: VM ve Kubernetes varyantlarının ikisi de.
+- Emirhan'ın talimatıyla, devam etmeden önce projeye paralel yapılmış çalışmalar tarandı ve `docs/benzer_calismalar_v1.md` olarak yazıldı. Kod yazılmadı.
+- Çalışmalar beş akışta toplandı: $/TPS metriğinin soy ağacı, mainframe ile dağıtık TCO karşılaştırmaları, ölçek-büyütme ile ölçek-yayma, maliyet modelleme yöntemleri, göç ve modernizasyon kayıtları. Her çalışma için yaptığı, bulduğu ve modele getirdiği yazıldı; sentez tablosu, boşluk ifadesi ve ret tablosu eklendi.
+
+### 2. Sebep
+- Emirhan: "bir adım geri çıkarak daha geniş pencereden doğrudan bizim projemizle paralel yapılan çalışmalar var mı ve bulguları ne bir de buna bakalım ve bunları da kaydedelim."
+- Akademik açıdan: boşluk iddiasının (`project_justification.md` §2.3) çalışma düzeyinde kanıtlanması ve sonuçlarımız için dış tutarlılık referanslarının bulunması.
+
+### 3. Sonuç (en önemli bulgular)
+- **Doğrudan paralel, bağımsız bir akademik çalışma bulunamadı.** En yakın paralel IBM Eagle TCO çalışmaları: 97 vakada dağıtık ortalama 2,2 kat pahalı, yalnız 4'ünde ucuz. Bunlar üretici kaynaklı ve girdileri yayımlanmamış.
+- **Akademik literatür parçaları ayrı inceliyor:**
+  - $/TPS (Anon et al. 1985, TPC) personel ve kesintiyi dışarıda bırakıyor; bizim katkımız metriğin tam yığına genişletilmesi.
+  - Barroso & Hölzle: donanım fiyat/performansında küçük sunucu 3–20 kat önde. Bu, IBM'in "mainframe 2–3 kat ucuz" iddiasıyla aynı model içinde uzlaştırılabilir.
+  - Kossmann 2010: SLA'yı karşılayan kapasite tanımımıza hakemli dayanak.
+  - Türkiye'den bir tez (Hayretci 2021, Boğaziçi) banka göçlerini nitel olarak inceliyor.
+- **Modele en önemli uyarı:** IBM'de 1 mainframe işlemcisine 24–80 x86 çekirdeği karşılık geliyor; bizim köprümüz 2,2 çekirdek diyor. Fark büyük ölçüde x86 kullanım oranından (IBM: 10–20 kat) ve dev/test ortamlarından geliyor. Öneri: x86 hedef kullanım oranını aralıklı parametre yapmak.
+- 12 somut öneri (§8). Bunlardan biri (üretim dışı ortamlar) Emirhan'ın kararını bekliyor. 4 yeni tehdit yazıldı: yayın yanlılığı, sistematik olmayan tarama, K6 ile justification §5.2 arasındaki gerilim, eski veriler.
+
+### 4. Açık kalanlar
+- Üretim dışı ortamlar: iki tarafta simetrik kapsam dışı mı, yoksa aralıklı `NONPROD_FACTOR` mı?
+- Barroso & Hölzle, Gray 2005 ve Walker 2009 sayılarının birincil metinle doğrulanması.
+- K6 ölçümünün analitik model kapsamıyla ilişkisi güncel x86 model dokümanında yazılmalı (justification §5.2 düzenlenmeyecek).

@@ -479,6 +479,8 @@ Bağımsız bir dağıtık personel oranı x86 tarafının en kritik eksiğidir.
 
 ## 13. Emirhan'ın Kararını Bekleyen Konular
 
+> **Karar kaydı (2026-11-02):** Emirhan yedi konunun yedisinde de öneri sütununu onayladı: K1 (a), K2 (a) + (b) duyarlılık, K3 (b), K4 (b), K5 (b), K6 (a), K7 her ikisi. Benzer çalışmalar taramasından çıkan ek öneriler (x86 hedef kullanım oranı, üretim dışı ortamlar) `benzer_calismalar_v1.md` §8'dedir.
+
 | # | Konu | Seçenekler | Öneri |
 |---|---|---|---|
 | K1 | Storage tipi | (a) DB'ye bağlı: RAC → SAN, Patroni → yerel NVMe × replika; (b) her ikisi SAN; (c) her ikisi vSAN | (a): mimariyle tutarlı, kombinasyon sayısını artırmıyor, kaynakla destekli [EDB-LOCALPV] |
