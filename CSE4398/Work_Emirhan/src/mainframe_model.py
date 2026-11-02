@@ -23,8 +23,9 @@ Akis:
   5. Storage (IBM DS8900F): veri hacmi, IOPS ve topolojiye bagli kopya
      sayisindan boyutlandirma ve maliyet; I/O gecikmesi (D_io) storage
      yolundan (zHyperLink, zHPF/FICON, senkron Metro Mirror) hesaplanir.
-     Yedekleme (IBM TS7770 sanal teyp, iki site): Db2 image copy + arsiv
-     log hacminden cache ve kume sayisi (BOLUM 6b).
+     Yedekleme: Db2 image copy + arsiv log icin uc hedef (TS7770 sanal teyp,
+     on-prem nesne depolama, AWS S3); pencere, M1 geri yukleme ve TCT verimi
+     kisitlarini karsilayan en ucuzu secilir (BOLUM 6b).
   6. Maliyet: yazilim yigini (z/OS + CICS TS + Db2) IBM AWLC kumulatif
      kademeli fiyatla, faturalanan (sub-capacity) MSU uzerinden; zIIP payi
      MSU'ya sayilmaz, zIIP motorlari donanima eklenir.
@@ -84,7 +85,8 @@ KAYNAK ETIKETLERI:
   [BLS-OEWS], [BLS-ECEC] = BLS maas medyanlari (2025) ve yan hak payi (%30)
   [ZIIP]     = z16 zIIP kurallari (SG24-8950): MSU disi, tam hiz, zIIP:CP <= 2:1
   [PWR]      = Enerji: 20-40 kW/frame
-  [TS7700-2024], [TS7700-2006], [DB2-BACKUP], [IDUG-2024] = yedekleme (BOLUM 6b)
+  [TS7700-2024], [TS7700-2006], [DB2-BACKUP], [IDUG-2024], [SG24-8381] (DS8000 TCT),
+  [AWS-S3-2026], [AWS-DX-2026], [MINIO-TCO] = yedekleme (BOLUM 6b)
   [DAMODARAN-2026], [IBM-PRICE-2026], [BLS-ECI-2026], [EIA-EPM],
   [TFP-SW-2021], [KYNE-2022] = 5 yillik ufuk ve NPV (BOLUM 10)
   [ASSUME]   = Kalibre edilmemis varsayim
@@ -936,20 +938,37 @@ def describe_storage(plan):
 
 
 # ------------------------------------------------------------------------------
-# BOLUM 6b — YEDEKLEME: IBM TS7770 SANAL TEYP (disk-only grid)
+# BOLUM 6b — YEDEKLEME: UC HEDEF (TS7770 / ON-PREM NESNE DEPOLAMA / AWS S3)
 # ------------------------------------------------------------------------------
-# Db2 image copy'leri ve arsiv loglari TS7770 sanal teyp grid'ine yazilir.
-# Her yedek seviyesinin iki kopyasi tutulur [DB2-BACKUP]; kopyalar grid
-# replikasyonuyla iki ayri sitededir. Boylece tek site kaybinda son yedek ve
-# loglar hayatta kalir (M1'in RPO'su = son gunluk yedek bu varsayima dayanir).
+# Db2 image copy'leri ve arsiv loglari icin uc aday hedef vardir; model
+# kisitlari karsilayanlar arasindan aylik maliyeti en dusuk olani secer
+# (BACKUP_TARGET = "auto"; ya da hedef zorlanir).
+#   ts7770      : IBM TS7770 sanal teyp, disk-only grid, iki site. FICON.
+#   cos_onprem  : S3 uyumlu kurum ici nesne depolama (IBM COS / Ceph / MinIO
+#                 sinifi), iki site. Image copy'ler DASD'ye yazilir, DFSMShsm
+#                 ile DS8900F Transparent Cloud Tiering (TCT) uzerinden nesne
+#                 depolamaya goc ettirilir [SG24-8381].
+#   aws_s3      : Ayni TCT yolu, hedef AWS S3 (Standard-IA), Direct Connect
+#                 hattiyla. Kamu bulutu: sonuc "hibrit" diye isaretlenir.
+# Her yedek seviyesinin iki kopyasi tutulur [DB2-BACKUP]: TS7770 ve on-prem
+# nesne depolamada iki sitede birer kopya; S3'te tek nesne kopyasi (bolge
+# icinde en az uc AZ'ye dagitilmis; saglayicinin kendi yedekliligi).
 # Yedek hacmi:
 #   image copy = veri x hafta x (1 tam + 6 artimli x gunluk degisim)   [IDUG-2024]
 #   arsiv log  = ort. TPS x islem basina log bayti x 86400 x 7 x hafta
-#   cache      = (image copy + log) / TS7700 sikistirmasi, 20 TB adimla [TS7700-2024]
-# Kume sayisi = max(cache / 3,9 PB, gunluk yazma / (4.000 MB/s x pencere)).
-# Fiyat yayimlanmaz: kume tabani = TS7700 baslangic liste fiyati $493.080
-# [TS7700-2006]; cache TB liste fiyati [ASSUME]; DS8900F ile ayni indirim.
-# Fiziksel teyp (TS4500/TS1160), uzun sureli arsiv ve grid agi kapsam disi.
+# Kisitlar:
+#   pencere   : gunluk yazma / hedef verimi <= BACKUP_WINDOW_HOURS
+#   geri donus: yalnizca alternatif sitesi olmayan topolojide (M1) yedek DR
+#               yolundadir: tam geri yukleme suresi <= RTO x BACKUP_RESTORE_RTO_FRACTION.
+#               M2-M4'te saha kaybini replikasyon karsilar.
+#   TCT verimi: nesne hedefleri DS8900F'in Ethernet portlarindan gecer;
+#               TCT_MAX_MB_S'yi asan ihtiyac bu hedefleri eler.
+# TS7700 disindaki hedeflerde DS8000 sikistirma yapmaz [SG24-8381].
+# Fiziksel teyp (TS4500/TS1160), uzun sureli arsiv ve grid/LAN agi kapsam disi;
+# bulut hattinin (Direct Connect portu + tasiyici devre) bedeli ise yalnizca
+# o secenege ozgu oldugu icin dahildir.
+BACKUP_TARGET = "auto"               # "auto" | "ts7770" | "cos_onprem" | "aws_s3"
+BACKUP_TARGETS = ("ts7770", "cos_onprem", "aws_s3")
 BACKUP_SITES = 2                     # [DB2-BACKUP] her yedek seviyesinin iki kopyasi
 BACKUP_RETENTION_WEEKS = 4           # [ASSUME] aralik 2-8; tam kopya + loglarin saklanma suresi
 BACKUP_DAILY_CHANGE = 0.03           # [ASSUME] gunluk degisen veri payi (artimli kopya)
@@ -958,14 +977,38 @@ LOG_BYTES_PER_SQL_WRITE = 400.0      # [ASSUME] Db2 log kaydi: once/sonra gorunt
 LOG_BYTES_PER_COMMIT = 200.0         # [ASSUME] commit/begin-UR kayitlari
 STATIC_PEAK_TO_AVG = 1.5             # [ASSUME] statik modda TPS tepe kabul edilir; log hacmi
                                      #  ortalama yukle (steady_oltp orani) hesaplanir
+BACKUP_WINDOW_HOURS = 8.0            # [ASSUME] gunluk yedek penceresi
+BACKUP_RESTORE_RTO_FRACTION = 0.5    # [ASSUME] M1 RTO'sunun geri yuklemeye ayrilan payi
+                                     #  (geri kalani donanim, IPL, log uygulama)
+BACKUP_RESTORES_PER_YEAR = 1.0       # [ASSUME] yillik tam geri yukleme testi (S3 cikis ucreti)
+# --- TS7770 ---
 BACKUP_COMPRESSION = 2.0             # [TS7700-2024 -> ASSUME] IBM nominal 3:1; aralik 1,5-3,0
 BACKUP_CACHE_INCREMENT_TB = 20.0     # [TS7700-2024] cache CoD adimi
 BACKUP_CLUSTER_MAX_CACHE_TB = 3900.0 # [TS7700-2024] taban + iki genisleme cercevesi
 BACKUP_CLUSTER_MB_S = 4000.0         # [TS7700-2024] kume basina host verimi
-BACKUP_WINDOW_HOURS = 8.0            # [ASSUME] gunluk yedek penceresi
 BACKUP_CLUSTER_LIST_USD = 493080.0   # [TS7700-2006] baslangic liste fiyati (sunucu + taban cache)
 BACKUP_CACHE_LIST_USD_PER_TB = 2000.0  # [ASSUME] nearline HDD cache, DS8900F flash listesinin ~1/4'u
 BACKUP_KW_PER_CLUSTER = 4.0          # [ASSUME] tek fazli 30 A besleme; tipik tuketim
+# --- Nesne hedefleri (TCT yolu) ---
+TCT_MAX_MB_S = 5000.0                # [SG24-8381 -> ASSUME] sunucu basina en fazla 6 Ethernet
+                                     #  portu (10 GbE kartlarla); ~%40 verimle tek DS8900F
+OBJECT_COMPRESSION = 1.0             # [SG24-8381] TS7700 disi hedefte DS8000 sikistirmasi yok
+# on-prem nesne depolama (iki site)
+COS_HW_USD_PER_TB = 100.0            # [MINIO-TCO] 60 x 16 TB HDD sistem $70K, 720 TB kullanilabilir
+COS_MIN_SITE_CAPEX_USD = 70000.0     # [MINIO-TCO] site basina en kucuk sistem
+COS_SW_USD_PER_TB_MONTH = 5.0        # [MINIO-TCO -> ASSUME] yazilim/destek aboneligi; acik kaynak 0,
+                                     #  ticari liste ~$10/TB-ay; aralik 0-10
+COS_KW_PER_PB = 1.5                  # [ASSUME] HDD yogun 2U sistemler
+# AWS S3 (us-east-1, 2026)
+S3_USD_PER_GB_MONTH = 0.0125         # [AWS-S3-2026] Standard-IA
+S3_MIN_STORAGE_DAYS = 30             # [AWS-S3-2026] Standard-IA en kisa faturalanan sure
+S3_RETRIEVAL_USD_PER_GB = 0.01       # [AWS-S3-2026] Standard-IA geri getirme
+S3_PUT_USD_PER_1000 = 0.01           # [AWS-S3-2026] Standard-IA PUT
+S3_OBJECT_MB = 256.0                 # [ASSUME] TCT nesne boyutu (istek sayisi icin)
+DX_PORT_USD_PER_HOUR = 2.25          # [AWS-DX-2026] 10 Gbps dedicated port
+DX_LINK_MB_S = 1000.0                # 10 Gbps x %80 verim [ASSUME]
+DX_EGRESS_USD_PER_GB = 0.02          # [AWS-DX-2026] ABD ici DX cikis; giris ucretsiz
+WAN_CIRCUIT_USD_PER_MONTH = 2000.0   # [ASSUME] 10 Gbps tasiyici devre + cross-connect; aralik 1-4K
 
 
 def backup_volume_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
@@ -984,39 +1027,147 @@ def backup_volume_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=No
     return ic, logs, daily
 
 
-def backup_plan(avg_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=None, growth=None):
-    """TS7770 grid boyutlandirmasi ve aylik maliyeti. Topolojiden bagimsiz:
-    her topolojide iki sitede birer kopya (M1'de ikinci kopya kurtarma/kasa
-    sitesinde)."""
-    ic, logs, daily = backup_volume_tb(avg_tps, workload, data_tb, growth)
+def backup_restore_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
+    """En kotu durumda tam geri yukleme hacmi (TB): son tam kopya + 6 artimli
+    + bir haftalik log."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    _, logs, _ = backup_volume_tb(avg_tps, workload, data_tb, growth)
+    return planned * (1.0 + 6.0 * BACKUP_DAILY_CHANGE) + logs / BACKUP_RETENTION_WEEKS
+
+
+def _hours(tb, mb_s):
+    return tb * 1e6 / mb_s / 3600.0 if mb_s > 0 else float("inf")
+
+
+def _restore_budget_hours(topology):
+    """Yedek DR yolundaysa (alternatif site yok) geri yukleme butcesi, yoksa None."""
+    topo = TOPOLOGIES[0] if topology is None else topology
+    if topo.recovery_minutes() != float("inf"):
+        return None
+    return topo.rto_minutes / 60.0 * BACKUP_RESTORE_RTO_FRACTION
+
+
+def _hw_monthly(hw_capex):
+    amort = hw_capex / (STORAGE_AMORTIZATION_YEARS * 12)
+    maint_years = max(0, STORAGE_AMORTIZATION_YEARS - STORAGE_WARRANTY_YEARS)
+    maint = hw_capex * STORAGE_MAINT_RATE_ANNUAL * maint_years / STORAGE_AMORTIZATION_YEARS / 12
+    return amort, maint
+
+
+def _plan_ts7770(ic, logs, daily, restore_tb, budget_h):
     cache = (ic + logs) / BACKUP_COMPRESSION
     cache = max(BACKUP_CACHE_INCREMENT_TB,
                 math.ceil(cache / BACKUP_CACHE_INCREMENT_TB) * BACKUP_CACHE_INCREMENT_TB)
     window_tb = BACKUP_CLUSTER_MB_S * BACKUP_WINDOW_HOURS * 3600.0 / 1e6
-    clusters_per_site = max(1, math.ceil(cache / BACKUP_CLUSTER_MAX_CACHE_TB),
-                            math.ceil(daily / window_tb))
-    clusters = clusters_per_site * BACKUP_SITES
-    discount = 1.0 - STORAGE_DISCOUNT
-    hw_capex = (clusters * BACKUP_CLUSTER_LIST_USD
-                + BACKUP_SITES * cache * BACKUP_CACHE_LIST_USD_PER_TB) * discount
-    amort = hw_capex / (STORAGE_AMORTIZATION_YEARS * 12)
-    maint_years = max(0, STORAGE_AMORTIZATION_YEARS - STORAGE_WARRANTY_YEARS)
-    maint = hw_capex * STORAGE_MAINT_RATE_ANNUAL * maint_years / STORAGE_AMORTIZATION_YEARS / 12
-    power_kw = clusters * BACKUP_KW_PER_CLUSTER
-    energy = power_kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
-    return {
-        "image_copy_tb": ic, "log_tb": logs, "daily_tb": daily,
-        "cache_tb_per_site": cache, "clusters_per_site": clusters_per_site,
-        "clusters": clusters, "hw_capex": hw_capex, "capex": hw_capex,
-        "amortization": amort, "maintenance": maint, "energy": energy,
-        "power_kw": power_kw, "monthly_total": amort + maint + energy,
-    }
+    n = max(1, math.ceil(cache / BACKUP_CLUSTER_MAX_CACHE_TB), math.ceil(daily / window_tb))
+    if budget_h is not None:   # geri yukleme bir sitedeki kumelerden okunur
+        n = max(n, math.ceil(restore_tb * 1e6 / (BACKUP_CLUSTER_MB_S * budget_h * 3600.0)))
+    clusters = n * BACKUP_SITES
+    hw = (clusters * BACKUP_CLUSTER_LIST_USD
+          + BACKUP_SITES * cache * BACKUP_CACHE_LIST_USD_PER_TB) * (1.0 - STORAGE_DISCOUNT)
+    amort, maint = _hw_monthly(hw)
+    kw = clusters * BACKUP_KW_PER_CLUSTER
+    mb_s = n * BACKUP_CLUSTER_MB_S
+    return {"target": "ts7770", "feasible": True, "hybrid": False,
+            "stored_tb_per_site": cache, "cache_tb_per_site": cache,
+            "clusters_per_site": n, "clusters": clusters, "throughput_mb_s": mb_s,
+            "hw_capex": hw, "capex": hw, "amortization": amort, "maintenance": maint,
+            "service": 0.0, "power_kw": kw,
+            "energy": kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH}
+
+
+def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
+    stored = (ic + logs) / OBJECT_COMPRESSION
+    need = BACKUP_WINDOW_HOURS * 3600.0
+    req_mb_s = daily * 1e6 / need
+    if budget_h is not None:
+        req_mb_s = max(req_mb_s, restore_tb * 1e6 / (budget_h * 3600.0))
+    base = {"target": target, "hybrid": target == "aws_s3", "stored_tb_per_site": stored,
+            "required_mb_s": req_mb_s, "clusters": 0, "clusters_per_site": 0,
+            "cache_tb_per_site": 0.0}
+    if req_mb_s > TCT_MAX_MB_S:
+        base.update(feasible=False, reason=f"TCT verimi yetmez ({req_mb_s:,.0f} > "
+                                           f"{TCT_MAX_MB_S:,.0f} MB/s)")
+        return base
+    if target == "cos_onprem":
+        hw_site = max(COS_MIN_SITE_CAPEX_USD, stored * COS_HW_USD_PER_TB)
+        hw = BACKUP_SITES * hw_site
+        amort, maint = _hw_monthly(hw)
+        service = BACKUP_SITES * stored * COS_SW_USD_PER_TB_MONTH
+        kw = BACKUP_SITES * max(1.0, stored / 1000.0 * COS_KW_PER_PB)
+        base.update(feasible=True, throughput_mb_s=TCT_MAX_MB_S, hw_capex=hw, capex=hw,
+                    amortization=amort, maintenance=maint, service=service, power_kw=kw,
+                    energy=kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH, links=0)
+        return base
+    # aws_s3: tek kopya; hat sayisi verim ihtiyacindan
+    links = max(1, math.ceil(req_mb_s / DX_LINK_MB_S))
+    min_factor = max(1.0, S3_MIN_STORAGE_DAYS / (7.0 * BACKUP_RETENTION_WEEKS))
+    storage_fee = stored * 1000.0 * S3_USD_PER_GB_MONTH * min_factor
+    puts = daily * 1e6 / S3_OBJECT_MB * (HOURS_PER_MONTH / 24.0) * S3_PUT_USD_PER_1000 / 1000.0
+    restore_fee = (BACKUP_RESTORES_PER_YEAR * restore_tb * 1000.0
+                   * (DX_EGRESS_USD_PER_GB + S3_RETRIEVAL_USD_PER_GB) / 12.0)
+    network = links * (DX_PORT_USD_PER_HOUR * HOURS_PER_MONTH + WAN_CIRCUIT_USD_PER_MONTH)
+    base.update(feasible=True, throughput_mb_s=min(TCT_MAX_MB_S, links * DX_LINK_MB_S),
+                hw_capex=0.0, capex=0.0, amortization=0.0, maintenance=0.0,
+                service=storage_fee + puts + restore_fee + network, power_kw=0.0, energy=0.0,
+                links=links, s3_storage=storage_fee, s3_requests=puts, s3_restore=restore_fee,
+                network=network)
+    return base
+
+
+def backup_plan(avg_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=None, growth=None,
+                target=None):
+    """Yedek hedeflerini boyutlandirir, kisitlari uygular ve en ucuz feasible
+    olani dondurur (target=None -> BACKUP_TARGET). Donen sozlukte
+    'alternatives' her adayin planini (feasible olmayanlar dahil) tasir.
+    topology=None, en siki durum olan M1 kabul edilir."""
+    ic, logs, daily = backup_volume_tb(avg_tps, workload, data_tb, growth)
+    restore = backup_restore_tb(avg_tps, workload, data_tb, growth)
+    budget = _restore_budget_hours(topology)
+    alts = {"ts7770": _plan_ts7770(ic, logs, daily, restore, budget),
+            "cos_onprem": _plan_object("cos_onprem", ic, logs, daily, restore, budget),
+            "aws_s3": _plan_object("aws_s3", ic, logs, daily, restore, budget)}
+    for a in alts.values():
+        if a["feasible"]:
+            a["monthly_total"] = a["amortization"] + a["maintenance"] + a["energy"] + a["service"]
+            a["restore_hours"] = _hours(restore, a["throughput_mb_s"])
+    want = BACKUP_TARGET if target is None else target
+    if want == "auto":
+        ok = [a for a in alts.values() if a["feasible"]]
+        best = min(ok, key=lambda a: a["monthly_total"])
+    else:
+        if want not in alts:
+            raise ValueError(f"bilinmeyen yedek hedefi: {want}")
+        best = alts[want]
+        if not best["feasible"]:   # zorlanan hedef kisiti karsilamazsa TS7770'e duser
+            best = dict(alts["ts7770"], forced_fallback=want)
+    plan = dict(best)
+    plan.update({"image_copy_tb": ic, "log_tb": logs, "daily_tb": daily,
+                 "restore_tb": restore, "restore_budget_hours": budget,
+                 "alternatives": alts})
+    return plan
+
+
+BACKUP_TARGET_LABELS = {"ts7770": "TS7770 sanal teyp", "cos_onprem": "on-prem nesne depolama",
+                        "aws_s3": "AWS S3 (hibrit)"}
 
 
 def describe_backup(plan):
-    return (f"{plan['clusters']}x TS7770 ({BACKUP_SITES} site), site basina "
-            f"{plan['cache_tb_per_site']:,.0f} TB cache; image copy "
-            f"{plan['image_copy_tb']:,.0f} TB + log {plan['log_tb']:,.0f} TB")
+    t = plan["target"]
+    head = f"{BACKUP_TARGET_LABELS[t]}"
+    if t == "ts7770":
+        head += (f": {plan['clusters']}x TS7770 ({BACKUP_SITES} site), site basina "
+                 f"{plan['cache_tb_per_site']:,.0f} TB cache")
+    elif t == "cos_onprem":
+        head += f": {BACKUP_SITES} site x {plan['stored_tb_per_site']:,.0f} TB"
+    else:
+        head += f": {plan['stored_tb_per_site']:,.0f} TB Standard-IA, {plan['links']}x 10G DX"
+    if plan.get("forced_fallback"):
+        head += f" [{plan['forced_fallback']} kisiti karsilamadi]"
+    return (head + f"; image copy {plan['image_copy_tb']:,.0f} TB + log "
+            f"{plan['log_tb']:,.0f} TB; geri donus ~{plan['restore_hours']:,.1f} sa")
 
 
 # ==============================================================================
@@ -1870,7 +2021,7 @@ def _print_strategy_detail(sim):
         print(f"  Storage (DS8900F):".ljust(34) + f"${sim['yearly_storage']:>13,.0f}"
               f"  [{describe_storage(sim['storage_plan'])}]")
     if sim.get("yearly_backup"):
-        print(f"  Yedekleme (TS7770):".ljust(34) + f"${sim['yearly_backup']:>13,.0f}"
+        print(f"  Yedekleme:".ljust(34) + f"${sim['yearly_backup']:>13,.0f}"
               f"  [{describe_backup(sim['backup_plan'])}]")
     if sim.get("yearly_staff"):
         print(f"  Personel ({STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
@@ -1953,6 +2104,8 @@ RANGE_PARAMETERS = [
     ("BACKUP_RETENTION_WEEKS", 2, 4, 8, "Yedek saklama suresi, hafta"),
     ("BACKUP_COMPRESSION", 3.0, 2.0, 1.5, "TS7770 sikistirma orani"),
     ("BACKUP_CACHE_LIST_USD_PER_TB", 1000.0, 2000.0, 4000.0, "TS7770 cache liste fiyati, USD/TB"),
+    ("COS_HW_USD_PER_TB", 60.0, 100.0, 200.0, "On-prem nesne depolama donanimi, USD/TB"),
+    ("COS_SW_USD_PER_TB_MONTH", 0.0, 5.0, 10.0, "On-prem nesne depolama aboneligi, USD/TB-ay"),
 ]
 RANGE_LEVELS = ("low", "mid", "high")
 
@@ -2119,7 +2272,7 @@ def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
     cycle = max(1, STORAGE_PLANNING_YEARS)
     rows = []
     cur = {"s_capex": 0.0, "s_hw": 0.0, "b_capex": 0.0, "b_hw": 0.0, "kw": 0.0,
-           "splan": None, "bplan": None}
+           "splan": None, "bplan": None, "target": None}
     for y in range(1, years + 1):
         t = y - 1
         add_s = add_b = 0.0
@@ -2128,7 +2281,9 @@ def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
             d_t = data_tb * (1.0 + growth) ** t
             with use_values({"STORAGE_PLANNING_YEARS": h}):
                 sp = storage_plan(max(peaks[t:t + h]), workload, topology, d_t, growth)
-                bp = backup_plan(max(avgs[t:t + h]), workload, topology, d_t, growth)
+                bp = backup_plan(max(avgs[t:t + h]), workload, topology, d_t, growth,
+                                 target=cur["target"])
+            cur["target"] = cur["target"] or bp["target"]   # hedef 1. dongude sabitlenir
             # kurulu deger azalmaz; dongunun ek alimi farktir
             add_s = max(0.0, sp["capex"] - cur["s_capex"])
             add_b = max(0.0, bp["capex"] - cur["b_capex"])
@@ -2138,7 +2293,12 @@ def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
             cur["b_hw"] = max(cur["b_hw"], bp["hw_capex"])
             cur["kw"] = max(cur["kw"], sp["power_kw"] + bp["power_kw"])
             cur["splan"], cur["bplan"] = sp, bp
-        rows.append({"storage_capex": add_s, "backup_capex": add_b,
+        # kullandikca ode (abonelik, S3, hat): o yilin verisi ve yukuyle
+        with use_values({"STORAGE_PLANNING_YEARS": 0}):
+            svc = backup_plan(avgs[t], workload, topology, data_tb * (1.0 + growth) ** t,
+                              growth, target=cur["target"])["service"]
+        rows.append({"storage_capex": add_s, "backup_capex": add_b, "backup_service": svc,
+                     "backup_target": cur["target"],
                      "storage_hw": cur["s_hw"], "backup_hw": cur["b_hw"],
                      "kw": cur["kw"], "storage_plan": cur["splan"],
                      "backup_plan": cur["bplan"]})
@@ -2241,6 +2401,8 @@ def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
                            * _esc(HW_SERVICE_ESCALATION, y),
             "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
                               if s_maint_on else 0.0) * _esc(HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * _esc(
+                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
             "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
                        * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
         }
@@ -2316,6 +2478,8 @@ def solve_npv_yearly(preset_name, yearly_avg_tps=10000, strategy="permanent",
             "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
                               if y > STORAGE_WARRANTY_YEARS else 0.0)
                              * _esc(HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * _esc(
+                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
             "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
                        * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
         }
@@ -2365,7 +2529,8 @@ def npv_tornado(tps, **kw):
 
 NPV_ITEM_LABELS = {
     "hardware": "donanim alimi (z16 + DR frame + zIIP)", "storage": "storage alimi (DS8900F)",
-    "backup": "yedekleme alimi (TS7770)", "software": "yazilim (AWLC)", "gdps": "GDPS",
+    "backup": "yedekleme alimi (TS7770 / nesne depolama)",
+    "backup_service": "yedek hizmeti (abonelik / S3 / bulut hatti)", "software": "yazilim (AWLC)", "gdps": "GDPS",
     "staff": "personel", "maintenance": "z16 bakim", "storage_maint": "storage + yedek bakim",
     "energy": "enerji", "temporary_capacity": "gecici kapasite (CoD / corridor)",
     "residual": "kalan deger",
@@ -2389,7 +2554,7 @@ def print_npv(res, title=""):
     print("  kalem dokumu (bugunku deger):")
     for k, v in sorted(res["items"].items(), key=lambda kv: -abs(kv[1])):
         if v:
-            print(f"    {NPV_ITEM_LABELS.get(k, k):<40} ${v:>13,.0f}  (%{v / res['npv'] * 100:4.1f})")
+            print(f"    {NPV_ITEM_LABELS.get(k, k):<46} ${v:>13,.0f}  (%{v / res['npv'] * 100:4.1f})")
     if res.get("mode") == "yearly" and not res.get("monotonic_base", True):
         print("  UYARI: base kademe bir yilda kuculdu; donanim degeri kurulu degerde tutuldu")
 
@@ -2521,6 +2686,9 @@ Ornekler:
                         help=f"Mantiksal Db2 veri hacmi, TB (varsayilan: {DEFAULT_DATA_VOLUME_TB:g})")
     parser.add_argument("--data-growth", type=float, default=None,
                         help=f"Yillik veri buyumesi, oran (varsayilan: {DEFAULT_DATA_GROWTH:g})")
+    parser.add_argument("--backup-target", choices=("auto",) + BACKUP_TARGETS, default=None,
+                        help="Yedek hedefi: auto (kisitlari karsilayan en ucuz; varsayilan), "
+                             "ts7770, cos_onprem (on-prem nesne depolama), aws_s3 (hibrit)")
 
     # Yardimci moDlar
     parser.add_argument("--demo", action="store_true",
@@ -2551,6 +2719,8 @@ Ornekler:
         parser.error("--tps-growth -1'den buyuk olmali")
     npv_kw = dict(tps_growth=args.tps_growth, years=args.years,
                   discount_rate=args.discount_rate)
+    if args.backup_target is not None:
+        globals()["BACKUP_TARGET"] = args.backup_target
 
     if args.sql_reads is not None or args.sql_writes is not None:
         r, w = args.sql_reads or 0.0, args.sql_writes or 0.0

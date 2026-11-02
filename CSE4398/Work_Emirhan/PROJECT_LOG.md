@@ -100,7 +100,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 3 | 2026-10-31 | `evaluations/2026-10-31_degerlendirme_03_mainframe_ve_storage.md` | Compute katmanı sağlam (kademeler, köprü, CoD/TFP); storage dahil edilmeli (shared-disk vs shared-nothing, DR, CPU, latency asimetrisi); en büyük eksik yazılım yığını ve kademeli MLC; öncelik sırası |
 | 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
-| 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi |
+| 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
 
 ---
 
@@ -540,3 +540,44 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 ### 4. Açık kalanlar
 - Adım 6 (ortak modül). İçeriği Değerlendirme #6 Bölüm 4'te: yedek girdileri, r/g/zamanlama, fiyat artışı sınıfları, genişleme kuralı, teknoloji yenileme kuralı. Emirhan'ın onayını bekliyor.
 - Drawer maliyeti (önceliği yükseldi), GDPS Metro topolojisi, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, gerçek bir TS7770 teklifi.
+
+---
+
+## 2026-11-02 — Oturum 3 (devam): Yedekte nesne depolama seçenekleri
+
+### 1. Aksiyon
+- Yedek katmanına S3 uyumlu on-prem nesne depolama ve AWS S3 hedefleri eklendi. Emirhan'ın kararı: "ikisi de, model seçsin".
+- Model üç hedefi (TS7770, on-prem nesne, AWS S3) boyutlandırıyor. Kısıtlar:
+  - 8 saatlik yedek penceresi;
+  - yalnızca M1'de tam geri yüklemenin RTO'nun yarısına (36 saat) sığması;
+  - nesne hedefleri için DS8900F Transparent Cloud Tiering verimi (5.000 MB/s, varsayım).
+- Kısıtları karşılayanlardan en ucuzu seçiliyor. S3 "hibrit" diye işaretleniyor; `--backup-target` ile hedef zorlanabiliyor.
+- NPV'de abonelik, S3 ve hat ücretleri her yıl o yılın hacmiyle işletme gideri; hedef 1. yılda sabit.
+- Aralığa 2 parametre eklendi (on-prem donanım ve abonelik). Toplam 20.
+- Yeni test `test_backup_targets_and_constraints`; CLI testi genişletildi. 23/23.
+- `npv_sensitivity.py` bölüm 1 üç hedefi, kısıt eşiklerini ve varsayım taramasını gösteriyor. Bütün araç çıktıları ve `data/out/` CSV'leri yeniden üretildi.
+- v3 §8.10 baştan yazıldı. Etkilenen sayılar §0, 2, 6, 7.6–7.8, 8.1, 8.7, 9.7–9.8, 9.10, 10, 11.5 (yeni referanslar [SG24-8381], [AWS-S3-2026], [AWS-DX-2026], [MINIO-TCO]) ve 12'de güncellendi.
+- Değerlendirme #6'ya Bölüm 7 olarak ek yazıldı.
+
+### 2. Sebep
+- Emirhan'ın sorusu: yedekte S3 de, kısıtlara göre viable olacak şekilde, seçenek olarak konabilir mi?
+- Akademik gerekçe: kurumlar mainframe yedeğini gerçekte bu üç yoldan biriyle alıyor. Clustered taraf da büyük ihtimalle nesne depolama kullanacağı için iki taraf aynı hedef fiyat fonksiyonunu paylaşabilir.
+
+### 3. Sonuç
+- **10K TPS, 20 TB:**
+  - Seçilen hedef on-prem nesne depolama, aylık $5.635 (TS7770 $11.790, S3 $6.069).
+  - Toplam $846.187 = $84,62/TPS (önce $85,23). Aralık $27,06 / $84,62 / $338,09.
+  - NPV $50,60M, seviyelendirilmiş $85,31; NPV aralığı $31,98 / $85,31 / $405,44.
+- **Hedef seçimi (10K TPS):**
+  - 5 TB: S3 (farkı $3).
+  - 20–300 TB: on-prem nesne.
+  - M1'de ~360 TB'tan itibaren TS7770, çünkü geri yükleme 36 saate sığmıyor.
+  - M3'te ~550 TB'tan itibaren TS7770, çünkü günlük verim TCT tavanını aşıyor.
+- **Storage + yedek payı:** 20 TB'ta %1,6, 500 TB'ta %22, 2.000 TB'ta %52.
+- **Strateji sıralamaları değişmedi:** tek yılda steady C, retail B, batch C; 5 yılda TFP.
+
+### 4. Açık kalanlar
+- TCT veriminin gerçek bir ölçümle kalibrasyonu.
+- Kurum içi nesne depolama için ikinci bir fiyat kaynağı.
+- Mantıksal bozulmadan geri dönüş RTO'su.
+- Adım 6 (ortak modül; iki fiyat modu önerisi dahil) Emirhan'ın onayını bekliyor.

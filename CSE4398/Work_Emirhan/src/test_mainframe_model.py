@@ -333,6 +333,9 @@ def test_cli_edge_cases():
     assert run("--tps", "1000", "--sql-reads", "0", "--sql-writes", "0").returncode == 0
     assert run("--tps", "1000", "--npv").returncode == 0
     assert run("--tps", "1000", "--npv", "--years", "0").returncode != 0
+    r = run("--tps", "1000", "--backup-target", "aws_s3")
+    assert r.returncode == 0 and "AWS S3" in r.stdout
+    assert run("--tps", "1000", "--backup-target", "tape").returncode != 0
     custom = m.WorkloadProfile("c", 0, 0, 1, False, "", "")
     assert m.ziip_fraction(custom) == 0
     with_db2 = m.WorkloadProfile("c", 2, 1, 1, True, "", "")
@@ -365,25 +368,56 @@ ZERO_GROWTH = {"NPV_TPS_GROWTH": 0.0, "DEFAULT_DATA_GROWTH": 0.0, "SW_PRICE_ESCA
 
 def test_backup_layer():
     """TS7770: hacim veri, saklama ve TPS ile artar; sikistirma cache'i azaltir;
-    iki site; cok buyuk veride verim siniri kume sayisini arttirir; topolojiden bagimsiz."""
-    b = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)
+    iki site; cok buyuk veride verim siniri kume sayisini arttirir."""
+    T = "ts7770"
+    b = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20, target=T)
     assert b["clusters"] == 2 * b["clusters_per_site"] and b["clusters_per_site"] >= 1
     assert b["cache_tb_per_site"] % m.BACKUP_CACHE_INCREMENT_TB == 0
-    assert m.backup_plan(20000, data_tb=20)["log_tb"] > m.backup_plan(10000, data_tb=20)["log_tb"]
-    assert m.backup_plan(10000, data_tb=200)["capex"] > b["capex"]
+    assert m.backup_plan(20000, data_tb=20, target=T)["log_tb"] > \
+        m.backup_plan(10000, data_tb=20, target=T)["log_tb"]
+    assert m.backup_plan(10000, data_tb=200, target=T)["capex"] > b["capex"]
     with m.use_values({"BACKUP_RETENTION_WEEKS": 8}):
-        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)["image_copy_tb"] > b["image_copy_tb"]
+        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20,
+                             target=T)["image_copy_tb"] > b["image_copy_tb"]
     with m.use_values({"BACKUP_COMPRESSION": 3.0}):
-        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)["cache_tb_per_site"] <= b["cache_tb_per_site"]
-    big = m.backup_plan(10000, data_tb=2000)
+        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20,
+                             target=T)["cache_tb_per_site"] <= b["cache_tb_per_site"]
+    big = m.backup_plan(10000, data_tb=2000, target=T, topology=m.TOPOLOGIES[3])
     window_tb = m.BACKUP_CLUSTER_MB_S * m.BACKUP_WINDOW_HOURS * 3600 / 1e6
     assert big["clusters_per_site"] >= math.ceil(big["daily_tb"] / window_tb) > 1
-    m1, m4 = m.TOPOLOGIES[0], m.TOPOLOGIES[3]
-    assert m.backup_plan(5000, topology=m1)["monthly_total"] == m.backup_plan(5000, topology=m4)["monthly_total"]
     r = m.solve(10000, 0.999, verbose=False, data_tb=20)
     assert r[2]["backup"] > 0 and abs(r[2]["total"] - sum(
         r[2][k] for k in ("software", "hardware_amort", "maintenance", "energy", "gdps",
                           "staff", "storage", "backup"))) < 1e-6
+
+
+def test_backup_targets_and_constraints():
+    """Uc hedef: secim en ucuz feasible; nesne hedefleri TCT veriminde elenir;
+    geri yukleme kisiti yalnizca M1'de (yedek DR yolunda) baglar; zorlanan
+    infeasible hedef TS7770'e duser; S3 hibrit isaretli ve capex'siz."""
+    m1, m3 = m.TOPOLOGIES[0], m.TOPOLOGIES[2]
+    for d in (5, 20, 100, 500, 2000):
+        for topo in (m1, m3):
+            b = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=d, topology=topo)
+            ok = {k: a["monthly_total"] for k, a in b["alternatives"].items() if a["feasible"]}
+            assert b["target"] == min(ok, key=ok.get)
+            assert b["alternatives"]["ts7770"]["feasible"]
+            for k in ("cos_onprem", "aws_s3"):
+                a = b["alternatives"][k]
+                assert a["feasible"] == (a["required_mb_s"] <= m.TCT_MAX_MB_S)
+            if b["restore_budget_hours"] is not None:
+                assert b["restore_hours"] <= b["restore_budget_hours"] + 1e-9
+    # 500 TB: M1'de geri yukleme kisiti nesne hedeflerini eler, M3'te elemez
+    b1 = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=500, topology=m1)
+    b3 = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=500, topology=m3)
+    assert not b1["alternatives"]["cos_onprem"]["feasible"]
+    assert b3["alternatives"]["cos_onprem"]["feasible"] and b3["restore_budget_hours"] is None
+    f = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=2000, target="aws_s3")
+    assert f["target"] == "ts7770" and f["forced_fallback"] == "aws_s3"
+    s3 = m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20, target="aws_s3")
+    assert s3["hybrid"] and s3["capex"] == 0 and s3["service"] > 0 and s3["links"] >= 1
+    with m.use_values({"COS_HW_USD_PER_TB": 1e6}):   # on-prem pahalilasinca secilmez
+        assert m.backup_plan(10000 / m.STATIC_PEAK_TO_AVG, data_tb=20)["target"] != "cos_onprem"
 
 
 def test_npv_consistency_and_direction():

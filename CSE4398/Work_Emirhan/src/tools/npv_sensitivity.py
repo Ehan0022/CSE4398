@@ -1,10 +1,10 @@
 """
-Yedekleme (TS7770) ve 5 yillik NPV icin duyarlilik tablolari.
+Yedekleme (TS7770 / nesne depolama / S3) ve 5 yillik NPV icin duyarlilik tablolari.
 
   python src/tools/npv_sensitivity.py           # tumu
   python src/tools/npv_sensitivity.py --fast    # yillik strateji bolumu (4) haric
 
-1) Yedekleme: veri hacmi ekseni ve varsayimlar (10K TPS, %99,9)
+1) Yedekleme: uc hedef, veri hacmi ekseni, kisitlar ve varsayimlar (10K TPS)
 2) Statik NPV (10K TPS, oltp_rw, 20 TB): yil yil nakit akisi ve kalem dokumu
 3) Iskonto orani x TPS buyumesi: NPV ve seviyelendirilmis $/TPS/ay
 4) Yillik stratejiler, 5 yillik NPV: preset x strateji; TFP buyume fiyati ve buyume 0
@@ -23,29 +23,61 @@ LEVELS = ("low", "mid", "high")
 
 
 def backup_section():
-    print("1) Yedekleme (TS7770), 10K TPS, %99,9")
-    print("   veri TB | image copy TB | log TB | site basina cache | kume | aylik yedek | "
+    print("1) Yedekleme hedefleri (TS7770 / on-prem nesne / AWS S3), 10K TPS")
+    print("   a) Secilen hedef, %99,9 (M1) ve statik toplamdaki payi")
+    print("   veri TB | image copy TB | log TB | hedef                    | aylik yedek | "
           "toplamin %'si | storage")
-    for d in (5, 20, 100, 500, 2000):
+    for d in (5, 20, 100, 300, 500, 2000):
         r = m.solve(TPS, 0.999, verbose=False, data_tb=d)
         c = r[2]
         b = c["backup_plan"]
         print(f"   {d:>7,} | {b['image_copy_tb']:>13,.0f} | {b['log_tb']:>6,.0f} | "
-              f"{b['cache_tb_per_site']:>14,.0f} TB | {b['clusters']:>4} | "
-              f"${c['backup']:>10,.0f} | {c['backup'] / c['total']:>12.1%} | ${c['storage']:>9,.0f}")
-    print("   Varsayim taramasi (20 TB, aylik yedek maliyeti):")
+              f"{m.BACKUP_TARGET_LABELS[b['target']]:<24} | ${c['backup']:>10,.0f} | "
+              f"{c['backup'] / c['total']:>12.1%} | ${c['storage']:>9,.0f}")
+    print("   b) Uc adayin aylik maliyeti (x = kisit karsilanmiyor), M1 ve M3")
+    print("   veri TB | topo |     TS7770 |  on-prem nesne |     AWS S3 | gereken MB/s | secilen")
+    for d in (5, 20, 100, 300, 500, 1000, 2000):
+        for topo in (m.TOPOLOGIES[0], m.TOPOLOGIES[2]):
+            b = m.backup_plan(TPS / m.STATIC_PEAK_TO_AVG, data_tb=d, topology=topo)
+            a = b["alternatives"]
+            cell = lambda k, w: (f"${a[k]['monthly_total']:,.0f}" if a[k]["feasible"]
+                                 else "x").rjust(w)
+            print(f"   {d:>7,} | {topo.code:>4} | {cell('ts7770', 10)} | {cell('cos_onprem', 14)} | "
+                  f"{cell('aws_s3', 10)} | {a['cos_onprem']['required_mb_s']:>12,.0f} | {b['target']}")
+    print("   c) Varsayim taramasi (20 TB, M1; secilen hedef ve aylik yedek maliyeti):")
     for var, vals in (("BACKUP_RETENTION_WEEKS", (2, 4, 8)),
-                      ("BACKUP_COMPRESSION", (3.0, 2.0, 1.5)),
+                      ("COS_HW_USD_PER_TB", (60.0, 100.0, 200.0)),
+                      ("COS_SW_USD_PER_TB_MONTH", (0.0, 5.0, 10.0)),
+                      ("WAN_CIRCUIT_USD_PER_MONTH", (0.0, 2000.0, 4000.0)),
+                      ("S3_USD_PER_GB_MONTH", (0.004, 0.0125, 0.023)),
                       ("BACKUP_CACHE_LIST_USD_PER_TB", (1000.0, 2000.0, 4000.0)),
-                      ("BACKUP_DAILY_CHANGE", (0.01, 0.03, 0.05)),
-                      ("LOG_BYTES_PER_SQL_WRITE", (200.0, 400.0, 1000.0)),
                       ("STORAGE_DISCOUNT", (0.85, 0.70, 0.50))):
         cells = []
         for v in vals:
             with m.use_values({var: v}):
                 b = m.backup_plan(TPS / m.STATIC_PEAK_TO_AVG, data_tb=DATA_TB)
-            cells.append(f"{v:g}: ${b['monthly_total']:,.0f}")
-        print(f"     {var:<30} " + " | ".join(cells))
+            cells.append(f"{v:g}: ${b['monthly_total']:,.0f} {b['target']}")
+        print(f"     {var:<28} " + " | ".join(cells))
+    print("   d) Nesne hedeflerinin elendigi veri hacmi esigi (10K TPS), TCT verimine gore:")
+    for tct in (2500.0, 5000.0, 10000.0):
+        out = []
+        for topo in (m.TOPOLOGIES[0], m.TOPOLOGIES[2]):
+            lim = None
+            with m.use_values({"TCT_MAX_MB_S": tct}):
+                for d in range(10, 5001, 10):
+                    b = m.backup_plan(TPS / m.STATIC_PEAK_TO_AVG, data_tb=d, topology=topo)
+                    if not b["alternatives"]["cos_onprem"]["feasible"]:
+                        lim = d
+                        break
+            out.append(f"{topo.code}: {'>5000' if lim is None else lim} TB")
+        print(f"     TCT {tct:>7,.0f} MB/s -> " + ", ".join(out))
+    print("   e) Zorlanan hedefle statik $/TPS/ay (20 TB, M1):")
+    cells = []
+    for t in ("auto",) + m.BACKUP_TARGETS:
+        with m.use_values({"BACKUP_TARGET": t}):
+            c = m.solve(TPS, 0.999, verbose=False, data_tb=DATA_TB)[2]
+        cells.append(f"{t}: ${c['total'] / TPS:,.2f} (yedek ${c['backup']:,.0f})")
+    print("     " + " | ".join(cells))
 
 
 def static_npv_section():

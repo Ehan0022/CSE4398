@@ -148,3 +148,47 @@ Adım 5'in eşit derinlik ilkesi açısından x86 tarafına bıraktığı yükü
 **Yeni:** 3.1–3.9.
 - 3.4 (açgözlü yol) ve 3.5 (teknoloji yenilemesi) x86 tarafıyla birlikte ele alınmalıdır.
 - 3.1 (TS7770 fiyatı) yalnızca büyük veri senaryolarında sonucu etkiler.
+
+## 7. Ek (2026-11-02, aynı gün): Yedekte nesne depolama seçenekleri
+
+Bu değerlendirmeden sonra, Emirhan'ın isteğiyle yedek katmanına iki hedef daha eklendi: S3 uyumlu on-prem nesne depolama ve AWS S3. Seçim Emirhan'ındır: "ikisi de, model seçsin". Yukarıdaki bölümlerdeki sayılar TS7770'in tek hedef olduğu durumu gösterir. Güncel sayılar aşağıdadır; v3 dokümanı güncel hali taşır (§8.10).
+
+**Ne değişti:**
+- Üç aday hedef var: TS7770, on-prem nesne depolama, AWS S3. Model kısıtları karşılayanlar arasından en ucuzunu seçer.
+- Nesne hedeflerine yol, DS8900F'in Transparent Cloud Tiering özelliğidir [SG24-8381]. Image copy'ler DASD'ye yazılır, DFSMShsm ile göç ettirilir.
+- Kısıtlar:
+  - **Yedek penceresi:** 8 saat.
+  - **M1'de tam geri yükleme:** RTO'nun yarısı, 36 saat. Yalnızca alternatif sitesi olmayan topolojide bağlar.
+  - **TCT verimi:** 5.000 MB/s, varsayım. Nesne hedeflerini eler.
+- S3, Direct Connect hattının bedeliyle (port + taşıyıcı devre) fiyatlanır. Seçildiğinde çıktıda "hibrit" diye işaretlenir.
+- NPV'de S3, hat ve abonelik ücretleri her yıl o yılın hacmiyle işletme gideri olarak sayılır. Hedef 1. yılda sabitlenir.
+- Aralığa iki parametre eklendi: on-prem donanım fiyatı ve abonelik. Toplam 20 parametre.
+- Testler 23/23.
+
+**Bulgular:**
+1. **Küçük ve orta veride nesne depolama TS7770'in yaklaşık yarısıdır.**
+   - 10K TPS ve 20 TB'ta yedek $11.790 yerine $5.635 (on-prem nesne).
+   - Başlık sonucu $85,23 → $84,62/TPS/ay (−%0,7).
+   - Aralık $27,06 / $84,62 / $338,09.
+   - NPV $50,60M, seviyelendirilmiş $85,31; NPV aralığı $31,98 / $85,31 / $405,44.
+2. **Topoloji yedek teknolojisini belirler.**
+   - M1'de tam geri yüklemenin 36 saate sığması gerekir. Bu yüzden nesne hedefleri ~360 TB'ta elenir ve yedek TS7770'e geçer.
+   - M3'te elenme, günlük yedek veriminden dolayı ~550 TB'tadır.
+   - Bu, availability ile yedek arasında daha önce modellenmemiş bir etkileşimdir.
+3. **Veri hacmi ekseni korunur.**
+   - Storage ve yedek birlikte 20 TB'ta toplamın %1,6'sı (önce %2,3), 500 TB'ta %22'si, 2.000 TB'ta %52'sidir.
+   - Büyük veride yedek yine TS7770'tir. 2.000 TB'ta M1'in geri yükleme kısıtı TS7770'e ek küme ekletir: $290.531/ay (önce $273.350).
+4. **AWS S3 nadiren kazanır.**
+   - Yalnızca çok küçük veride (5 TB, farkı $3) ya da hat bedeli sıfır sayılırsa öne geçer. Hat bedeli sıfır, kurumda zaten Direct Connect hattı olması demektir.
+   - Sonuç, hattın sabit bedelinin dahil edilmesine bağlıdır.
+5. **Strateji sıralamaları değişmedi.**
+   - Tek yılda kazananlar: steady C 12,816, retail B 21,382, batch C 17,295 (M$).
+   - 5 yılda TFP üç presette kazanır: 65,461 / 112,083 / 86,798.
+
+**Yeni geçerlilik tehditleri:**
+- **TCT verimi yayımlanmıyor.** 5.000 MB/s, port sayısından türetilmiş bir varsayımdır. Nesne hedeflerinin elendiği veri eşiği bu değerle doğrusal ölçeklenir: 2.500 MB/s'te M1 için 180 TB, 10.000 MB/s'te 720 TB.
+- **On-prem nesne depolama fiyatı tek bir üretici örneğine dayanır** [MINIO-TCO]. Değer aralık parametresidir.
+- **SG24-8381, Db2 image copy'yi TCT için açık bir kullanım durumu olarak listelemez.** Model, image copy'lerin DASD'ye yazılıp DFSMShsm ile göç ettirildiğini varsayar.
+- **Mantıksal bozulmadan geri dönüşün RTO'su ayrı bir hedef değildir.** Geri yükleme kısıtı yalnızca M1'de bağlar.
+
+**Clustered taraf için:** On-prem nesne depolama ve S3'ün fiyat fonksiyonu iki tarafta ortak olabilir. Bu, Adım 6'daki ortak modülün doğal bir parçasıdır.
