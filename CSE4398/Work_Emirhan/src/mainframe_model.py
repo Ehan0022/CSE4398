@@ -94,8 +94,25 @@ KAYNAK ETIKETLERI:
 """
 
 import csv
+import json
 import math
 import os
+import sys
+
+import common_model as cm
+
+# Parametre sahipligi: ortak parametreler (saha olaylari, ucretler, enerji, NPV,
+# nesne depolama fiyatlari ...) yalnizca common_model'de tanimlidir ve her
+# cagrida cm.X olarak okunur. use_values bir adi sahibi olan modulde degistirir.
+_PARAM_MODULES = (sys.modules[__name__], cm)
+
+
+def __getattr__(name):
+    """Geriye uyumlu okuma: m.NPV_TPS_GROWTH gibi tasinan adlar ortak modulden
+    (guncel degeriyle) okunur. Yazma use_values ile yapilmalidir."""
+    if not name.startswith("_") and name in vars(cm):
+        return getattr(cm, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 # ------------------------------------------------------------------------------
 # BOLUM 1-2 — z16 A01 KAPASITE KADEMELERI (data/z16_a01_capacity.csv)
@@ -446,19 +463,12 @@ def expected_latency_at(tier, workload, tps, percentile, topology=None):
 # degil; SG24-8446 ise desenlere "nine" degeri atamaz. Her parametre low / mid /
 # high aralik olarak tanimlidir; "low" mainframe lehine (az kesinti) uctur.
 
-SITE_EVENT_SCENARIOS = {
-    # rate: olay/yil; d_short_h / d_long_h: saat; p_long: uzun olay payi
-    #  [UPTIME-2025] operatorlerin %53'u son 3 yilda kesinti bildirdi -> ~0,25/yil
-    #  (ust uc); ciddi/agir pay %9 -> alt uc. [UPTIME-2022] kamuya yansiyan
-    #  kesintilerin >24 saat suren payi %8 (2017) -> ~%30 (2021).
-    "low":  {"rate": 0.05, "d_short_h": 1.0, "p_long": 0.08, "d_long_h": 24.0},
-    "mid":  {"rate": 0.15, "d_short_h": 2.0, "p_long": 0.15, "d_long_h": 48.0},
-    "high": {"rate": 0.25, "d_short_h": 4.0, "p_long": 0.30, "d_long_h": 72.0},
-}
 # Saha olayinda hizmetin geri gelme suresi, dakika (M1: alternatif site yok)
 RECOVERY_MINUTES = {
-    "M2": {"low": 60.0, "mid": 120.0, "high": 240.0},   # [SG24-6374 T1-1: depolama
-          # replikasyonuyla "one or more hours"; SG24-8446: <2 saat GDPS ister]
+    "M2": {"low": 15.0, "mid": 30.0, "high": 60.0},     # TEKNIK gecis (Metro Mirror'dan
+          # IPL, ag yonlendirme); ortak elle gecis karar suresi (45 / 90 / 180 dk,
+          # common_model) eklenir -> toplam 60 / 120 / 240 dk [SG24-6374 T1-1:
+          # depolama replikasyonuyla "one or more hours"; SG24-8446: <2 saat GDPS ister]
     "M3": {"low": 2.0, "mid": 30.0, "high": 60.0},      # [GDPS-2026] GDPS Metro / MGM:
           # cok-siteli is yukunde ~2 dk, tek siteli is yukunde <1 saat
     "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-2026] GDPS CA: 20-30 sn;
@@ -475,16 +485,17 @@ PLANNED_OUTAGE_MINUTES = {                                        # olay basina 
 }
 CPC_HW_DOWNTIME_SECONDS = {"low": 0.0316, "mid": 0.315, "high": 3.15}  # [ITIC-2023]
           # z16 9 nine / IBM ortalamasi 8 nine / z13-z15 7 nine
-SITE_EVENT_LEVEL = "mid"    # aralik parametreleri (RANGE_PARAMETERS)
+# Saha olayi parametreleri (lam_saha, d_kisa, d_uzun, p_uzun) ve SITE_EVENT_LEVEL
+# iki tarafta ortaktir: common_model.py, Bolum 2.
 RECOVERY_LEVEL = "mid"
 PLANNED_LEVEL = "mid"
-HOURS_PER_YEAR = 8760.0
 
 
 class Topology:
     """Bir mainframe availability topolojisi (IBM Z Resiliency desenlerine eslenir)."""
     def __init__(self, code, name, n_frames, pattern, gdps=None, rpo_seconds=0.0,
-                 description="", storage_copies=1, sync_replication=False):
+                 description="", storage_copies=1, sync_replication=False,
+                 manual_failover=False):
         self.code = code                # 'M1', 'M2', 'M3', 'M4'
         self.name = name
         self.n_frames = n_frames        # birincil + DR (CBU) frame sayisi
@@ -494,6 +505,7 @@ class Topology:
         self.description = description
         self.storage_copies = storage_copies      # DS8900F veri kopyasi (dizi) sayisi
         self.sync_replication = sync_replication  # senkron Metro Mirror var mi
+        self.manual_failover = manual_failover    # site gecisi elle mi (ortak karar suresi)
         # Yazilim primi yok: DR (CBU) makinesinin IBM yazilim faturasi yalnizca
         # kalici kapasitesine gore kesilir [CBU]; GDPS ayri kalemdir (gdps_monthly_cost).
         self.software_premium = 1.0
@@ -507,9 +519,15 @@ class Topology:
         return 1.0 + (self.n_frames - 1) * DR_FRAME_COST_FRACTION
 
     def recovery_minutes(self, level=None):
-        """Saha olayinda hizmetin geri gelme suresi (dk); M1'de sonsuz."""
+        """Saha olayinda hizmetin geri gelme suresi (dk); M1'de sonsuz. Elle
+        gecisli topolojide (M2) ortak karar suresi + teknik gecis suresi."""
         r = RECOVERY_MINUTES.get(self.code)
-        return float("inf") if r is None else r[level or RECOVERY_LEVEL]
+        if r is None:
+            return float("inf")
+        lv = level or RECOVERY_LEVEL
+        if self.manual_failover:
+            return cm.manual_failover_minutes(r[lv], lv)
+        return r[lv]
 
     @property
     def rto_minutes(self):
@@ -520,18 +538,16 @@ class Topology:
 
     def annual_downtime_hours(self, site=None, recovery=None, planned=None):
         """Yillik beklenen hizmet kesintisi (saat), olay tabanli."""
-        s = SITE_EVENT_SCENARIOS[site or SITE_EVENT_LEVEL]
         t_rec = self.recovery_minutes(recovery) / 60.0
-        unplanned = s["rate"] * ((1 - s["p_long"]) * min(s["d_short_h"], t_rec)
-                                 + s["p_long"] * min(s["d_long_h"], t_rec))
+        unplanned = cm.site_downtime_hours(t_rec, site)
         p = planned or PLANNED_LEVEL
         planned_h = PLANNED_EVENTS_PER_YEAR[p] * PLANNED_OUTAGE_MINUTES[self.code][p] / 60.0
-        hw = (CPC_HW_DOWNTIME_SECONDS[site or SITE_EVENT_LEVEL] / 3600.0
+        hw = (CPC_HW_DOWNTIME_SECONDS[site or cm.SITE_EVENT_LEVEL] / 3600.0
               if self.n_frames == 1 else 0.0)
         return unplanned + planned_h + hw
 
     def availability(self, site=None, recovery=None, planned=None):
-        return 1.0 - self.annual_downtime_hours(site, recovery, planned) / HOURS_PER_YEAR
+        return 1.0 - self.annual_downtime_hours(site, recovery, planned) / cm.HOURS_PER_YEAR
 
     def availability_range(self):
         """(en kotu, en iyi): tum availability parametreleri high / low ucunda."""
@@ -567,6 +583,7 @@ TOPOLOGIES = [
         description="Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; "
                     "gecis otomasyonsuz, elle (saatler).",
         storage_copies=2, sync_replication=True,    # Metro Mirror cifti (HyperSwap)
+        manual_failover=True,
     ),
     Topology(
         code="M3",
@@ -637,6 +654,41 @@ def gdps_monthly_cost(topology):
     """Topolojinin GDPS teklifinin aylik bedeli (kapasiteden bagimsiz)."""
     return GDPS_MONTHLY_BASE.get(topology.gdps, 0.0) * GDPS_COST_LEVEL
 
+
+# ------------------------------------------------------------------------------
+# URETIM DISI ORTAMLAR (NONPROD) — kural ortak: common_model.py, Bolum 9
+# ------------------------------------------------------------------------------
+# Gelistirme / test / QA LPAR'lari. IBM Eagle: mainframe'de uretim +%20
+# [IBM-EAGLE-2013] (uretici kaynagi; mainframe lehine olabilir). Aralik:
+# 0 (kapsam disi senaryo) / 0,20 (IBM) / 0,50 [ASSUME]. Carpan birincil sitenin
+# yazilim + bilgi islem donanimi + enerji + birincil storage maliyetine uygulanir;
+# DR frame, GDPS, yedek ve personel haric.
+NONPROD_FACTOR = 0.20           # [IBM-EAGLE-2013 -> ASSUME] aralik 0-0,50
+
+
+def storage_primary_share(splan):
+    """Birincil dizinin storage donanim degerindeki payi."""
+    hw = splan["hw_capex"]
+    return splan["arrays"][0]["hw_capex"] / hw if hw > 0 else 0.0
+
+
+def storage_primary_monthly(splan):
+    """Birincil dizinin aylik storage maliyeti (amortisman + bakim + enerji)."""
+    share = storage_primary_share(splan)
+    return ((splan["amortization"] + splan["maintenance"]) * share
+            + cm.energy_monthly(splan["arrays"][0]["power_kw"]))
+
+
+def nonprod_monthly(cost, topology, splan):
+    """Statik aylik maliyet sozlugunden uretim disi ortam bedeli."""
+    return cm.nonprod_cost(NONPROD_FACTOR, {
+        "software": cost["software"],
+        "compute_hw": cost["hardware_amort"] / topology.cost_multiplier,
+        "compute_maint": cost["maintenance"] / topology.cost_multiplier,
+        "compute_energy": cost["energy"] / topology.n_frames,
+        "storage_primary": storage_primary_monthly(splan),
+    })
+
 # ------------------------------------------------------------------------------
 # BOLUM 5 — MALIYET PARAMETRELERI
 # ------------------------------------------------------------------------------
@@ -703,8 +755,7 @@ def maintenance_factor():
 
 # [PWR] Enerji: ~20-40 kW/frame. Orta deger + elektrik fiyati.
 POWER_KW_PER_SYSTEM = 30.0             # kW/frame  [PWR, orta deger]
-ELECTRICITY_USD_PER_KWH = 0.12         # [ASSUME] tipik ticari elektrik
-HOURS_PER_MONTH = 730.0
+# Elektrik fiyati ve ay/yil saatleri ortaktir: common_model.py, Bolum 4.
 
 
 
@@ -724,17 +775,16 @@ HOURS_PER_MONTH = 730.0
 #     [IBM-TPF-2007]; uretici kaynagi, alt sinira yakin.
 # Uc senaryo (dusuk / orta / yuksek), 20.000 PCI'da MIPS/FTE: ~830 / ~450 / ~260.
 STAFF_SCENARIOS = {
-    #            FTE_1000, b,    taban, yuklu maliyet USD/yil
-    "low":  dict(fte_1000=4.0, exp=0.60, floor=3.0, loaded=122000.0),
-    "mid":  dict(fte_1000=5.5, exp=0.70, floor=4.0, loaded=162000.0),
-    "high": dict(fte_1000=7.0, exp=0.80, floor=5.0, loaded=215000.0),
+    #            FTE_1000, b  (taban ekip ve ucret: common_model, Bolum 3)
+    "low":  dict(fte_1000=4.0, exp=0.60),
+    "mid":  dict(fte_1000=5.5, exp=0.70),
+    "high": dict(fte_1000=7.0, exp=0.80),
 }
-# Yuklu maliyet = brut maas x yan hak carpani. Brut maas: BLS OEWS Mayis 2025
-# medyanlari (DBA/mimar $126.760, sistem yoneticisi $99.130, guvenlik $129.180)
-# ve mainframe ilanlari/anketleri (Payscale ~$90K, Glassdoor Db2 z/OS DBA
-# $104-163K) -> karma brut $95K / $120K / $150K. Yan hak carpani: IDC %28
-# [IDC-2016], BLS ECEC'te maas toplam maliyetin %70'i -> x1.43 [BLS-ECEC];
-# 1.28 / 1.35 / 1.43.
+# Taban ekip (3 / 4 / 5 FTE, 7/24 nobet) ve yuklu ucret ($122K / $162K / $215K)
+# iki tarafta ortaktir: cm.STAFF_FLOOR_FTE ve cm.LOADED_WAGE_USD. Ucret ayri bir
+# aralik parametresidir (cm.WAGE_LEVEL); STAFF_SCENARIO yalnizca egriyi ve
+# tabani secer. Mainframe ucret capalari (Payscale ~$90K, Glassdoor Db2 z/OS
+# DBA $104-163K) BLS karma brutuyle ($95K / $120K / $150K) uyumludur.
 STAFF_SCENARIO = "mid"
 # DR ve sysplex karmasikligi: ikinci CEC, GDPS, ikinci site operasyonu [ASSUME]
 STAFF_TOPOLOGY_FACTOR = {"M1": 1.00, "M2": 1.05, "M3": 1.15, "M4": 1.25}
@@ -742,8 +792,9 @@ STAFF_TOPOLOGY_FACTOR = {"M1": 1.00, "M2": 1.05, "M3": 1.15, "M4": 1.25}
 
 def staff_fte(tier, topology=None, scenario=None):
     """Kademeyi (birincil CEC kapasitesi) isletmek icin gereken altyapi FTE'si."""
-    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
-    fte = max(p["floor"], p["fte_1000"] * (tier.pci / 1000.0) ** p["exp"])
+    lv = scenario or STAFF_SCENARIO
+    p = STAFF_SCENARIOS[lv]
+    fte = max(cm.STAFF_FLOOR_FTE[lv], p["fte_1000"] * (tier.pci / 1000.0) ** p["exp"])
     if topology is not None:
         fte *= STAFF_TOPOLOGY_FACTOR.get(topology.code, 1.0)
     return fte
@@ -751,8 +802,7 @@ def staff_fte(tier, topology=None, scenario=None):
 
 def staff_monthly_cost(tier, topology=None, scenario=None):
     """Altyapi personelinin AYLIK yuklu maliyeti (USD)."""
-    p = STAFF_SCENARIOS[scenario or STAFF_SCENARIO]
-    return staff_fte(tier, topology, scenario) * p["loaded"] / 12.0
+    return staff_fte(tier, topology, scenario) * cm.loaded_wage() / 12.0
 
 
 # ------------------------------------------------------------------------------
@@ -910,7 +960,7 @@ def storage_plan(peak_tps, workload=DEFAULT_WORKLOAD, topology=None, data_tb=Non
     maint = (hw_capex * STORAGE_MAINT_RATE_ANNUAL * maint_years /
              STORAGE_AMORTIZATION_YEARS / 12)
     power_kw = sum(a["power_kw"] for a in arrays)
-    energy = power_kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
+    energy = power_kw * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_MONTH
     return {
         "copies": copies,
         "arrays": arrays,
@@ -994,21 +1044,6 @@ TCT_MAX_MB_S = 5000.0                # [SG24-8381 -> ASSUME] sunucu basina en fa
                                      #  portu (10 GbE kartlarla); ~%40 verimle tek DS8900F
 OBJECT_COMPRESSION = 1.0             # [SG24-8381] TS7700 disi hedefte DS8000 sikistirmasi yok
 # on-prem nesne depolama (iki site)
-COS_HW_USD_PER_TB = 100.0            # [MINIO-TCO] 60 x 16 TB HDD sistem $70K, 720 TB kullanilabilir
-COS_MIN_SITE_CAPEX_USD = 70000.0     # [MINIO-TCO] site basina en kucuk sistem
-COS_SW_USD_PER_TB_MONTH = 5.0        # [MINIO-TCO -> ASSUME] yazilim/destek aboneligi; acik kaynak 0,
-                                     #  ticari liste ~$10/TB-ay; aralik 0-10
-COS_KW_PER_PB = 1.5                  # [ASSUME] HDD yogun 2U sistemler
-# AWS S3 (us-east-1, 2026)
-S3_USD_PER_GB_MONTH = 0.0125         # [AWS-S3-2026] Standard-IA
-S3_MIN_STORAGE_DAYS = 30             # [AWS-S3-2026] Standard-IA en kisa faturalanan sure
-S3_RETRIEVAL_USD_PER_GB = 0.01       # [AWS-S3-2026] Standard-IA geri getirme
-S3_PUT_USD_PER_1000 = 0.01           # [AWS-S3-2026] Standard-IA PUT
-S3_OBJECT_MB = 256.0                 # [ASSUME] TCT nesne boyutu (istek sayisi icin)
-DX_PORT_USD_PER_HOUR = 2.25          # [AWS-DX-2026] 10 Gbps dedicated port
-DX_LINK_MB_S = 1000.0                # 10 Gbps x %80 verim [ASSUME]
-DX_EGRESS_USD_PER_GB = 0.02          # [AWS-DX-2026] ABD ici DX cikis; giris ucretsiz
-WAN_CIRCUIT_USD_PER_MONTH = 2000.0   # [ASSUME] 10 Gbps tasiyici devre + cross-connect; aralik 1-4K
 
 
 def backup_volume_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
@@ -1075,7 +1110,7 @@ def _plan_ts7770(ic, logs, daily, restore_tb, budget_h):
             "clusters_per_site": n, "clusters": clusters, "throughput_mb_s": mb_s,
             "hw_capex": hw, "capex": hw, "amortization": amort, "maintenance": maint,
             "service": 0.0, "power_kw": kw,
-            "energy": kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH}
+            "energy": kw * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_MONTH}
 
 
 def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
@@ -1092,28 +1127,22 @@ def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
                                            f"{TCT_MAX_MB_S:,.0f} MB/s)")
         return base
     if target == "cos_onprem":
-        hw_site = max(COS_MIN_SITE_CAPEX_USD, stored * COS_HW_USD_PER_TB)
-        hw = BACKUP_SITES * hw_site
-        amort, maint = _hw_monthly(hw)
-        service = BACKUP_SITES * stored * COS_SW_USD_PER_TB_MONTH
-        kw = BACKUP_SITES * max(1.0, stored / 1000.0 * COS_KW_PER_PB)
-        base.update(feasible=True, throughput_mb_s=TCT_MAX_MB_S, hw_capex=hw, capex=hw,
-                    amortization=amort, maintenance=maint, service=service, power_kw=kw,
-                    energy=kw * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH, links=0)
+        o = cm.onprem_object_store(stored, BACKUP_SITES)   # fiyat fonksiyonu ortak
+        amort, maint = _hw_monthly(o["hw_capex"])
+        base.update(feasible=True, throughput_mb_s=TCT_MAX_MB_S, hw_capex=o["hw_capex"],
+                    capex=o["hw_capex"], amortization=amort, maintenance=maint,
+                    service=o["service"], power_kw=o["power_kw"],
+                    energy=o["power_kw"] * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_MONTH,
+                    links=0)
         return base
-    # aws_s3: tek kopya; hat sayisi verim ihtiyacindan
-    links = max(1, math.ceil(req_mb_s / DX_LINK_MB_S))
-    min_factor = max(1.0, S3_MIN_STORAGE_DAYS / (7.0 * BACKUP_RETENTION_WEEKS))
-    storage_fee = stored * 1000.0 * S3_USD_PER_GB_MONTH * min_factor
-    puts = daily * 1e6 / S3_OBJECT_MB * (HOURS_PER_MONTH / 24.0) * S3_PUT_USD_PER_1000 / 1000.0
-    restore_fee = (BACKUP_RESTORES_PER_YEAR * restore_tb * 1000.0
-                   * (DX_EGRESS_USD_PER_GB + S3_RETRIEVAL_USD_PER_GB) / 12.0)
-    network = links * (DX_PORT_USD_PER_HOUR * HOURS_PER_MONTH + WAN_CIRCUIT_USD_PER_MONTH)
-    base.update(feasible=True, throughput_mb_s=min(TCT_MAX_MB_S, links * DX_LINK_MB_S),
+    # aws_s3: tek kopya; hat sayisi verim ihtiyacindan (fiyat fonksiyonu ortak)
+    o = cm.s3_hybrid(stored, daily, restore_tb, req_mb_s, BACKUP_RETENTION_WEEKS,
+                     BACKUP_RESTORES_PER_YEAR)
+    base.update(feasible=True, throughput_mb_s=min(TCT_MAX_MB_S, o["link_mb_s"]),
                 hw_capex=0.0, capex=0.0, amortization=0.0, maintenance=0.0,
-                service=storage_fee + puts + restore_fee + network, power_kw=0.0, energy=0.0,
-                links=links, s3_storage=storage_fee, s3_requests=puts, s3_restore=restore_fee,
-                network=network)
+                service=o["service"], power_kw=0.0, energy=0.0,
+                links=o["links"], s3_storage=o["s3_storage"], s3_requests=o["s3_requests"],
+                s3_restore=o["s3_restore"], network=o["network"])
     return base
 
 
@@ -1292,7 +1321,7 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     # Bakim: garanti sonrasi, amortisman suresine ortalanmis  [PRICE]
     maint_monthly = hw_purchase * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12
     # Enerji - her frame ayri  [PWR]
-    energy = POWER_KW_PER_SYSTEM * ELECTRICITY_USD_PER_KWH * HOURS_PER_MONTH
+    energy = POWER_KW_PER_SYSTEM * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_MONTH
 
     mult = topology.cost_multiplier
     staff = staff_monthly_cost(tier, topology)
@@ -1386,7 +1415,8 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
                 cost["storage_plan"] = splan
                 cost["backup"] = bplan["monthly_total"]
                 cost["backup_plan"] = bplan
-                cost["total"] += splan["monthly_total"] + bplan["monthly_total"]
+                cost["nonprod"] = nonprod_monthly(cost, topo, splan)
+                cost["total"] += splan["monthly_total"] + bplan["monthly_total"] + cost["nonprod"]
                 rho_max = max_utilization_for_latency(tier, workload,
                                                       latency_target_s, percentile_frac, topo)
                 max_t = tier_max_tps(tier, workload, latency_target_s, percentile_frac, topo)
@@ -1444,7 +1474,10 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         print(f"       storage:  ${cost['storage']:,.0f}  ({describe_storage(sp)})")
         print(f"     I/O: {sp['iops_required']:,.0f} IOPS, I/O basina {sp['io_service_time_s']*1e6:.0f} us, "
               f"islem basina D_io = {sp['io_delay_s']*1000:.2f} ms")
-        print(f"       yedekleme: ${cost['backup']:,.0f}  ({describe_backup(cost['backup_plan'])})\n")
+        print(f"       yedekleme: ${cost['backup']:,.0f}  ({describe_backup(cost['backup_plan'])})")
+        print(f"       uretim disi: ${cost['nonprod']:,.0f}  (NONPROD_FACTOR={NONPROD_FACTOR:g}; "
+              f"birincil site yazilim + donanim + enerji + storage)")
+        print(f"     fiyat modu: {cm.price_mode_label()}\n")
     return best
 
 
@@ -1706,7 +1739,8 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
                     latency_ms=None, latency_percentile=99,
                     strategy="permanent", corridor_tier=None,
                     feature_max_cps=None, sw_price_per_msu_hour=None,
-                    storage_monthly=0.0, staff_monthly=0.0, backup_monthly=0.0):
+                    storage_monthly=0.0, staff_monthly=0.0, backup_monthly=0.0,
+                    storage_primary_monthly=0.0):
     """Bir yillik saat-saat simulasyon ve maliyet.
 
     strategy:
@@ -1779,14 +1813,14 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
     monthly_other = [base_other_monthly] * 12
 
     # --- On/Off CoD: gun basina, aktif gecici kapasite (always-on'un ustu) ----
-    hw_pci_day = hw_monthly_cost_per_pci() / (HOURS_PER_MONTH / 24.0)
+    hw_pci_day = hw_monthly_cost_per_pci() / (cm.HOURS_PER_MONTH / 24.0)
     cod_cost_total = sum((t.pci - always_on.pci) * hw_pci_day * COD_DAILY_MULTIPLIER
                          for t in day_tier if t is not always_on)
 
     # --- TFP corridor: base'in ustunde tuketilen PCI, saatlik [TFP-HW] -------
     corridor_cost_total = 0.0
     if strategy == "tfp":
-        hw_pci_hour = hw_monthly_cost_per_pci() / HOURS_PER_MONTH
+        hw_pci_hour = hw_monthly_cost_per_pci() / cm.HOURS_PER_MONTH
         for load in profile:
             used = min(consumed_pci(load, workload), corridor_tier.pci) - tier.pci
             if used > 0:
@@ -1817,11 +1851,23 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
 
     yearly_software = sum(monthly_software)
     yearly_other = sum(monthly_other)
+    # Uretim disi ortamlar: birincil frame'in kalici donanimi (zIIP eki dahil),
+    # enerjisi, yazilim ve birincil storage; gecici kapasite (CoD / corridor) haric.
+    mult = topology.cost_multiplier
+    ziip_m = (ziip_extra / (HARDWARE_AMORTIZATION_YEARS * 12)
+              + ziip_extra * MAINTENANCE_RATE_ANNUAL * maintenance_factor() / 12)
+    yearly_nonprod = cm.nonprod_cost(NONPROD_FACTOR, {
+        "software": yearly_software,
+        "compute_hw": 12.0 * base_cost["hardware_amort"] / mult,
+        "compute_maint": 12.0 * base_cost["maintenance"] / mult + 12.0 * ziip_m,
+        "compute_energy": 12.0 * base_cost["energy"] / topology.n_frames,
+        "storage_primary": 12.0 * storage_primary_monthly,
+    })
     yearly_storage = 12.0 * storage_monthly
     yearly_staff = 12.0 * staff_monthly
     yearly_backup = 12.0 * backup_monthly
     yearly_total = (yearly_software + yearly_other + yearly_storage + yearly_backup +
-                    yearly_staff + cod_cost_total + corridor_cost_total)
+                    yearly_staff + cod_cost_total + corridor_cost_total + yearly_nonprod)
 
     return {
         "hourly_load": profile,
@@ -1840,6 +1886,7 @@ def simulate_yearly(profile, tier, topology, workload=DEFAULT_WORKLOAD,
         "yearly_storage": yearly_storage,
         "yearly_backup": yearly_backup,
         "yearly_staff": yearly_staff,
+        "yearly_nonprod": yearly_nonprod,
         "yearly_total": yearly_total,
         "base_tier": tier,
         "corridor_tier": corridor_tier if strategy == "tfp" else None,
@@ -1923,6 +1970,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
             continue
         splan = storage_plan(peak_load, workload, topo, data_tb, data_growth)
         st_m = splan["monthly_total"]
+        stp_m = storage_primary_monthly(splan)
         bplan = backup_plan(avg_load, workload, topo, data_tb, data_growth)
         bk_m = bplan["monthly_total"]
         # personel tepe yuku tasiyan kademeye gore: stratejiden bagimsiz
@@ -1930,7 +1978,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
         sim_perm = simulate_yearly(profile, perm_tier, topo, workload, latency_ms,
                                    latency_percentile, strategy="permanent",
                                    storage_monthly=st_m, staff_monthly=stf_m,
-                                   backup_monthly=bk_m)
+                                   backup_monthly=bk_m, storage_primary_monthly=stp_m)
         sw_price = tfp_software_price_per_msu_hour(profile, sim_perm, perm_tier, workload)
 
         candidates = {"permanent": [sim_perm]} if "permanent" in strategies else {}
@@ -1950,7 +1998,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
                 s = simulate_yearly(profile, base, topo, workload, latency_ms,
                                     latency_percentile, strategy="base_cod",
                                     storage_monthly=st_m, staff_monthly=stf_m,
-                                   backup_monthly=bk_m)
+                                   backup_monthly=bk_m, storage_primary_monthly=stp_m)
                 if s is not None:
                     candidates.setdefault("base_cod", []).append(s)
             if "tfp" in strategies:
@@ -1961,7 +2009,7 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
                                         corridor_tier=corr,
                                         sw_price_per_msu_hour=sw_price,
                                         storage_monthly=st_m, staff_monthly=stf_m,
-                                   backup_monthly=bk_m)
+                                   backup_monthly=bk_m, storage_primary_monthly=stp_m)
                     if s is not None:
                         candidates.setdefault("tfp", []).append(s)
 
@@ -2025,6 +2073,8 @@ def _print_strategy_detail(sim):
               f"  [{describe_backup(sim['backup_plan'])}]")
     if sim.get("yearly_staff"):
         print(f"  Personel ({STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
+    if sim.get("yearly_nonprod"):
+        print(f"  Uretim disi ortamlar:".ljust(34) + f"${sim['yearly_nonprod']:>13,.0f}")
     if sim["corridor_cost_total"]:
         print(f"  TFP corridor kullanimi:".ljust(34) + f"${sim['corridor_cost_total']:>13,.0f}")
     if sim["cod_cost_total"]:
@@ -2049,6 +2099,43 @@ def export_yearly_csv(sim, filepath):
                     f"{sim['monthly_cost_software'][m]:.2f},"
                     f"{sim['monthly_cost_other'][m]:.2f}\n")
     print(f"CSV yazildi: {base}_hourly.csv, {base}_monthly.csv")
+
+
+# ==============================================================================
+# FIYAT KAYDI — IKI FIYAT MODU (common_model.py, Bolum 10)
+# ==============================================================================
+# Kullanicinin fiyat dosyasiyla gecersiz kilabilecegi mainframe fiyatlari.
+# (ad, birim, kaynak, kaynak yili, bagli aralik parametresi, aciklama)
+cm.register_prices(__name__, [
+    ("AWLC_BASE_CHARGE", "USD/ay", "IBM-2004", 2004, None, "AWLC taban ucreti (ilk 3 MSU)"),
+    ("SW_PRICE_LEVEL_FACTOR", "carpan (2004 = 1)", "ASSUME", 2004, "SW_PRICE_LEVEL_FACTOR",
+     "AWLC mutlak fiyat seviyesi"),
+    ("AWLC_UPPER_DECAY", "carpan", "LONGPELA -> ASSUME", 2004, "AWLC_UPPER_DECAY",
+     "AWLC L4+ kademe dususu"),
+    ("HW_FRAME_BASE_COST", "USD/frame", "PRICE -> ASSUME", 2022, "HW_FRAME_BASE_COST",
+     "z16 frame tabani"),
+    ("HARDWARE_COST_PER_MIPS", "USD/PCI", "PRICE -> ASSUME", 2022, "HARDWARE_COST_PER_MIPS",
+     "z16 kapasite fiyati"),
+    ("ZIIP_HW_PRICE_FACTOR", "carpan", "ASSUME", 2022, None, "zIIP fiyati / GP esdegeri"),
+    ("MAINTENANCE_RATE_ANNUAL", "oran/yil", "PRICE", 2022, None, "z16 bakim orani"),
+    ("DR_FRAME_COST_FRACTION", "oran", "ASSUME", 2022, "DR_FRAME_COST_FRACTION",
+     "DR frame bedeli (CBU)"),
+    ("GDPS_MONTHLY_BASE", "USD/ay (metro_global, ca)", "ASSUME", 2026, "GDPS_COST_LEVEL",
+     "GDPS sabit aylik bedeli"),
+    ("COD_DAILY_MULTIPLIER", "carpan", "ASSUME", 2022, None, "On/Off CoD gunluk ucret carpani"),
+    ("CORRIDOR_PREMIUM", "carpan", "ASSUME", 2021, None, "TFP corridor MSU-saat primi"),
+    ("DS8900F_FLASH_LIST_USD_PER_TB", "USD/ham TB (liste)", "ITJUNGLE-22", 2022, None,
+     "DS8900F flash liste fiyati"),
+    ("STORAGE_DISCOUNT", "oran", "ASSUME, VENDORBENCH", 2022, "STORAGE_DISCOUNT",
+     "IBM storage liste indirimi"),
+    ("STORAGE_LICENSE_RATE_BASE", "oran", "ASSUME", 2022, None, "DS8900F temel lisans orani"),
+    ("STORAGE_LICENSE_RATE_COPY", "oran", "ASSUME", 2022, None, "DS8900F Copy Services orani"),
+    ("STORAGE_MAINT_RATE_ANNUAL", "oran/yil", "VENDORBENCH", 2022, None, "Storage bakim orani"),
+    ("BACKUP_CLUSTER_LIST_USD", "USD/kume (liste)", "TS7700-2006", 2006, None,
+     "TS7770 kume liste fiyati"),
+    ("BACKUP_CACHE_LIST_USD_PER_TB", "USD/TB (liste)", "ASSUME", 2022,
+     "BACKUP_CACHE_LIST_USD_PER_TB", "TS7770 cache liste fiyati"),
+])
 
 
 # ==============================================================================
@@ -2086,7 +2173,8 @@ import sys
 # Her kademe secimi senaryo icinde yeniden optimize edilir.
 RANGE_PARAMETERS = [
     # (degisken, low, mid, high, aciklama)
-    ("STAFF_SCENARIO", "low", "mid", "high", "Personel FTE egrisi + yuklu maliyet"),
+    ("STAFF_SCENARIO", "low", "mid", "high", "Personel FTE egrisi + taban ekip"),
+    ("WAGE_LEVEL", "low", "mid", "high", "Yuklu personel ucreti (ortak)"),
     ("SW_PRICE_LEVEL_FACTOR", 0.5, 1.0, 1.75, "AWLC mutlak fiyat seviyesi (2004 = 1.0)"),
     ("AWLC_UPPER_DECAY", 0.70, 0.80, 1.00, "AWLC L4+ kademe dusus orani"),
     ("CPU_US_PER_SQL_READ", 15.0, 30.0, 60.0, "Okuma SQL CPU, us (is yuku agirligi)"),
@@ -2106,35 +2194,19 @@ RANGE_PARAMETERS = [
     ("BACKUP_CACHE_LIST_USD_PER_TB", 1000.0, 2000.0, 4000.0, "TS7770 cache liste fiyati, USD/TB"),
     ("COS_HW_USD_PER_TB", 60.0, 100.0, 200.0, "On-prem nesne depolama donanimi, USD/TB"),
     ("COS_SW_USD_PER_TB_MONTH", 0.0, 5.0, 10.0, "On-prem nesne depolama aboneligi, USD/TB-ay"),
+    ("NONPROD_FACTOR", 0.0, 0.20, 0.50, "Uretim disi ortamlar (0 = kapsam disi)"),
 ]
-RANGE_LEVELS = ("low", "mid", "high")
 
 
-class use_values:
-    """Modul degiskenlerini gecici olarak degistiren baglam yoneticisi."""
-    def __init__(self, values):
-        self.values, self.old = values, {}
-
-    def __enter__(self):
-        g = globals()
-        missing = [k for k in self.values if k not in g]
-        if missing:
-            raise KeyError(f"bilinmeyen model parametresi: {missing}")
-        for k, v in self.values.items():
-            self.old[k] = g[k]
-            g[k] = v
-        return self
-
-    def __exit__(self, *exc):
-        globals().update(self.old)
-        return False
+def use_values(values):
+    """Model parametrelerini gecici olarak degistiren baglam yoneticisi. Ad,
+    sahibi olan modulde (bu modul ya da common_model) degistirilir."""
+    return cm.use_values(values, _PARAM_MODULES)
 
 
 def scenario_values(level):
     """RANGE_PARAMETERS'in tumu icin low / mid / high degerleri."""
-    i = RANGE_LEVELS.index(level)
-    return {name: vals[i] for name, *vals, _desc in
-            [(r[0], r[1], r[2], r[3], r[4]) for r in RANGE_PARAMETERS]}
+    return scenario_values_for(level, RANGE_PARAMETERS)
 
 
 def solve_range(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
@@ -2143,7 +2215,7 @@ def solve_range(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
     """Toplam aylik maliyetin low / mid / high dis sinirlari. Donus:
     {level: {"tier", "topology", "cost"}} ya da senaryo infeasible ise None."""
     out = {}
-    for level in RANGE_LEVELS:
+    for level in cm.RANGE_LEVELS:
         with use_values(scenario_values(level)):
             r = solve(tps, availability, workload, latency_ms, latency_percentile,
                       verbose=False, data_tb=data_tb, data_growth=data_growth,
@@ -2159,7 +2231,7 @@ def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
     salinim buyuklugune gore sirali. Digerleri mid'de."""
     mid = scenario_values("mid")
     rows = []
-    for name, lo, _m, hi, desc in RANGE_PARAMETERS:
+    for name, lo, _m, hi, desc in cm.unpinned(RANGE_PARAMETERS):
         totals = []
         for v in (lo, hi):
             vals = dict(mid)
@@ -2177,7 +2249,7 @@ def range_tornado(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
 def print_range(tps, **kw):
     rng = solve_range(tps, **kw)
     print(f"\nARALIK (aylik toplam, {tps:,.0f} TPS):")
-    for level in RANGE_LEVELS:
+    for level in cm.RANGE_LEVELS:
         x = rng[level]
         if x is None:
             print(f"  {level:<5} infeasible")
@@ -2226,27 +2298,13 @@ def print_range(tps, **kw):
 #   [KYNE-2022]      = F. Kyne, J. Baker, "How Should I Think About TFP?" (2022):
 #                      "IBM mentions 50% discount for growth MSUs"; taban 12 ayin
 #                      MLC'si, kullanilmasa da odenir
-NPV_YEARS = 5                    # [ASSUME] amortisman suresiyle ayni ufuk
-NPV_DISCOUNT_RATE = 0.07         # [DAMODARAN-2026] nominal; tarama %5 / %7 / %10
-NPV_TPS_GROWTH = 0.10            # senaryo girdisi (yillik TPS buyumesi)
-SW_PRICE_ESCALATION = 0.03       # [IBM-PRICE-2026 -> ASSUME] aralik 0-0,06
-HW_SERVICE_ESCALATION = 0.03     # [IBM-PRICE-2026 -> ASSUME] aralik 0-0,06
-WAGE_ESCALATION = 0.033          # [BLS-ECI-2026] aralik 0,025-0,045
-ENERGY_ESCALATION = 0.04         # [EIA-EPM] aralik 0,015-0,056
+# Ufuk, iskonto, buyume, artis siniflari ve kalan deger iki tarafta ortaktir:
+# common_model.py, Bolum 8. Burada yalnizca mainframe'e ozgu olan TFP kalir.
 TFP_GROWTH_PRICE_FACTOR = 0.5    # [TFP-SW-2021, KYNE-2022] taban ustu MSU fiyati / taban fiyati
-NPV_RESIDUAL_FRACTION = 0.0      # [ASSUME] donem sonu kalan defter degerinin geri kazanilan payi
 
-NPV_RANGE_PARAMETERS = RANGE_PARAMETERS + [
-    ("SW_PRICE_ESCALATION", 0.0, 0.03, 0.06, "Yazilim + GDPS yillik fiyat artisi"),
-    ("HW_SERVICE_ESCALATION", 0.0, 0.03, 0.06, "Bakim / CoD yillik fiyat artisi"),
-    ("WAGE_ESCALATION", 0.025, 0.033, 0.045, "Personel yillik ucret artisi"),
-    ("ENERGY_ESCALATION", 0.015, 0.04, 0.056, "Elektrik yillik fiyat artisi"),
+NPV_RANGE_PARAMETERS = RANGE_PARAMETERS + cm.NPV_COMMON_RANGE_PARAMETERS + [
     ("TFP_GROWTH_PRICE_FACTOR", 0.5, 0.5, 1.0, "TFP buyume MSU fiyati / taban"),
 ]
-
-
-def _esc(rate, year):
-    return (1.0 + rate) ** (year - 1)
 
 
 def is_permanent_upgrade(prev, tier):
@@ -2305,52 +2363,32 @@ def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
     return rows
 
 
-def _discount_and_sum(rows, rate, demand):
-    """rows: yil basina {'capex': ..., 'opex': ..., kalemler}. capex t=y-1'de,
-    opex t=y'de indirgenir. demand: yil basina TPS (seviyelendirilmis maliyet)."""
-    npv = 0.0
-    items = {}
-    pv_demand = 0.0
-    for y, r in enumerate(rows, start=1):
-        dc = (1.0 + rate) ** (y - 1)
-        do = (1.0 + rate) ** y
-        r["pv"] = r["capex"] / dc + r["opex"] / do
-        npv += r["pv"]
-        for k in r["capex_items"]:
-            items[k] = items.get(k, 0.0) + r["capex_items"][k] / dc
-        for k in r["opex_items"]:
-            items[k] = items.get(k, 0.0) + r["opex_items"][k] / do
-        pv_demand += 12.0 * demand[y - 1] / do
-    return npv, items, pv_demand
-
-
-def _residual(capex_events, rate, years):
-    """Donem sonu kalan defter degeri x NPV_RESIDUAL_FRACTION (negatif akis)."""
-    if NPV_RESIDUAL_FRACTION <= 0:
-        return 0.0
-    life = HARDWARE_AMORTIZATION_YEARS
-    val = sum(c * max(0.0, 1.0 - (years - t) / life) for t, c in capex_events)
-    return -NPV_RESIDUAL_FRACTION * val / (1.0 + rate) ** years
+def _add_nonprod(capex, opex, hw_capex, lay, topo, y):
+    """Uretim disi ortamlarin NPV kalemleri (common_model Bolum 9 kurali):
+    birincil frame donanimi ve bakimi, birincil enerji, yazilim, birincil
+    storage alimi / bakimi / enerjisi. Yedek, GDPS, DR frame ve personel haric."""
+    if NONPROD_FACTOR <= 0:
+        return
+    mult = topo.cost_multiplier
+    sp = lay["storage_plan"]
+    share = storage_primary_share(sp)
+    s_maint_on = y > STORAGE_WARRANTY_YEARS
+    e = cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_YEAR * cm.esc(cm.ENERGY_ESCALATION, y)
+    capex["nonprod"] = cm.nonprod_cost(NONPROD_FACTOR, {
+        "software": 0.0, "compute_hw": hw_capex / mult, "compute_maint": 0.0,
+        "compute_energy": 0.0, "storage_primary": lay["storage_capex"] * share})
+    opex["nonprod"] = cm.nonprod_cost(NONPROD_FACTOR, {
+        "software": opex["software"], "compute_hw": 0.0,
+        "compute_maint": opex["maintenance"] / mult,
+        "compute_energy": POWER_KW_PER_SYSTEM * e,
+        "storage_primary": ((sp["hw_capex"] * share * STORAGE_MAINT_RATE_ANNUAL
+                             if s_maint_on else 0.0) * cm.esc(cm.HW_SERVICE_ESCALATION, y)
+                            + sp["arrays"][0]["power_kw"] * e)})
 
 
 def _finish(rows, rate, years, demand, capex_events, extra):
-    npv, items, pv_demand = _discount_and_sum(rows, rate, demand)
-    res = _residual(capex_events, rate, years)
-    npv += res
-    if res:
-        items["residual"] = res
-    annuity = rate / (1.0 - (1.0 + rate) ** -years) if rate > 0 else 1.0 / years
-    out = {
-        "years": rows,
-        "npv": npv,
-        "items": items,
-        "undiscounted": sum(r["capex"] + r["opex"] for r in rows),
-        "eac": npv * annuity,
-        "levelized_per_tps_month": npv / pv_demand if pv_demand > 0 else None,
-        "discount_rate": rate,
-    }
-    out.update(extra)
-    return out
+    return cm.finish_npv(rows, rate, years, demand, capex_events,
+                         HARDWARE_AMORTIZATION_YEARS, extra)
 
 
 def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
@@ -2360,9 +2398,9 @@ def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
     """Statik modun cok yillik hali: yil y'de tasarim tepe yuku
     TPS x (1 + g)^(y-1). Topoloji 1. yilda secilir ve sabit kalir; kademe her
     yil izinli kalici yukseltmeler arasinda en ucuz feasible olandir."""
-    g = NPV_TPS_GROWTH if tps_growth is None else tps_growth
-    years = NPV_YEARS if years is None else years
-    rate = NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
+    g = cm.NPV_TPS_GROWTH if tps_growth is None else tps_growth
+    years = cm.NPV_YEARS if years is None else years
+    rate = cm.NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
     r1 = solve(tps, availability, workload, latency_ms, latency_percentile, verbose=False,
                data_tb=data_tb, data_growth=data_growth,
                rpo_seconds=rpo_seconds, rto_minutes=rto_minutes)
@@ -2394,20 +2432,21 @@ def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         maint_on = y > HW_WARRANTY_YEARS
         s_maint_on = y > STORAGE_WARRANTY_YEARS
         opex = {
-            "software": 12 * c["software"] * _esc(SW_PRICE_ESCALATION, y),
-            "gdps": 12 * c["gdps"] * _esc(SW_PRICE_ESCALATION, y),
-            "staff": 12 * c["staff"] * _esc(WAGE_ESCALATION, y),
+            "software": 12 * c["software"] * cm.esc(cm.SW_PRICE_ESCALATION, y),
+            "gdps": 12 * c["gdps"] * cm.esc(cm.SW_PRICE_ESCALATION, y),
+            "staff": 12 * c["staff"] * cm.esc(cm.WAGE_ESCALATION, y),
             "maintenance": (v * MAINTENANCE_RATE_ANNUAL if maint_on else 0.0)
-                           * _esc(HW_SERVICE_ESCALATION, y),
+                           * cm.esc(cm.HW_SERVICE_ESCALATION, y),
             "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
-                              if s_maint_on else 0.0) * _esc(HW_SERVICE_ESCALATION, y),
-            "backup_service": 12 * lay["backup_service"] * _esc(
-                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
+                              if s_maint_on else 0.0) * cm.esc(cm.HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * cm.esc(
+                0.0 if lay["backup_target"] == "aws_s3" else cm.HW_SERVICE_ESCALATION, y),
             "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
-                       * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
+                       * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_YEAR * cm.esc(cm.ENERGY_ESCALATION, y)),
         }
         capex = {"hardware": hw_capex, "storage": lay["storage_capex"],
                  "backup": lay["backup_capex"]}
+        _add_nonprod(capex, opex, hw_capex, lay, topo, y)
         for k, val in capex.items():
             if val:
                 capex_events.append((y - 1, val))
@@ -2429,9 +2468,9 @@ def solve_npv_yearly(preset_name, yearly_avg_tps=10000, strategy="permanent",
     edilir; topoloji 1. yildakiyle sabittir. TFP'de yazilim, 1. yilin MSU-saat
     tabani ve efektif fiyatiyla sozlesmelenir: taban her yil odenir, ustu
     TFP_GROWTH_PRICE_FACTOR ile fiyatlanir [TFP-SW-2021, KYNE-2022]."""
-    g = NPV_TPS_GROWTH if tps_growth is None else tps_growth
-    years = NPV_YEARS if years is None else years
-    rate = NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
+    g = cm.NPV_TPS_GROWTH if tps_growth is None else tps_growth
+    years = cm.NPV_YEARS if years is None else years
+    rate = cm.NPV_DISCOUNT_RATE if discount_rate is None else discount_rate
     sims, topo = [], None
     for y in range(1, years + 1):
         avg = yearly_avg_tps * (1.0 + g) ** (y - 1)
@@ -2468,23 +2507,24 @@ def solve_npv_yearly(preset_name, yearly_avg_tps=10000, strategy="permanent",
             sw = sim["yearly_software"]
         gdps = 12 * gdps_monthly_cost(topo)
         opex = {
-            "software": sw * _esc(SW_PRICE_ESCALATION, y),
-            "gdps": gdps * _esc(SW_PRICE_ESCALATION, y),
-            "staff": sim["yearly_staff"] * _esc(WAGE_ESCALATION, y),
+            "software": sw * cm.esc(cm.SW_PRICE_ESCALATION, y),
+            "gdps": gdps * cm.esc(cm.SW_PRICE_ESCALATION, y),
+            "staff": sim["yearly_staff"] * cm.esc(cm.WAGE_ESCALATION, y),
             "temporary_capacity": ((sim["cod_cost_total"] + sim["corridor_cost_total"])
-                                   * _esc(HW_SERVICE_ESCALATION, y)),
+                                   * cm.esc(cm.HW_SERVICE_ESCALATION, y)),
             "maintenance": (v * MAINTENANCE_RATE_ANNUAL if y > HW_WARRANTY_YEARS else 0.0)
-                           * _esc(HW_SERVICE_ESCALATION, y),
+                           * cm.esc(cm.HW_SERVICE_ESCALATION, y),
             "storage_maint": ((lay["storage_hw"] + lay["backup_hw"]) * STORAGE_MAINT_RATE_ANNUAL
                               if y > STORAGE_WARRANTY_YEARS else 0.0)
-                             * _esc(HW_SERVICE_ESCALATION, y),
-            "backup_service": 12 * lay["backup_service"] * _esc(
-                0.0 if lay["backup_target"] == "aws_s3" else HW_SERVICE_ESCALATION, y),
+                             * cm.esc(cm.HW_SERVICE_ESCALATION, y),
+            "backup_service": 12 * lay["backup_service"] * cm.esc(
+                0.0 if lay["backup_target"] == "aws_s3" else cm.HW_SERVICE_ESCALATION, y),
             "energy": ((POWER_KW_PER_SYSTEM * topo.n_frames + lay["kw"])
-                       * ELECTRICITY_USD_PER_KWH * HOURS_PER_YEAR * _esc(ENERGY_ESCALATION, y)),
+                       * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_YEAR * cm.esc(cm.ENERGY_ESCALATION, y)),
         }
         capex = {"hardware": hw_capex, "storage": lay["storage_capex"],
                  "backup": lay["backup_capex"]}
+        _add_nonprod(capex, opex, hw_capex, lay, topo, y)
         for val in capex.values():
             if val:
                 capex_events.append((y - 1, val))
@@ -2497,14 +2537,16 @@ def solve_npv_yearly(preset_name, yearly_avg_tps=10000, strategy="permanent",
 
 
 def scenario_values_for(level, params):
-    i = RANGE_LEVELS.index(level)
-    return {r[0]: r[1 + i] for r in params}
+    """Aralik parametrelerinin low / mid / high degerleri; kullanicinin fiyat
+    dosyasiyla sabitledigi parametreler (cm.PINNED) disarida kalir."""
+    i = cm.RANGE_LEVELS.index(level)
+    return {r[0]: r[1 + i] for r in cm.unpinned(params)}
 
 
 def solve_npv_range(tps, **kw):
     """Statik NPV'nin low / mid / high dis sinirlari (NPV_RANGE_PARAMETERS)."""
     out = {}
-    for level in RANGE_LEVELS:
+    for level in cm.RANGE_LEVELS:
         with use_values(scenario_values_for(level, NPV_RANGE_PARAMETERS)):
             out[level] = solve_npv(tps, **kw)
     return out
@@ -2514,7 +2556,7 @@ def npv_tornado(tps, **kw):
     """Tek-parametre salinimi, statik NPV uzerinde (digerleri mid)."""
     mid = scenario_values_for("mid", NPV_RANGE_PARAMETERS)
     rows = []
-    for name, lo, _m, hi, desc in NPV_RANGE_PARAMETERS:
+    for name, lo, _m, hi, desc in cm.unpinned(NPV_RANGE_PARAMETERS):
         vals_out = []
         for v in (lo, hi):
             vals = dict(mid)
@@ -2533,7 +2575,7 @@ NPV_ITEM_LABELS = {
     "backup_service": "yedek hizmeti (abonelik / S3 / bulut hatti)", "software": "yazilim (AWLC)", "gdps": "GDPS",
     "staff": "personel", "maintenance": "z16 bakim", "storage_maint": "storage + yedek bakim",
     "energy": "enerji", "temporary_capacity": "gecici kapasite (CoD / corridor)",
-    "residual": "kalan deger",
+    "residual": "kalan deger", "nonprod": "uretim disi ortamlar",
 }
 
 
@@ -2691,6 +2733,13 @@ Ornekler:
                              "ts7770, cos_onprem (on-prem nesne depolama), aws_s3 (hibrit)")
 
     # Yardimci moDlar
+    parser.add_argument("--prices", type=str, default=None, metavar="DOSYA",
+                        help="kullanici fiyat dosyasi (JSON, kismi gecersiz kilma); "
+                             "verilen fiyatlar aralik analizinde sabit tutulur")
+    parser.add_argument("--list-prices", action="store_true",
+                        help="kayitli fiyat parametrelerini JSON sablonu olarak yazdir")
+    parser.add_argument("--price-vintages", action="store_true",
+                        help="fiyat parametrelerinin kaynak yillarini listele")
     parser.add_argument("--demo", action="store_true",
                         help="Hazir demo senaryolar calistir")
     parser.add_argument("--calibration", action="store_true",
@@ -2698,11 +2747,11 @@ Ornekler:
     parser.add_argument("--npv", action="store_true",
                         help="5 yillik nakit akisi ve NPV (statik ya da --yearly ile stratejiler)")
     parser.add_argument("--tps-growth", type=float, default=None,
-                        help=f"(NPV) yillik TPS buyumesi (varsayilan {NPV_TPS_GROWTH})")
+                        help=f"(NPV) yillik TPS buyumesi (varsayilan {cm.NPV_TPS_GROWTH})")
     parser.add_argument("--discount-rate", type=float, default=None,
-                        help=f"(NPV) nominal iskonto orani (varsayilan {NPV_DISCOUNT_RATE})")
+                        help=f"(NPV) nominal iskonto orani (varsayilan {cm.NPV_DISCOUNT_RATE})")
     parser.add_argument("--years", type=int, default=None,
-                        help=f"(NPV) ufuk, yil (varsayilan {NPV_YEARS})")
+                        help=f"(NPV) ufuk, yil (varsayilan {cm.NPV_YEARS})")
 
     args = parser.parse_args()
     if args.tps is not None and args.tps <= 0:
@@ -2721,6 +2770,27 @@ Ornekler:
                   discount_rate=args.discount_rate)
     if args.backup_target is not None:
         globals()["BACKUP_TARGET"] = args.backup_target
+    if args.prices:
+        try:
+            applied = cm.apply_user_prices(cm.load_price_file(args.prices), _PARAM_MODULES)
+        except (OSError, ValueError, KeyError) as e:
+            parser.error(f"--prices: {e}")
+        print(f"Fiyat modu: {cm.price_mode_label()}: {', '.join(applied)}")
+        pinned = sorted(cm.PINNED)
+        if pinned:
+            print(f"  aralik analizinde sabit tutulanlar: {', '.join(pinned)}")
+    if args.list_prices:
+        tmpl = {"_aciklama": "Kaynakli fiyat seti. Degistirmek istediginiz satirlari "
+                             "birakip --prices ile verin; digerleri kaynakli kalir."}
+        tmpl.update(cm.current_prices(_PARAM_MODULES))
+        print(json.dumps(tmpl, indent=2, ensure_ascii=False))
+        sys.exit(0)
+    if args.price_vintages:
+        print(f"Fiyat donemi (emtia bilesenleri): {cm.PRICE_EPOCH}")
+        for name, mod, year, src in cm.price_vintage_report(_PARAM_MODULES):
+            mod = "mainframe_model" if mod == "__main__" else mod
+            print(f"  {year}  {name:<32} {mod:<16} {src}")
+        sys.exit(0)
 
     if args.sql_reads is not None or args.sql_writes is not None:
         r, w = args.sql_reads or 0.0, args.sql_writes or 0.0
@@ -2808,7 +2878,7 @@ Ornekler:
         if args.range:
             rng = solve_npv_range(args.tps, **npv_common)
             print("\nNPV ARALIGI (statik, low / mid / high):")
-            for level in RANGE_LEVELS:
+            for level in cm.RANGE_LEVELS:
                 x = rng[level]
                 print(f"  {level:<5} " + ("infeasible" if x is None else
                       f"${x['npv']:>14,.0f}  (${x['levelized_per_tps_month']:,.2f}/TPS/ay, "

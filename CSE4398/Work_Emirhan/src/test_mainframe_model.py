@@ -301,8 +301,11 @@ def test_static_equals_yearly_on_flat_load():
     sim = m.simulate_yearly(flat, tier, topo, strategy="permanent",
                             storage_monthly=cost["storage"],
                             staff_monthly=cost["staff"],
-                            backup_monthly=cost["backup"])
+                            backup_monthly=cost["backup"],
+                            storage_primary_monthly=m.storage_primary_monthly(
+                                cost["storage_plan"]))
     assert abs(sim["yearly_total"] - 12 * cost["total"]) / (12 * cost["total"]) < 1e-3
+    assert abs(sim["yearly_nonprod"] - 12 * cost["nonprod"]) / (12 * cost["nonprod"]) < 1e-3
 
 
 def test_ziip_sized_for_temporary_capacity():
@@ -336,6 +339,19 @@ def test_cli_edge_cases():
     r = run("--tps", "1000", "--backup-target", "aws_s3")
     assert r.returncode == 0 and "AWS S3" in r.stdout
     assert run("--tps", "1000", "--backup-target", "tape").returncode != 0
+    import json, tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+        json.dump({"_not": "test", "HARDWARE_COST_PER_MIPS": 250}, f)
+    r = run("--tps", "1000", "--prices", f.name, "--range")
+    assert r.returncode == 0 and "kullanici fiyatlari (1" in r.stdout
+    assert "Donanim USD/PCI" not in r.stdout          # sabitlenen fiyat tornado'da yok
+    with open(f.name, "w") as g:
+        json.dump({"NO_SUCH_PRICE": 1}, g)
+    assert run("--tps", "1000", "--prices", f.name).returncode != 0
+    assert run("--tps", "1000", "--prices", "/yok/boyle/dosya.json").returncode != 0
+    os.unlink(f.name)
+    r = run("--list-prices")
+    assert r.returncode == 0 and "LOADED_WAGE_USD" in json.loads(r.stdout)
     custom = m.WorkloadProfile("c", 0, 0, 1, False, "", "")
     assert m.ziip_fraction(custom) == 0
     with_db2 = m.WorkloadProfile("c", 2, 1, 1, True, "", "")
@@ -388,7 +404,7 @@ def test_backup_layer():
     r = m.solve(10000, 0.999, verbose=False, data_tb=20)
     assert r[2]["backup"] > 0 and abs(r[2]["total"] - sum(
         r[2][k] for k in ("software", "hardware_amort", "maintenance", "energy", "gdps",
-                          "staff", "storage", "backup"))) < 1e-6
+                          "staff", "storage", "backup", "nonprod"))) < 1e-6
 
 
 def test_backup_targets_and_constraints():
@@ -445,6 +461,144 @@ def test_npv_consistency_and_direction():
         t10 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.10)
     assert t10["npv"] > t05["npv"]
     assert t05["monotonic_base"]
+
+
+# ------------------------------------------------------------------------------
+# Adim 6: ortak modul, iki fiyat modu, uretim disi ortamlar
+# ------------------------------------------------------------------------------
+cm = m.cm
+
+
+def test_common_module_preserves_results():
+    """Ortak module tasima sonuclari degistirmemeli: NONPROD_FACTOR = 0 ve
+    aralikta sabit iken tasima oncesi altin kume (data/test/golden_step5.json)
+    birebir yeniden uretilir."""
+    import json, os, sys
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import golden_snapshot as g
+    with open(g.GOLDEN_PATH) as f:
+        gold = json.load(f)
+    cm.PINNED.add("NONPROD_FACTOR")
+    try:
+        with m.use_values({"NONPROD_FACTOR": 0.0}):
+            cur = json.loads(json.dumps(g.snapshot()))
+    finally:
+        cm.PINNED.discard("NONPROD_FACTOR")
+
+    def walk(a, b, path=""):
+        if isinstance(a, dict):
+            for k in a:
+                walk(a[k], b.get(k), f"{path}/{k}")
+        elif isinstance(a, float):
+            assert b is not None and abs(a - b) <= 1e-9 * max(1.0, abs(a)), (path, a, b)
+        else:
+            assert a == b, (path, a, b)
+    walk(gold, cur)
+
+
+def test_shared_parameters_have_single_owner():
+    """Ortak bir ad iki modulde birden tanimli olmamali; okuma ortak modulden,
+    use_values degisikligi sahibinde yapilmali ve geri alinmali."""
+    shared = {k for k in vars(cm) if k.isupper()}
+    local = {k for k in vars(m) if k.isupper()}
+    assert not (shared & local), shared & local
+    assert m.NPV_TPS_GROWTH is cm.NPV_TPS_GROWTH
+    with m.use_values({"SITE_EVENT_LEVEL": "high", "STAFF_SCENARIO": "low"}):
+        assert cm.SITE_EVENT_LEVEL == "high" and m.STAFF_SCENARIO == "low"
+        assert m.SITE_EVENT_LEVEL == "high"
+    assert cm.SITE_EVENT_LEVEL == "mid" and m.STAFF_SCENARIO == "mid"
+
+
+def test_manual_failover_split():
+    """M2 kurtarma suresi = ortak karar suresi + teknik gecis; toplam onceki
+    surumle ayni (60 / 120 / 240 dk). Karar suresi uzarsa M2 kotulesir."""
+    m2 = next(t for t in m.TOPOLOGIES if t.code == "M2")
+    assert [m2.recovery_minutes(lv) for lv in ("low", "mid", "high")] == [60.0, 120.0, 240.0]
+    base = m2.availability()
+    with m.use_values({"MANUAL_FAILOVER_DECISION_MINUTES":
+                       {"low": 45.0, "mid": 600.0, "high": 180.0}}):
+        assert m2.availability() < base
+    m3 = next(t for t in m.TOPOLOGIES if t.code == "M3")
+    assert not m3.manual_failover
+
+
+def test_storage_price_contract():
+    """Fiyat tabanlari ham TB'a dogru cevrilmeli; indirim bir kez uygulanmali."""
+    assert cm.price_per_raw_tb(8620.0) == 8620.0
+    assert abs(cm.price_per_raw_tb(200.0, "effective", 0.75, 2.5) - 375.0) < 1e-9
+    assert abs(cm.price_per_raw_tb(200.0, "usable", 0.75) - 150.0) < 1e-9
+    assert abs(cm.net_price(100.0, 0.7) - 30.0) < 1e-9
+    try:
+        cm.price_per_raw_tb(1.0, "per_gb")
+        assert False
+    except ValueError:
+        pass
+
+
+def test_price_epoch():
+    """Emtia bilesen fiyati secili doneme gore gelmeli; 2026 soku pahali."""
+    assert cm.component_price("dram_usd_per_gb", "2026-Q3") > cm.component_price(
+        "dram_usd_per_gb", "2025-mid")
+    with m.use_values({"PRICE_EPOCH": "2025-mid"}):
+        assert cm.component_price("nvme_usd_per_tb") == 115.0
+    assert cm.component_price("nvme_usd_per_tb") == 753.0
+
+
+def test_two_price_modes():
+    """Kullanici fiyatlari kismi gecersiz kilar, aralikta sabit kalir; hatali
+    dosya reddedilir; sifirlama kaynakli sete doner."""
+    mods = m._PARAM_MODULES
+    names = ("HARDWARE_COST_PER_MIPS", "LOADED_WAGE_USD", "GDPS_MONTHLY_BASE")
+    before = {n: getattr(m if hasattr(m, n) and n in vars(m) else cm, n) for n in names}
+    base = m.solve(10000, 0.999, verbose=False)[2]
+    try:
+        cm.apply_user_prices({"HARDWARE_COST_PER_MIPS": 400.0, "LOADED_WAGE_USD": 100000,
+                              "GDPS_MONTHLY_BASE": {"ca": 1.0}}, mods)
+        assert cm.LOADED_WAGE_USD == {"low": 100000.0, "mid": 100000.0, "high": 100000.0}
+        assert m.GDPS_MONTHLY_BASE == {"metro_global": 50000.0, "ca": 1.0}
+        assert {"HARDWARE_COST_PER_MIPS", "WAGE_LEVEL", "GDPS_COST_LEVEL"} <= cm.PINNED
+        c = m.solve(10000, 0.999, verbose=False)[2]
+        assert c["hardware_amort"] > base["hardware_amort"] and c["staff"] < base["staff"]
+        assert "kullanici" in cm.price_mode_label()
+        hi = m.scenario_values("high")
+        assert "HARDWARE_COST_PER_MIPS" not in hi and "WAGE_LEVEL" not in hi
+        rows = m.range_tornado(10000)
+        assert len(rows) == len(m.RANGE_PARAMETERS) - 3
+        for bad, err in (({"NO_SUCH_PRICE": 1}, KeyError), ({"STORAGE_DISCOUNT": -1}, ValueError),
+                         ({"GDPS_MONTHLY_BASE": {"x": 1}}, ValueError),
+                         ({"HW_FRAME_BASE_COST": "cok"}, ValueError)):
+            try:
+                cm.apply_user_prices(bad, mods)
+                assert False, bad
+            except err:
+                pass
+    finally:
+        cm.reset_user_prices(before, mods)
+    assert cm.price_mode_label() == "kaynakli fiyat seti" and not cm.PINNED
+    assert abs(m.solve(10000, 0.999, verbose=False)[2]["total"] - base["total"]) < 1e-6
+
+
+def test_nonprod_factor():
+    """Uretim disi ortam bedeli: 0'da sifir, carpanla dogrusal; DR, GDPS,
+    yedek ve personeli etkilemez; yillik ve NPV'de de uygulanir."""
+    with m.use_values({"NONPROD_FACTOR": 0.0}):
+        c0 = m.solve(10000, 0.99999, verbose=False)[2]
+    with m.use_values({"NONPROD_FACTOR": 0.2}):
+        c1 = m.solve(10000, 0.99999, verbose=False)[2]
+    with m.use_values({"NONPROD_FACTOR": 0.4}):
+        c2 = m.solve(10000, 0.99999, verbose=False)[2]
+    assert c0["nonprod"] == 0.0 and c1["nonprod"] > 0
+    assert abs(c2["nonprod"] - 2 * c1["nonprod"]) < 1e-6
+    for k in ("gdps", "staff", "backup", "software"):
+        assert c1[k] == c0[k]
+    # nonprod tabani birincil site: DR frame / GDPS'den kucuk bir tabana uygulanir
+    base = (c1["software"] + c1["hardware_amort"] + c1["maintenance"] + c1["energy"]
+            + c1["storage"])
+    assert c1["nonprod"] < 0.2 * base
+    y = m.solve_yearly("steady_oltp", 10000, strategies=("tfp",), verbose=False)
+    assert y["yearly_nonprod"] > 0
+    n = m.solve_npv(10000)
+    assert n["items"]["nonprod"] > 0
 
 
 if __name__ == "__main__":

@@ -101,6 +101,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 4 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_04_mainframe.md` | Storage katmanı yerinde ve savunulabilir (veri hacmi crossover ekseni, düşük TPS'te eğri bükülmesi); storage'da IOPS tavanı yok; IOPS_PER_TX üçlü rolüyle en etkili varsayım; yazılım yığını ve personel hâlâ eksik |
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
 | 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
+| 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
 
 ---
 
@@ -581,3 +582,113 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Kurum içi nesne depolama için ikinci bir fiyat kaynağı.
 - Mantıksal bozulmadan geri dönüş RTO'su.
 - Adım 6 (ortak modül; iki fiyat modu önerisi dahil) Emirhan'ın onayını bekliyor.
+
+---
+
+## 2026-11-02 — Oturum 4: Açık sistem (x86) tarafının araştırılması ve planı
+
+### 1. Aksiyon
+- x86 tarafı için kapsamlı bir kaynak araştırması yapıldı ve `docs/acik_sistem_arastirma_plani_v1.md` olarak yazıldı. Kod yazılmadı (Emirhan'ın talimatı: önce yalnızca neyi bulmamız gerektiği, ne bulduğumuz ve bunların nasıl işe yarayacağı).
+- Doküman 12 köprü tanımlıyor (işlem birimi, kapasite birimi, kuyruk, availability denklemi, topoloji, storage, yedek, personel, fiyat dönemi, NPV, aralık, lisans tabanı) ve her katman için "ne gerekiyordu → ne bulundu → modele nasıl girer" düzeninde ilerliyor.
+- Kaynak seçme ölçütü: yalnızca bir parametreyi ya da köprüyü doğrudan besleyen kaynaklar alındı. İncelenip alınmayanlar gerekçeleriyle ayrı bir tabloda (§15.2).
+- 18 x86 aralık parametresi ve Adım 6 ortak modülüne taşınacak 6 kural önerildi. 7 konu Emirhan'ın kararına bırakıldı (§13).
+
+### 2. Sebep
+- Emirhan'ın sorusu: "Artık açık sistem tarafı araştırmasına geçebilir miyiz?" ve talimatı: araştırmayı en ayrıntılı biçimde yapmak, iki sistemi karşılaştırmak için köprü ihtiyacını unutmamak, kodlamaya başlamadan bir plan dokümanı yazmak.
+- Eşit derinlik ilkesi (v4 §3.7) ve Değerlendirme #6 §4'teki clustered taraf yükümlülükleri.
+
+### 3. Sonuç (en önemli bulgular)
+- **İşlem birimi:** sysbench `oltp_read_write` bileşimi (14 okuma + 4 yazma + commit) mainframe `oltp_rw` profiliyle birebir aynı.
+- **Kapasite köprüsü:** x86'da PCI'nın karşılığı olarak çekirdek başına SPECrate2017_int_base önerildi. Bare-metal PostgreSQL ölçümü (c5d.metal, 25.953 TPS / 48 çekirdek) SPECint ile normalize edilince R760 sınıfı çekirdek başına ~893 oltp_rw TPS; iki bulut ölçümü ±%15 içinde.
+- **Platformlar arası kontrol:** 1 z16 CP (oltp_rw ~1.955 TPS) ≈ 2,2 R760 çekirdeği; büyüklük mertebesi makul.
+- **Oracle:** lisansın benchmark yayın yasağı nedeniyle çekirdek başı verim kalibre edilemiyor; geniş aralık parametresi (0,8–1,3, mid 1,0).
+- **Mimari:** Patroni tek yazıcılı; PostgreSQL tarafında kapasite sunucu boyutu adımlarıyla büyüyor ve tek düğüm tavanı (~35–50K TPS, R760) var. Mainframe'in tek CEC tavanıyla simetrik bir sınırlama.
+- **Fiyat dönemi:** 2026 bellek/SSD fiyat şoku (64 GB RDIMM ~$255 → $2.245–3.400; NVMe ~$115/TB → ~$753/TB) x86 donanımını etkiliyor; mainframe çapaları şok öncesinden. Ortak modülde `PRICE_EPOCH` kuralı önerildi.
+- **Storage tanım sorunu:** AFA fiyatları etkin TB ($65–215), DS8900F ham TB (~$2.590); aynı tanımla fiyatlanmalı.
+- **Topoloji:** M1–M4 ile Oracle MAA Bronze/Silver/Gold/Platinum birebir eşleşiyor; Patroni RTO'su parametrelerden türetilebiliyor (varsayılanla ~27–41 sn). Availability denklemine düğüm arızası × yük devretme terimi eklendi; saha olayları ve elle geçiş karar süresi ortak parametre.
+- **Personel:** tek bulunan oran kaynağı IBM Eagle (dağıtık: 32 saat/fiziksel sunucu, 36 saat/imaj); bağımsız kaynak eksik, x86 tarafının en zayıf noktası.
+
+### 4. Açık kalanlar
+- Emirhan'ın kararları (§13): storage tipi, sunucu nesli, tek yazıcı tavanının üstü (Citus), X4'ün PostgreSQL karşılığı, üç üretici mi tek referans mı, kendi sysbench ölçümümüz, DB'nin VM'de mi Kubernetes'te mi çalıştığı.
+- Bağımsız dağıtık personel oranı; Oracle standby lisans kuralının birincil kaynakla teyidi; Active Data Guard güncel liste fiyatı; sunucu bütün fiyatı için kamu ihale kaydı.
+- Kapsam asimetrisi: mainframe'de CICS modelde, x86'da uygulama sunucusu katmanı dışarıda (§14.4).
+
+---
+
+## 2026-11-02 — Oturum 5: x86 kararlarının onayı ve benzer çalışmalar taraması
+
+### 1. Aksiyon
+- Emirhan x86 planındaki yedi kararın (§13) hepsinde öneriyi onayladı. Plan §13'ün başına karar kaydı eklendi:
+  - K1: storage DB'ye bağlı (RAC → SAN, Patroni → yerel NVMe × replika).
+  - K2: z16 dönemi sunucular ana senaryo, Gen12 duyarlılık.
+  - K3: Citus yok; tek yazıcı tavanı sınırlama olarak yazılır.
+  - K4: PostgreSQL için X4 infeasible.
+  - K5: tek referans sunucu, üretici farkı aralık.
+  - K6: kendi sysbench ölçümümüz yapılacak.
+  - K7: VM ve Kubernetes varyantlarının ikisi de.
+- Emirhan'ın talimatıyla, devam etmeden önce projeye paralel yapılmış çalışmalar tarandı ve `docs/benzer_calismalar_v1.md` olarak yazıldı. Kod yazılmadı.
+- Çalışmalar beş akışta toplandı: $/TPS metriğinin soy ağacı, mainframe ile dağıtık TCO karşılaştırmaları, ölçek-büyütme ile ölçek-yayma, maliyet modelleme yöntemleri, göç ve modernizasyon kayıtları. Her çalışma için yaptığı, bulduğu ve modele getirdiği yazıldı; sentez tablosu, boşluk ifadesi ve ret tablosu eklendi.
+
+### 2. Sebep
+- Emirhan: "bir adım geri çıkarak daha geniş pencereden doğrudan bizim projemizle paralel yapılan çalışmalar var mı ve bulguları ne bir de buna bakalım ve bunları da kaydedelim."
+- Akademik açıdan: boşluk iddiasının (`project_justification.md` §2.3) çalışma düzeyinde kanıtlanması ve sonuçlarımız için dış tutarlılık referanslarının bulunması.
+
+### 3. Sonuç (en önemli bulgular)
+- **Doğrudan paralel, bağımsız bir akademik çalışma bulunamadı.** En yakın paralel IBM Eagle TCO çalışmaları: 97 vakada dağıtık ortalama 2,2 kat pahalı, yalnız 4'ünde ucuz. Bunlar üretici kaynaklı ve girdileri yayımlanmamış.
+- **Akademik literatür parçaları ayrı inceliyor:**
+  - $/TPS (Anon et al. 1985, TPC) personel ve kesintiyi dışarıda bırakıyor; bizim katkımız metriğin tam yığına genişletilmesi.
+  - Barroso & Hölzle: donanım fiyat/performansında küçük sunucu 3–20 kat önde. Bu, IBM'in "mainframe 2–3 kat ucuz" iddiasıyla aynı model içinde uzlaştırılabilir.
+  - Kossmann 2010: SLA'yı karşılayan kapasite tanımımıza hakemli dayanak.
+  - Türkiye'den bir tez (Hayretci 2021, Boğaziçi) banka göçlerini nitel olarak inceliyor.
+- **Modele en önemli uyarı:** IBM'de 1 mainframe işlemcisine 24–80 x86 çekirdeği karşılık geliyor; bizim köprümüz 2,2 çekirdek diyor. Fark büyük ölçüde x86 kullanım oranından (IBM: 10–20 kat) ve dev/test ortamlarından geliyor. Öneri: x86 hedef kullanım oranını aralıklı parametre yapmak.
+- 12 somut öneri (§8). Bunlardan biri (üretim dışı ortamlar) Emirhan'ın kararını bekliyor. 4 yeni tehdit yazıldı: yayın yanlılığı, sistematik olmayan tarama, K6 ile justification §5.2 arasındaki gerilim, eski veriler.
+
+### 4. Açık kalanlar
+- ~~Üretim dışı ortamlar~~ → Emirhan aynı gün karar verdi: iki tarafa ayrı, aralıklı `NONPROD_FACTOR` eklenecek (Adım 6). Düşük uç 0 alınarak kapsam dışı senaryo da gösterilecek. Orta değerler için IBM dışında bir kaynak aranmalı.
+- Barroso & Hölzle, Gray 2005 ve Walker 2009 sayılarının birincil metinle doğrulanması.
+- K6 ölçümünün analitik model kapsamıyla ilişkisi güncel x86 model dokümanında yazılmalı (justification §5.2 düzenlenmeyecek).
+
+---
+
+## 2026-11-02 — Oturum 6: Adım 6 — Ortak modül, iki fiyat modu ve üretim dışı ortamlar
+
+### 1. Aksiyon
+- **Altın sonuç kümesi:** Taşımadan önce mevcut kodla 7 statik durum, 10K ve 50K TPS aralık köşeleri, 9 yıllık strateji ve 3 NPV ölçüsü donduruldu (`src/tools/golden_snapshot.py --write` → `data/test/golden_step5.json`).
+- **Ortak modül (`src/common_model.py`):** İki platformun paylaştığı parametre ve kurallar buraya taşındı:
+  - saha olayları ve elle geçiş karar süresi;
+  - yüklü ücret (`WAGE_LEVEL`) ve taban ekip;
+  - elektrik fiyatı;
+  - on-prem nesne depolama, AWS S3, Direct Connect ve WAN fiyatları;
+  - storage fiyat sözleşmesi (`price_per_raw_tb`, `net_price`);
+  - emtia bileşen fiyat dönemi (`PRICE_EPOCH`: 2025-mid / 2026-Q3);
+  - NPV kuralları (artış, iskonto, kalan değer, seviyelendirme);
+  - üretim dışı kalem kuralı;
+  - fiyat kaydı ve kullanıcı fiyat dosyası.
+- **Tek sahip kuralı:** Her parametre tek bir modülde tanımlı. Mainframe kodu ortak değerleri çağrı anında `cm.X` olarak okuyor. Aynı adın iki modülde tanımlı olması test hatası.
+- **M2 kurtarma süresi ayrıştırıldı:** teknik süre (15 / 30 / 60 dk) + ortak elle geçiş karar süresi (45 / 90 / 180 dk). Toplam değişmedi (60 / 120 / 240 dk).
+- **Personel ikiye ayrıldı:** ekip büyüklüğü (`STAFF_SCENARIO`) ve ücret (`WAGE_LEVEL`). Aralık parametresi sayısı 20'den 22'ye çıktı (ücret ve üretim dışı).
+- **Üretim dışı ortamlar (`NONPROD_FACTOR` 0 / 0,20 / 0,50):** Çarpan, birincil sahanın yazılım, compute donanım amortismanı, bakım, enerji ve birincil storage maliyetine uygulanıyor. DR, GDPS, yedek ve personel hariç. Statik, yıllık ve NPV modlarının üçünde de var.
+- **İki fiyat modu:** Kaynaklı fiyat seti (varsayılan) veya kullanıcı fiyat dosyası (`--prices dosya.json`, kısmi geçersiz kılma). Verilen fiyatlar aralık ve tornado'dan çıkarılıyor. `--list-prices` şablon listesi, `--price-vintages` fiyat yaşlarını veriyor. 30 fiyat kayıtlı (12 ortak, 18 mainframe).
+- **Dokümanlar:** `docs/ortak_modul_dokumantasyonu_v1.md` (yeni); `docs/mainframe_model_documentation_v3.md` güncellendi (§7.9 üretim dışı, §7.10 iki fiyat modu, sayılar); Değerlendirme #7 yazıldı.
+
+### 2. Sebep
+- Emirhan "devam" dedi: x86 modeline geçmeden önce Adım 6 (ortak modül).
+- Akademik açıdan: iki tarafın aynı varsayımlarla hesaplandığı yalnızca söylenmemeli, kodda yapısal olarak güvence altında olmalı.
+- Üretim dışı ortamlar: Emirhan'ın kararı (Oturum 5). IBM Eagle'ın 24–80 çekirdek/CP oranının bir kısmı dev/test kopyalarından geliyor.
+- İki fiyat modu: Emirhan'ın önerisi (2026-11-02). Gerçek tekliflerle kullanılınca aralık daralır.
+
+### 3. Sonuç
+- **Taşıma sonuçları değiştirmedi:** altın kümede 0 fark (`NONPROD_FACTOR` = 0'da).
+- **Tutarlılık:** sıfır büyüme, sıfır artış ve r = 0'da NPV = 60 × statik ve yıllık NPV = 5 × yıllık. Düz yükte yıllık = 12 × statik. Üretim dışı kalem dahil.
+- **10K TPS (oltp_rw, %99,9, 20 TB):** $84,62 → **$93,10/TPS/ay** (+%10). Aralık $27,06 / $93,10 / $411,28 (low değişmedi, çünkü low = kapsam dışı senaryo).
+- **5 yıllık NPV:** $50,60M → $55,68M; seviyelendirilmiş maliyet $85,31 → $93,89.
+- **Seçimler:** Kademe, topoloji ve yıllık strateji kazananları değişmedi (steady TFP, retail CoD, batch TFP).
+- **Koşullu sonuç çevrildi:** 5 yıllık NPV'de TFP büyüme indirimi kaldırılınca steady_oltp'de artık B (CoD) %0,3 önde (önce C %0,2 öndeydi). Strateji sonucu ince bir farka dayanıyor ve koşullu yazılmalı.
+- **Tornado:** AWLC fiyat seviyesi, okuma SQL CPU'su, personel eğrisi, yazma CPU'su, ücret, üretim dışı çarpan.
+- **Testler:** 23'ten 30'a çıktı, hepsi geçiyor. Bütün duyarlılık araçları yeni kodla çalışıyor. `range_curve` CSV'lerine üretim dışı payı eklendi.
+
+### 4. Açık kalanlar
+- Üretim dışı çarpanın orta değeri için IBM dışında bir kaynak (Değerlendirme #7 tehdit 3.1).
+- Fiyat dönemi mainframe fiyatlarına uygulanmıyor (mainframe lehine yanlılık, tehdit 3.5).
+- Sıradaki: K6 sysbench ölçümü ve USL uyumu, ardından x86 modeli (`x86_model.py`, aynı ortak modülle).
+- Değerlendirme #6'dan açık kalanlar: drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, Parallel Sysplex.

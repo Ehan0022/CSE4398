@@ -5,9 +5,9 @@
 | Yol | İçerik |
 |---|---|
 | `PROJECT_LOG.md` | Kronolojik log: aksiyon → sebep → sonuç. Her çalışma oturumundan sonra en alta eklenir. |
-| `docs/` | Tasarım dokümanları: `project_justification.md` (gerekçe), `project_context_restore_v4.md` (kararlar ve gerekçeleri), `mainframe_model_documentation_v3.md` (mainframe modelinin **güncel** teknik dokümantasyonu). `mainframe_model_documentation_v2.md` tarihsel kayıt olarak duruyor. |
-| `src/` | Kod: `mainframe_model.py` (model + CLI), `test_mainframe_model.py` (tutarlılık testleri), `tools/build_z16_capacity_table.py` (kademe tablosunu ham verilerden üretir), `tools/pricing_sensitivity.py` (fiyatlama varsayımlarının duyarlılık analizi), `tools/storage_sensitivity.py` (storage duyarlılık analizi), `tools/software_sensitivity.py` (yazılım yığını: AWLC + zIIP duyarlılık analizi), `tools/workload_sensitivity.py` (iş yükü profili: işlem bileşimi duyarlılık analizi), `tools/range_curve.py` (maliyet/TPS aralığı, low/mid/high, CSV `data/out/`), `tools/availability_sensitivity.py` (olay tabanlı availability, hedef → topoloji → maliyet, RPO/RTO), `tools/npv_sensitivity.py` (TS7770 yedekleme ve 5 yıllık NPV duyarlılığı) |
-| `data/` | `z16_a01_capacity.csv` (317 z16 A01 kademesi), `ds8900f_models.csv` (DS8900F model kataloğu); `raw/` altında ham IBM verileri (kaynak ve erişim tarihi dosya başlığında) |
+| `docs/` | Tasarım dokümanları: `project_justification.md` (gerekçe), `project_context_restore_v4.md` (kararlar ve gerekçeleri), `mainframe_model_documentation_v3.md` (mainframe modelinin **güncel** teknik dokümantasyonu). `mainframe_model_documentation_v2.md` tarihsel kayıt olarak duruyor. `acik_sistem_arastirma_plani_v1.md` açık sistem (clustered x86) tarafının araştırma bulguları, iki tarafı bağlayan köprüler ve model planı (henüz kod yok). `benzer_calismalar_v1.md` projeye paralel yapılmış çalışmaların taraması, bulguları ve modele çıkan sonuçlar. `ortak_modul_dokumantasyonu_v1.md` iki platformun paylaştığı parametre ve kuralların (ortak modül) dokümantasyonu. |
+| `src/` | Kod: `common_model.py` (iki platformun ortak parametre ve kuralları: saha olayları, ücret, enerji, nesne depolama/S3, storage fiyat sözleşmesi, fiyat dönemi, NPV, üretim dışı ortamlar, fiyat kaydı), `mainframe_model.py` (model + CLI), `test_mainframe_model.py` (tutarlılık testleri), `tools/build_z16_capacity_table.py` (kademe tablosunu ham verilerden üretir), `tools/pricing_sensitivity.py` (fiyatlama varsayımlarının duyarlılık analizi), `tools/storage_sensitivity.py` (storage duyarlılık analizi), `tools/software_sensitivity.py` (yazılım yığını: AWLC + zIIP duyarlılık analizi), `tools/workload_sensitivity.py` (iş yükü profili: işlem bileşimi duyarlılık analizi), `tools/range_curve.py` (maliyet/TPS aralığı, low/mid/high, CSV `data/out/`), `tools/availability_sensitivity.py` (olay tabanlı availability, hedef → topoloji → maliyet, RPO/RTO), `tools/npv_sensitivity.py` (TS7770 yedekleme ve 5 yıllık NPV duyarlılığı), `tools/golden_snapshot.py` (refaktör regresyonu için altın sonuç kümesi) |
+| `data/` | `z16_a01_capacity.csv` (317 z16 A01 kademesi), `ds8900f_models.csv` (DS8900F model kataloğu); `raw/` altında ham IBM verileri (kaynak ve erişim tarihi dosya başlığında); `out/` araç çıktıları (CSV); `test/golden_step5.json` ortak modüle taşıma öncesi altın sonuç kümesi |
 | `evaluations/` | Tarihli rutin akademik değerlendirmeler: `YYYY-MM-DD_degerlendirme_NN.md` |
 
 ## Çalıştırma
@@ -17,6 +17,9 @@ cd src
 python mainframe_model.py --demo
 python mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000 --workload oltp_rw
 python mainframe_model.py --tps 10000 --npv --range   # 5 yıllık NPV aralığı
+python mainframe_model.py --tps 10000 --prices fiyatlarim.json   # kullanıcı fiyat dosyası (kısmi geçersiz kılma)
+python mainframe_model.py --list-prices      # geçersiz kılınabilecek fiyatlar (şablon)
+python mainframe_model.py --price-vintages   # fiyatların kaynak yılı ve yaşı
 python test_mainframe_model.py
 cd ..
 python src/tools/build_z16_capacity_table.py   # kademe tablosunu yeniden üretir
