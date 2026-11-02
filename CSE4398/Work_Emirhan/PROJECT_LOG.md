@@ -581,3 +581,33 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Kurum içi nesne depolama için ikinci bir fiyat kaynağı.
 - Mantıksal bozulmadan geri dönüş RTO'su.
 - Adım 6 (ortak modül; iki fiyat modu önerisi dahil) Emirhan'ın onayını bekliyor.
+
+---
+
+## 2026-11-02 — Oturum 4: Açık sistem (x86) tarafının araştırılması ve planı
+
+### 1. Aksiyon
+- x86 tarafı için kapsamlı bir kaynak araştırması yapıldı ve `docs/acik_sistem_arastirma_plani_v1.md` olarak yazıldı. Kod yazılmadı (Emirhan'ın talimatı: önce yalnızca neyi bulmamız gerektiği, ne bulduğumuz ve bunların nasıl işe yarayacağı).
+- Doküman 12 köprü tanımlıyor (işlem birimi, kapasite birimi, kuyruk, availability denklemi, topoloji, storage, yedek, personel, fiyat dönemi, NPV, aralık, lisans tabanı) ve her katman için "ne gerekiyordu → ne bulundu → modele nasıl girer" düzeninde ilerliyor.
+- Kaynak seçme ölçütü: yalnızca bir parametreyi ya da köprüyü doğrudan besleyen kaynaklar alındı. İncelenip alınmayanlar gerekçeleriyle ayrı bir tabloda (§15.2).
+- 18 x86 aralık parametresi ve Adım 6 ortak modülüne taşınacak 6 kural önerildi. 7 konu Emirhan'ın kararına bırakıldı (§13).
+
+### 2. Sebep
+- Emirhan'ın sorusu: "Artık açık sistem tarafı araştırmasına geçebilir miyiz?" ve talimatı: araştırmayı en ayrıntılı biçimde yapmak, iki sistemi karşılaştırmak için köprü ihtiyacını unutmamak, kodlamaya başlamadan bir plan dokümanı yazmak.
+- Eşit derinlik ilkesi (v4 §3.7) ve Değerlendirme #6 §4'teki clustered taraf yükümlülükleri.
+
+### 3. Sonuç (en önemli bulgular)
+- **İşlem birimi:** sysbench `oltp_read_write` bileşimi (14 okuma + 4 yazma + commit) mainframe `oltp_rw` profiliyle birebir aynı.
+- **Kapasite köprüsü:** x86'da PCI'nın karşılığı olarak çekirdek başına SPECrate2017_int_base önerildi. Bare-metal PostgreSQL ölçümü (c5d.metal, 25.953 TPS / 48 çekirdek) SPECint ile normalize edilince R760 sınıfı çekirdek başına ~893 oltp_rw TPS; iki bulut ölçümü ±%15 içinde.
+- **Platformlar arası kontrol:** 1 z16 CP (oltp_rw ~1.955 TPS) ≈ 2,2 R760 çekirdeği; büyüklük mertebesi makul.
+- **Oracle:** lisansın benchmark yayın yasağı nedeniyle çekirdek başı verim kalibre edilemiyor; geniş aralık parametresi (0,8–1,3, mid 1,0).
+- **Mimari:** Patroni tek yazıcılı; PostgreSQL tarafında kapasite sunucu boyutu adımlarıyla büyüyor ve tek düğüm tavanı (~35–50K TPS, R760) var. Mainframe'in tek CEC tavanıyla simetrik bir sınırlama.
+- **Fiyat dönemi:** 2026 bellek/SSD fiyat şoku (64 GB RDIMM ~$255 → $2.245–3.400; NVMe ~$115/TB → ~$753/TB) x86 donanımını etkiliyor; mainframe çapaları şok öncesinden. Ortak modülde `PRICE_EPOCH` kuralı önerildi.
+- **Storage tanım sorunu:** AFA fiyatları etkin TB ($65–215), DS8900F ham TB (~$2.590); aynı tanımla fiyatlanmalı.
+- **Topoloji:** M1–M4 ile Oracle MAA Bronze/Silver/Gold/Platinum birebir eşleşiyor; Patroni RTO'su parametrelerden türetilebiliyor (varsayılanla ~27–41 sn). Availability denklemine düğüm arızası × yük devretme terimi eklendi; saha olayları ve elle geçiş karar süresi ortak parametre.
+- **Personel:** tek bulunan oran kaynağı IBM Eagle (dağıtık: 32 saat/fiziksel sunucu, 36 saat/imaj); bağımsız kaynak eksik, x86 tarafının en zayıf noktası.
+
+### 4. Açık kalanlar
+- Emirhan'ın kararları (§13): storage tipi, sunucu nesli, tek yazıcı tavanının üstü (Citus), X4'ün PostgreSQL karşılığı, üç üretici mi tek referans mı, kendi sysbench ölçümümüz, DB'nin VM'de mi Kubernetes'te mi çalıştığı.
+- Bağımsız dağıtık personel oranı; Oracle standby lisans kuralının birincil kaynakla teyidi; Active Data Guard güncel liste fiyatı; sunucu bütün fiyatı için kamu ihale kaydı.
+- Kapsam asimetrisi: mainframe'de CICS modelde, x86'da uygulama sunucusu katmanı dışarıda (§14.4).
