@@ -102,7 +102,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
 | 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
 | 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
-| 8 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` | x86 araştırmasının eleştirel incelemesi (kod yok); personel köprüsü kritik derecede tutarsız (10K TPS'te mainframe 30,8 FTE, x86 0,4 → taban 4 FTE; fark başlığın ~%40'ı); Vonng çapası belgelenmemiş ayarlara dayanıyor, K6 çapa olmalı; aralık sorgusu nokta sorgusunun 3,4–3,9 katı (w 9,15 → ~12,5); %15–20 x86 kullanım alt ucu çift sayım; fiyat dönemi varsayılanı x86 aleyhine; 7 köprü kararı (P, F, K, U, E, C, N) bekliyor |
+| 8 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` | x86 araştırmasının eleştirel incelemesi (kod yok); personel köprüsü kritik derecede tutarsız (10K TPS'te mainframe 30,8 FTE, x86 0,4 → taban 4 FTE; fark başlığın ~%40'ı); Vonng çapası belgelenmemiş ayarlara dayanıyor, K6 çapa olmalı; aralık sorgusu nokta sorgusunun 3,4–3,9 katı (w 9,15 → ~12,5); %15–20 x86 kullanım alt ucu çift sayım; fiyat dönemi varsayılanı x86 aleyhine; 7 köprü kararı (P, F, K, U, E, C, N) aynı gün verildi ve `docs/kopruler_v1.md`'de belgelendi |
 
 ---
 
@@ -719,4 +719,46 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 ### 4. Açık kalanlar
 - Emirhan'ın 7 köprü kararı (Değerlendirme #8 §5). Kararlardan sonra plan v2 (`docs/acik_sistem_arastirma_plani_v2.md`).
 - F ve E onaylanırsa önce mainframe/ortak modül değişiklikleri ve başlığın yeniden hesaplanması, sonra K6 ve `x86_model.py`.
+
+---
+
+## 2026-11-16 — Oturum 7 (devam): Köprü kararları, personel araştırması ve köprüler dokümanı
+
+### 1. Aksiyon
+- Yedi köprü için bağlam, mevcut değerlerin kaynakları ve seçenekler Emirhan'a ayrıntılı sunuldu.
+- **Personel araştırması.** Mainframe ve dağıtık kurulumlarda personel sayıları ve oranları tarandı:
+  - IBM TPF 2007, IBM Eagle 2011 labor, Shedletsky 2008, Ray Jones 2007, IBM skills deck;
+  - IDC 2007, Avasant;
+  - göç satıcısı belgeleri (Astadia, AWS/Micro Focus, Infosys).
+- **`docs/kopruler_v1.md` yazıldı.** Bütün köprüler (KB-01 – KB-18) tek dokümanda: eski köprüler (TPS birimi, 7,939 TPS/PCI, SPECint/çekirdek, availability denklemi, M1–M4 ↔ X1–X4, storage arayüzü, yedek, lisans tabanı, NPV, enerji, üretim dışı, fiyat dönemi) ve yeni kararlar. Kaynak cümleleri değiştirilmeden tırnak içinde, sayılar kaynaktaki haliyle, türetmeler [DERIVED] etiketiyle.
+
+### 2. Sebep
+- Emirhan'ın isteği: açık sistem modellemesine başlamadan önce köprülerin tam ve kaynaklı olarak belgelenmesi.
+- Personel için Emirhan ortak bir eğri ve literatürden tek bir oran istedi, çünkü personel verilerine güvenmek zor ve değişkenlerin azaltılması gerekiyor.
+
+### 3. Sonuç
+- **Kararlar (Emirhan, 2026-11-16):** F, K, U, E, C, N için önerilen (b) seçenekleri.
+  - F: 10 nokta + 4 aralık okuma, `RANGE_READ_WEIGHT` 3,4 / 3,65 / 3,9.
+  - K: K6 ölçümü çapa; ara aralık 60–120.
+  - U: iki tarafta `min(rho_latency, tavan)`; x86 tavanı 0,9 / 0,7 / 0,5.
+  - E: ana senaryo 2025-mid.
+  - C: köprüyle boyutlanmış x86 uygulama katmanı.
+  - N: x86 için 0 / 0,5 / 1,0, stres 2,0.
+- **P (personel):**
+  - İki tarafta aynı TPS tabanlı ortak eğri.
+  - Ana senaryoda `STAFF_RATIO_X86` = 1,0, yani personel crossover için nötr.
+  - Başabaş personel oranı başlık çıktısı; personel hariç TCO ek görünüm.
+  - 1,25 ve 2,0 yalnızca duyarlılık senaryosu, IBM vakalarına atıf ve üretici yanlılığı notuyla.
+  - x86'ya özgü personel değişkenleri (32/36 saat, h_db, yığın çarpanı) elendi.
+- **Personel araştırmasının bulguları:**
+  - Kurulum ortalamaları farklı birimlerde (MIPS/FTE ile sunucu/FTE) ve doğrudan oranlanamıyor (~1.300 kat absürtlük).
+  - Aynı iş yükü vakalarının hepsi IBM kaynaklı. FTE oranları 3,28 / 3,00 / 1,23 / 1,32; maliyet oranları 3,1 / 1,5 / 15,4. Geometrik ortalama FTE vakalarında 2,0, bütün vakalarda 2,7.
+  - Göç satıcıları personel tasarrufunu sayıyla vermiyor. Bağımsız bir karşılaştırma bulunamadı.
+
+### 4. Açık kalanlar
+- Kodlama sırası (`kopruler_v1.md` §19):
+  1. F, E ve P'nin mainframe/ortak modülde uygulanması ve başlığın yeniden hesaplanması;
+  2. K6 ölçüm protokolü;
+  3. `x86_model.py`;
+  4. x86 model dokümanı ve Değerlendirme #9.
 
