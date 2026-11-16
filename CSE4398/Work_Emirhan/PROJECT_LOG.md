@@ -102,6 +102,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 5 | 2026-11-01 | `evaluations/2026-11-01_degerlendirme_05_denetim.md` | Mainframe model ve kodunun bağımsız denetimi; 3 model hatası (frame tabanı, profil oranı, geçici kapasitede zIIP) ve 6 tutarlılık/kod hatası düzeltildi; 6 nokta bilinçli tercih olarak belgelendi; 10K TPS mid $83,32 → $84,06; kazanan stratejiler değişmedi |
 | 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
 | 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
+| 8 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` | x86 araştırmasının eleştirel incelemesi (kod yok); personel köprüsü kritik derecede tutarsız (10K TPS'te mainframe 30,8 FTE, x86 0,4 → taban 4 FTE; fark başlığın ~%40'ı); Vonng çapası belgelenmemiş ayarlara dayanıyor, K6 çapa olmalı; aralık sorgusu nokta sorgusunun 3,4–3,9 katı (w 9,15 → ~12,5); %15–20 x86 kullanım alt ucu çift sayım; fiyat dönemi varsayılanı x86 aleyhine; 7 köprü kararı (P, F, K, U, E, C, N) bekliyor |
 
 ---
 
@@ -692,3 +693,30 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Fiyat dönemi mainframe fiyatlarına uygulanmıyor (mainframe lehine yanlılık, tehdit 3.5).
 - Sıradaki: K6 sysbench ölçümü ve USL uyumu, ardından x86 modeli (`x86_model.py`, aynı ortak modülle).
 - Değerlendirme #6'dan açık kalanlar: drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, Parallel Sysplex.
+
+---
+
+## 2026-11-16 — Oturum 7: Açık sistem araştırmasının eleştirel incelemesi — Değerlendirme #8
+
+### 1. Aksiyon
+- Plan v1, benzer çalışmalar taraması, `common_model.py` ve mainframe v3 birbirine karşı denetlendi. Kod değişikliği yapılmadı; orijinal dokümanlar düzenlenmedi.
+- Kapasite çapası birincil kaynaktan yeniden okundu (Vonng, c5d.metal).
+- Mainframe modelinden 10K TPS personel değerleri ve iş yükü ağırlığı yeniden hesaplandı. Vonng alt testlerinden nokta/aralık/yazma sorgu maliyet oranları türetildi.
+- `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` yazıldı.
+
+### 2. Sebep
+- Emirhan'ın isteği: modeli kurmadan önce açık sistem araştırmalarının eleştirel bir gözden geçirmesi ve önemli köprülerin kararı.
+
+### 3. Sonuç
+- **Kritik:** Personel kuralları iki tarafta farklı birimleri ölçüyor. 10K TPS'te mainframe 30,8 FTE, x86 Eagle saatleriyle 0,4 FTE (taban ekiple 4). Fark ~$36/TPS/ay, mainframe başlığının ~%40'ı. Öneri: ortak eğri + aralıklı `STAFF_RATIO_X86` + başabaş oranı çıktısı (Karar P).
+- **Önemli:** Vonng çapasında sürüm, iş parçacığı, istemci yeri ve commit ayarları yazılı değil. Birim yalnızca şekil altyazısından QPS. Çapraz kontroller normalize edilemiyor. K6 çapa olmalı, aralık 60–120 (Karar K).
+- **Önemli:** Vonng alt testlerine göre aralık SELECT'i nokta SELECT'inin 3,4–3,9 katı. Mainframe profili 14 okumayı eşit sayıyor. Düzeltilirse w 9,15 → ~12,5 ve 1 CP ≈ 2,2 → ≈ 1,6 çekirdek (Karar F).
+- **Önemli:** x86 kullanım alt ucu %15–20 çift sayım. Öneri: iki tarafta `min(rho_latency, tavan)`, x86 tavanı 0,90 / 0,70 / 0,50 (Karar U).
+- **Önemli:** `PRICE_EPOCH` varsayılanı (2026-Q3) x86 aleyhine, bellek fiyatı iki kez aralıklanıyor. Öneri: ana senaryo 2025-mid (Karar E).
+- Ayrıca: CICS/uygulama katmanı (Karar C), x86 üretim dışı aralığı (Karar N), Patroni tavanının SKU'ya bağlılığı, küçük düzeltmeler.
+- Availability/topoloji eşlemesi, Oracle lisans kuralları ve kuyruk ailesi sağlam bulundu.
+
+### 4. Açık kalanlar
+- Emirhan'ın 7 köprü kararı (Değerlendirme #8 §5). Kararlardan sonra plan v2 (`docs/acik_sistem_arastirma_plani_v2.md`).
+- F ve E onaylanırsa önce mainframe/ortak modül değişiklikleri ve başlığın yeniden hesaplanması, sonra K6 ve `x86_model.py`.
+
