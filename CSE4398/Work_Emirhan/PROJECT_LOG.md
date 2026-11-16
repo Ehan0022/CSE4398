@@ -103,6 +103,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 6 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_06_yedek_ve_npv.md` | Adım 5: TS7770 yedekleme ve 5 yıllık NPV; NPV, r = 0'da amortismanlı modelle tam örtüşüyor; statik ölçü 5 yıllık sonucun iyi yaklaşığı (+%0,9) ama aralık genişliyor (high $341 → $409); 5 yılda TFP kazanıyor (büyüme fiyatına koşullu); drawer maliyetinin önceliği yükseldi. Ek: yedekte on-prem nesne depolama ve AWS S3 seçenekleri; 10K TPS $84,62, M1 geri yükleme kısıtı ~360 TB üstünde TS7770 seçtiriyor |
 | 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
 | 8 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` | x86 araştırmasının eleştirel incelemesi (kod yok); personel köprüsü kritik derecede tutarsız (10K TPS'te mainframe 30,8 FTE, x86 0,4 → taban 4 FTE; fark başlığın ~%40'ı); Vonng çapası belgelenmemiş ayarlara dayanıyor, K6 çapa olmalı; aralık sorgusu nokta sorgusunun 3,4–3,9 katı (w 9,15 → ~12,5); %15–20 x86 kullanım alt ucu çift sayım; fiyat dönemi varsayılanı x86 aleyhine; 7 köprü kararı (P, F, K, U, E, C, N) aynı gün verildi ve `docs/kopruler_v1.md`'de belgelendi |
+| 9 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_09_x86_modeli.md` | Adım 7: x86 modeli ve F/E/P; #8'in personel (P), aralık okuma (F), kullanım (U), fiyat dönemi (E), uygulama katmanı (C), x86 üretim dışı (N) ve Patroni tavanı tehditleri kapandı, K6 açık; mainframe 10K $93,10 → $113,93 (tavan ~132,7K), x86 $53,66; başabaş personel oranı 2,0–3,6; personel hariç fark 8–42 kat (yazılım lisansı); mainframe lehine eşleştirilmiş senaryoda 30–50K TPS'te crossover (Patroni tavanı); 4 köprü düzeltmesi, 4 model hatası düzeltildi; x86 24, mainframe 30 test |
 
 ---
 
@@ -762,3 +763,70 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
   3. `x86_model.py`;
   4. x86 model dokümanı ve Değerlendirme #9.
 
+---
+
+## 2026-11-16 — Oturum 8: Adım 7 — x86 modeli ve F/E/P kararlarının uygulanması
+
+### 1. Aksiyon
+- **Ortak modül (`src/common_model.py`):**
+  - İşlem bileşimi (`WORKLOAD_MIXES`), `RANGE_READ_WEIGHT` (3,4 / 3,65 / 3,9; F), bileşimden I/O, senkron kopya gecikmesi, storage boyutlandırma girdileri ve yedek hacmi kuralı mainframe modülünden taşındı.
+  - Ortak personel eğrisi (`STAFF_SCENARIOS`, `STAFF_TOPOLOGY_FACTOR`, `staff_fte`; P) taşındı.
+  - Fiyat dönemleri low / mid / high üçlüsü oldu, ana senaryo `2025-mid` (E); tek `COMPONENT_PRICE_LEVEL`.
+- **Mainframe (`src/mainframe_model.py`):**
+  - oltp_rw 10 nokta + 4 aralık okuma; w 9,15 → 12,85 (F).
+  - Personel iş yükünün PCI eşdeğerinden (`staff_pci_equivalent`, `STAFF_BASIS` = "workload"; P).
+  - `CROSS_BRIDGE_WEIGHTS` / `bridge_reference()`: eşleştirilmiş karşılaştırmada ortak türetmeler mid CPU ağırlıklarıyla.
+  - Aralık parametreleri 22 → 23.
+- **x86 modeli (`src/x86_model.py`, yeni):**
+  - Katalog: R760 / Gen11 / V3 düğümleri, Gen12 duyarlılık.
+  - Köprü 120 / 91 / 60 TPS/SPECint/çekirdek (K) ve yön tutarlı ölçekleme.
+  - Tavan kuralı `min(rho_latency, tavan)`, 0,9 / 0,7 / 0,5 (U).
+  - 8 yığın: vSphere / OCP-V; VM / K8s / OpenShift; PostgreSQL Patroni / Oracle RAC.
+  - X1–X4, ortak saha olayları ve 12 yama switchover'ı.
+  - Lisans minimumları; SAN ve NVMe × RF; uygulama katmanı (C); yedek; üretim dışı 0 / 0,5 / 1,0 (N).
+  - Aralık (36 parametre), tornado, NPV, yıllık mod.
+  - Mainframe ile karşılaştırma: başabaş personel oranı, personel hariç TCO, eşleştirilmiş senaryolar, uzlaştırma senaryoları.
+- **Testler:** `src/test_x86_model.py` (24 test, yeni). Mainframe testleri 30, altın küme eski kurallarla 0 fark.
+- **Dokümanlar:**
+  - `docs/x86_model_dokumantasyonu_v1.md` (yeni);
+  - `docs/mainframe_model_documentation_v3.md` güncellendi: §0.2, §4.4, §5.5, §7.6–7.8 yeni sayılar, yeni §7.11, §12;
+  - `docs/ortak_modul_dokumantasyonu_v1.md` güncellendi: yeni §11 bileşim, §12 ortak personel eğrisi, §7 dönem üçlüleri, §14 x86 kullanımı;
+  - README;
+  - Değerlendirme #9.
+- `data/out/range_curve_oltp_rw.csv` yeniden üretildi.
+
+### 2. Sebep
+- Emirhan'ın isteği: personel olduğu gibi kalsın (P kararı); köprüler ve araştırma verileriyle açık sistemi kendi temellerine sadık ve mainframe ile tutarlı biçimde modellemek.
+- F ve P "1 işlem" ile personelin tanımını değiştirdiği için iki tarafta birlikte uygulanmalıydı. E iki tarafın çapalarını aynı döneme koyar.
+
+### 3. Sonuç
+- **Mainframe 10K TPS (oltp_rw, %99,9, 20 TB):**
+  - $93,10 → **$113,93/TPS/ay** (+%22), 3931-524.
+  - Aralık $31,44 / $113,93 / $565,95.
+  - NPV $55,68M → $68,62M; seviyelendirilmiş $115,70.
+  - Personel 38,6 FTE.
+  - Tek CEC tavanı ~187K → ~132,7K TPS.
+  - Tornado'nun başı okuma SQL CPU'su; P'den sonra personeli de taşır.
+  - Yıllık: TFP üç ön ayarda kazanır (steady $17,23M, retail $29,28M, batch $23,51M). retail'de kazanan B'den C'ye geçti, fark %0,1.
+- **x86 10K TPS:**
+  - **$53,66/TPS/ay** (vSphere / VM / PostgreSQL Patroni X1).
+  - Aralık $22,01 / $53,66 / $124,91.
+  - NPV $32,07M, seviyelendirilmiş $54,07.
+  - 2026-Q3 fiyatlarıyla $53,99.
+- **Karşılaştırma:**
+  - Oran 2,12; başabaş personel oranı 2,16 (TPS ve availability'ye göre 2,0–3,6).
+  - Personel hariç fark 8–42 kat; kaynağı yazılım lisans modeli.
+  - Uzlaştırma senaryoları sıralamayı çevirmez: konsolide edilmemiş park $65,19, üretim dışı stres $54,69.
+  - Eşleştirilmiş "mainframe lehine" senaryoda 30K ve 50K TPS'te mainframe ucuz (başabaş 0,78 / 0,68). Mekanizma Patroni tavanının ~15K'ya inmesi ve Oracle RAC'ın high fiyatları.
+- **Köprü düzeltmeleri:**
+  - KB-08: Patroni X2 asenkron, RPO 5 sn.
+  - KB-11: OCP çekirdek çifti başına.
+  - KB-15: Dell kalibrasyonu yapılamadı.
+  - KB-06: köşe yönü.
+- **Kodlamada bulunan model hataları (düzeltildi):** uygulama katmanında çift tavan, ölçekleme köşe yönü, NPV'de sabit yığın, eşleştirilmiş senaryoda çapraz bağ.
+
+### 4. Açık kalanlar
+- K6 sysbench ölçümü (çapa, `RANGE_READ_WEIGHT` ve Patroni X2 RPO kalibrasyonu).
+- `docs/kopruler_v2.md`: dört düzeltme ve iki yeni kural. v1 düzenlenmez.
+- RAC ölçeklenmesi için USL kaynağı. Sunucu fiyatı için yapılandırması belli bir kamu ihale kaydı.
+- Değerlendirme #6'dan: drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, Parallel Sysplex. Citus da simetrik sınırlama olarak açık.

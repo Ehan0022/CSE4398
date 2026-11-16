@@ -20,6 +20,9 @@ Icerik (docs/ortak_modul_dokumantasyonu_v1.md):
   8. NPV kurallari (iskonto, artis siniflari, kalan deger)
   9. Uretim disi ortamlar (NONPROD) kurali
  10. Iki fiyat modu: kaynakli fiyat seti / kullanici fiyat dosyasi
+ 11. Islem bilesimi (KB-01): nokta / aralik okuma, RANGE_READ_WEIGHT,
+     bilesimden I/O (KB-09) ve yedek hacmi (KB-10)
+ 12. Ortak personel egrisi (KB-13, P karari)
 
 Kaynak etiketleri mainframe_model.py ile aynidir; buraya tasinan her
 parametrenin kaynagi yaninda yazilidir.
@@ -134,10 +137,8 @@ def manual_failover_minutes(technical_minutes, level):
 LOADED_WAGE_USD = {"low": 122000.0, "mid": 162000.0, "high": 215000.0}
 WAGE_LEVEL = "mid"           # aralik parametresi
 
-# 7/24 nobet tutabilmek icin asgari ekip; platformun personel senaryosuyla
-# (low / mid / high) secilir. Ayni deger x86'da da taban olarak kullanilir
-# (x86 plani §10: aksi halde kucuk x86 kurulumlari Eagle saatleriyle 1 FTE'nin
-# altina duser ve yapay olarak ucuz gorunur) [ASSUME].
+# 7/24 nobet tutabilmek icin asgari ekip; personel senaryosuyla (low / mid /
+# high) secilir. Ortak personel egrisinin tabanidir (Bolum 12) [ASSUME].
 STAFF_FLOOR_FTE = {"low": 3.0, "mid": 4.0, "high": 5.0}
 
 
@@ -258,16 +259,37 @@ def net_price(list_price, discount):
 #     fiyati bilinmedigi icin donusum SW_PRICE_LEVEL_FACTOR araliginin isidir
 #     (ust uc 1,75, ABD TUFE'nin 2004-2026 artisiyla ayni buyuklukte).
 PRICE_EPOCHS = {
-    #            DRAM USD/GB, kurumsal NVMe USD/TB  [x86 plani §5.2]
-    "2025-mid": {"dram_usd_per_gb": 4.0, "nvme_usd_per_tb": 115.0},
-    "2026-Q3":  {"dram_usd_per_gb": 35.0, "nvme_usd_per_tb": 753.0},
+    # Her donemde emtia bilesen fiyati low / mid / high uclusuyle tanimlidir
+    # (E karari, kopruler_v1 KB-15). Donem anahtari yalnizca hangi uclunun
+    # kullanilacagini secer; ucluden hangi duzeyin okunacagini tek bir aralik
+    # parametresi (COMPONENT_PRICE_LEVEL) secer. Ayri MEM/NVME aralik
+    # parametresi yoktur (tornado'da cift sayim olmasin diye).
+    #   2025-mid DRAM: 64 GB DDR5 RDIMM ~$255 -> $3,98/GB [PCSP-SERVER, Counterpoint
+    #            aktarimi]; low/high +-%30 civari [ASSUME].
+    #   2025-mid NVMe: 30 TB sinifi kurumsal NVMe ~$115/TB (Q3 2025) [PCSP-SSD];
+    #            high 180: kucuk kapasiteli suruculer TB basina pahali [ASSUME].
+    #   2026-Q3 DRAM: low 16 = 64 GB ~$1.000 sozlesme [PCSP-SERVER]; mid 35 ve
+    #            high 53 = Agustos-Ekim 2026 perakende 64 GB $2.245 / $3.400
+    #            [CAPCOMP-RAM, BACLOUD-RAM].
+    #   2026-Q3 NVMe: yeni U.2 $300-1.172/TB (Agustos 2026), 30 TB sinifi ~$753/TB
+    #            (Q3 2026) [PCSP-SSD].
+    # Bu fiyatlar piyasa (sokak/sozlesme) fiyatidir, liste degil: x86 modelinde
+    # bunlara OEM indirimi UYGULANMAZ (indirim yalnizca liste kalemlerine, bir kez).
+    "2025-mid": {"dram_usd_per_gb": {"low": 3.0, "mid": 4.0, "high": 5.5},
+                 "nvme_usd_per_tb": {"low": 80.0, "mid": 115.0, "high": 180.0}},
+    "2026-Q3":  {"dram_usd_per_gb": {"low": 16.0, "mid": 35.0, "high": 53.0},
+                 "nvme_usd_per_tb": {"low": 300.0, "mid": 753.0, "high": 1172.0}},
 }
-PRICE_EPOCH = "2026-Q3"
+# E karari (Emirhan, 2026-11-16): ana senaryo sok oncesi donem; iki tarafin
+# capalari ayni donemde. "2026-Q3" duyarlilik senaryosudur ve "mainframe
+# fiyatlarinin soka tepkisi bilinmiyor" notuyla raporlanir.
+PRICE_EPOCH = "2025-mid"
+COMPONENT_PRICE_LEVEL = "mid"   # aralik parametresi (secili donemin uclusu icinde)
 
 
-def component_price(name, epoch=None):
-    """Emtia bilesen fiyati, secili fiyat donemine gore."""
-    return PRICE_EPOCHS[epoch or PRICE_EPOCH][name]
+def component_price(name, epoch=None, level=None):
+    """Emtia bilesen fiyati, secili fiyat donemi ve duzeye gore."""
+    return PRICE_EPOCHS[epoch or PRICE_EPOCH][name][level or COMPONENT_PRICE_LEVEL]
 
 
 # ==============================================================================
@@ -430,7 +452,8 @@ register_prices(__name__, [
      "Direct Connect 10 Gbps port"),
     ("DX_EGRESS_USD_PER_GB", "USD/GB", "AWS-DX-2026", 2026, None, "Direct Connect cikis"),
     ("WAN_CIRCUIT_USD_PER_MONTH", "USD/ay", "ASSUME", 2026, None, "10 Gbps WAN devresi"),
-    ("PRICE_EPOCHS", "USD (donem tablosu)", "x86 plani §5.2", 2026, None,
+    ("PRICE_EPOCHS", "USD (donem tablosu, low/mid/high)", "PCSP-SERVER, PCSP-SSD, "
+     "CAPCOMP-RAM, BACLOUD-RAM", 2026, "COMPONENT_PRICE_LEVEL",
      "Emtia bilesen fiyatlari (DRAM, NVMe) donem basina"),
 ])
 
@@ -525,3 +548,153 @@ def price_vintage_report(modules):
     rows = [(n, e["module"], e["year"], e["source"]) for n, e in PRICE_REGISTRY.items()
             if e["module"] in mods]
     return sorted(rows, key=lambda r: (r[2], r[0]))
+
+
+# ==============================================================================
+# 11. ISLEM BILESIMI, BILESIMDEN I/O VE YEDEK HACMI (KB-01, KB-09, KB-10)
+# ==============================================================================
+# Crossover TPS basina maliyet uzerinden kuruldugu icin "1 islem" iki tarafta
+# AYNI bilesimle tanimlanir. sysbench oltp_read_write: 10 nokta SELECT +
+# 4 aralik SELECT (range_size 100) + 2 UPDATE + 1 DELETE + 1 INSERT + COMMIT
+# [SYSBENCH, TENCENT-METHOD]. F karari (Emirhan, 2026-11-16): nokta ve aralik
+# okuma ayri sayilir; aralik okumanin CPU agirligi nokta okumaya goredir:
+#   RANGE_READ_WEIGHT = 3,4 / 3,65 / 3,9  [DERIVED, VONNG-PERF alt testleri;
+#   BEGIN/COMMIT maliyeti b = 0,73 us -> 3,44, b = 0 -> 3,94]; K6 ile kalibre.
+# Mainframe w'sini belirler; x86'da oltp_rw olculmus capanin icindedir, diger
+# profillerin x86 gorece agirligini belirler. PostgreSQL'deki gorece maliyetin
+# Db2 for z/OS'a tasinmasi bir varsayimdir (kopruler_v1 KB-01).
+RANGE_READ_WEIGHT = 3.65
+
+WORKLOAD_MIXES = {
+    # ad: (nokta okuma, aralik okuma, yazma, commit, zIIP'e uygun Db2 isi var mi,
+    #      etiket, kaynak)
+    "tpcb_like":  (1, 0, 4, 1, True, "Debit-credit (TPC-B bileseni)", "TPC-B"),
+    "oltp_rw":    (10, 4, 4, 1, True,
+                   "Okuma-yazma OLTP (sysbench oltp_read_write: 10 nokta + 4 aralik "
+                   "okuma, 4 yazma)", "SYSBENCH"),
+    # ~1,3 ms Db2 CPU'luk bir saha olcumunun buyuklugu [CATTERALL-2019];
+    # bilesim bu buyuklugu verecek sekilde secildi (okumalar nokta) [ASSUME].
+    "oltp_heavy": (30, 0, 6, 1, True, "Agir CICS-Db2 islemi (~1.3 ms CPU)",
+                   "CATTERALL-2019"),
+}
+
+# Bilesimden I/O (Db2 buffer pool / PostgreSQL shared_buffers + OS onbellegi
+# ayni bicimde, x86 plani §9). IOPS iki tarafta ayni girdi (KB-09).
+GETPAGES_PER_SQL_READ = 4.0    # indeks seviyeleri + veri sayfasi [ASSUME]
+BP_HIT_RATIO = 0.95            # tampon havuzu isabet orani, OLTP [ASSUME, aralik 0.90-0.99]
+LOG_SYNC_IO_PER_COMMIT = 1.0   # commit'te senkron log / WAL yazimi [ASSUME]
+ASYNC_WRITE_IO_PER_SQL_WRITE = 0.5   # gecikmeli sayfa yazimi, birlestirme [ASSUME]
+
+
+def mix_sync_read_io(reads):
+    """Islem basina senkron okuma I/O'su: tampon havuzu iskasi."""
+    return reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
+
+
+def mix_sync_write_io(commits):
+    """Islem basina senkron yazma I/O'su: commit'te log yazimi."""
+    return commits * LOG_SYNC_IO_PER_COMMIT
+
+
+def mix_storage_iops(reads, writes, commits):
+    return (mix_sync_read_io(reads) + mix_sync_write_io(commits)
+            + writes * ASYNC_WRITE_IO_PER_SQL_WRITE)
+
+
+# Iki sitenin arasindaki mesafe ve fiberde gecikme (ortak fizik sabiti): senkron
+# kopya (Metro Mirror, Data Guard SYNC, PostgreSQL senkron replika) commit
+# basina bir gidis-donus ekler.
+REPLICATION_S_PER_KM = 10e-6   # [FIZIK] fiberde isik ~5 us/km tek yon -> 10 us/km gidis-donus
+METRO_DISTANCE_KM = 20.0       # [ASSUME] senkron kopyali siteler arasi mesafe
+
+# --- Storage boyutlandirmasinin ortak girdileri (KB-09) -------------------------
+DEFAULT_DATA_VOLUME_TB = 20.0    # [ASSUME] ornek mantiksal veri hacmi (indeksler dahil)
+DEFAULT_DATA_GROWTH = 0.15       # [ASSUME] yillik veri buyumesi
+STORAGE_PLANNING_YEARS = 3       # [ASSUME] storage bu kadar yillik buyumeye gore boyutlanir
+STORAGE_IOPS_CEILING = 0.70      # [ASSUME] storage, ureticinin tepe IOPS'unun bu oranina kadar
+                                 #   yuklenir (compute'taki operasyonel tavanin karsiligi)
+
+
+def planned_data_tb(data_tb=None, growth=None, years=None):
+    """Planlama ufkunun sonundaki mantiksal veri (TB)."""
+    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = DEFAULT_DATA_GROWTH if growth is None else growth
+    years = STORAGE_PLANNING_YEARS if years is None else years
+    return data_tb * (1.0 + growth) ** years
+
+
+# --- Yedek hacmi kurali (KB-10) -------------------------------------------------
+BACKUP_SITES = 2                     # [DB2-BACKUP] her yedek seviyesinin iki kopyasi
+BACKUP_RETENTION_WEEKS = 4           # [ASSUME] aralik 2-8; tam kopya + loglarin saklanma suresi
+BACKUP_DAILY_CHANGE = 0.03           # [ASSUME] gunluk degisen veri payi (artimli kopya)
+                                     #  haftada %10'u asan degisimde tam kopya onerilir [IDUG-2024]
+LOG_BYTES_PER_SQL_WRITE = 400.0      # [ASSUME] log kaydi: once/sonra goruntusu + baslik
+LOG_BYTES_PER_COMMIT = 200.0         # [ASSUME] commit kayitlari
+STATIC_PEAK_TO_AVG = 1.5             # [ASSUME] statik modda TPS tepe kabul edilir; log hacmi
+                                     #  ortalama yukle (steady_oltp orani) hesaplanir
+BACKUP_WINDOW_HOURS = 8.0            # [ASSUME] gunluk yedek penceresi
+BACKUP_RESTORE_RTO_FRACTION = 0.5    # [ASSUME] tek siteli topolojinin RTO'sunun geri
+                                     #  yuklemeye ayrilan payi
+BACKUP_RESTORES_PER_YEAR = 1.0       # [ASSUME] yillik tam geri yukleme testi (S3 cikis ucreti)
+
+
+def backup_volumes(avg_tps, writes, commits, data_tb=None, growth=None, log_factor=1.0):
+    """Bir sitede saklanan yedek hacmi (sikistirma oncesi, TB):
+    (tam + artimli kopya TB, log TB, gunluk yazma TB, tam geri yukleme TB).
+      tam kopya = veri x hafta x (1 tam + 6 artimli x gunluk degisim)   [IDUG-2024]
+      log       = ort. TPS x islem basina log bayti x 86400 x 7 x hafta
+    log_factor: platforma ozgu log carpani (PostgreSQL full-page writes)."""
+    planned = planned_data_tb(data_tb, growth)
+    ic = planned * BACKUP_RETENTION_WEEKS * (1.0 + 6.0 * BACKUP_DAILY_CHANGE)
+    log_per_tx = (writes * LOG_BYTES_PER_SQL_WRITE + commits * LOG_BYTES_PER_COMMIT) * log_factor
+    log_day = avg_tps * log_per_tx * 86400.0 / 1e12
+    logs = log_day * 7.0 * BACKUP_RETENTION_WEEKS
+    daily = planned / 7.0 + planned * BACKUP_DAILY_CHANGE + log_day
+    restore = planned * (1.0 + 6.0 * BACKUP_DAILY_CHANGE) + logs / BACKUP_RETENTION_WEEKS
+    return ic, logs, daily, restore
+
+
+def transfer_hours(tb, mb_s):
+    return tb * 1e6 / mb_s / 3600.0 if mb_s > 0 else float("inf")
+
+
+# ==============================================================================
+# 12. ORTAK PERSONEL EGRISI (KB-13, P karari, Emirhan 2026-11-16)
+# ==============================================================================
+# Personel duzeyi kurulus duzeyindeki mainframe verisinden gelir ve IKI
+# platforma ayni egriyle uygulanir. Egrinin girdisi is yukunun surekli PCI
+# esdegeridir (kurulu kademe degil):
+#   PCI_esdeger(TPS) = TPS x w(profil) x (1 - f) / TPS_PER_PCI / 0,90
+#   FTE_ortak(TPS)   = max(taban, FTE_1000 x (PCI_esdeger / 1000)^b) x topoloji carpani
+#   FTE_mainframe = FTE_ortak ; FTE_x86 = FTE_ortak x STAFF_RATIO_X86 (ana senaryo 1,0)
+# PCI esdegerini platform modulu (mainframe_model.staff_pci_equivalent) hesaplar.
+# Capalar (mainframe v3 §7.7):
+#   - IBM Eagle TCO ekibi, 17 musteri: "5 FTE to start + 1 FTE for every 625
+#     MIPS" [IBM-EAGLE].
+#   - Gartner IT Key Metrics 2016: kurulu MIPS/FTE 152 -> 268 [GARTNER-ITKMD].
+#   - IBM ornek karsilastirmasi: 3.192 MIPS'i ~4 FTE yonetiyor [IBM-TPF-2007].
+STAFF_SCENARIOS = {
+    #            FTE_1000, b
+    "low":  dict(fte_1000=4.0, exp=0.60),
+    "mid":  dict(fte_1000=5.5, exp=0.70),
+    "high": dict(fte_1000=7.0, exp=0.80),
+}
+STAFF_SCENARIO = "mid"           # aralik parametresi (egri + taban)
+# Topoloji carpani, iki tarafta ayni tablo (M1/X1 ... M4/X4) [ASSUME]: DR,
+# ikinci site operasyonu, otomasyon karmasikligi.
+STAFF_TOPOLOGY_FACTOR = {1: 1.00, 2: 1.05, 3: 1.15, 4: 1.25}
+
+
+def topology_level(code):
+    """'M3' / 'X3' -> 3."""
+    return int(code[1:])
+
+
+def staff_fte(pci_equivalent, topo_code=None, scenario=None):
+    """Ortak personel egrisi: is yukunun PCI esdegerinden FTE."""
+    lv = scenario or STAFF_SCENARIO
+    p = STAFF_SCENARIOS[lv]
+    fte = max(STAFF_FLOOR_FTE[lv], p["fte_1000"] * (pci_equivalent / 1000.0) ** p["exp"])
+    if topo_code is not None:
+        fte *= STAFF_TOPOLOGY_FACTOR[topology_level(topo_code)]
+    return fte
