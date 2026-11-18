@@ -1,0 +1,10 @@
+# REDP-5320 "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13" (Burgess, Mitchell, Moxey)
+# https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf  (erisim 2026-11-01)
+# Is yuku: perakende katalog; LU2 (3270, Enterprise Extender -> TOR) + HTTP (HiperSockets -> AOR).
+# Islem: 1 STARTBROWSE + 5 READNEXT; LU2'nin ~%10'u READ UPDATE + REWRITE (FOR'a MRO function ship).
+# Veri: recoverable CICS-maintained shared data table (CMT), arkasinda VSAM KSDS (DS8870). Db2, DRDA, Java YOK.
+# Log: coupling facility log stream. DASD I/O ve yanit suresi raporlanmamis.
+# Turetilen sutunlar (_per_tx, cpu_us_per_tx) bu dosyada hesaplanmistir; kaynakta dogrudan yok.
+config,cps,etr_tps,http_tps,lu2_tps,sdt_reads_per_s,read_update_per_s,rewrite_per_s,cf_log_writes_per_s,cics_cpu_pct_of_one_cp,lpar_busy_pct,reads_per_tx,updates_per_tx,log_writes_per_tx,cpu_us_per_tx_z13
+z13_2964-718,18,174624,151342,23251,831835,8257,8257,10878,1499.40,,4.76,0.047,0.062,85.9
+z13_2964-726,26,227884,196597,22564,1095805,8685,8685,11960,2126.09,96.13,4.81,0.038,0.052,93.3
