@@ -220,6 +220,13 @@ def test_staff_and_ranges():
             < m.staff_monthly_cost(small, None, "high"))
     m1, m4 = m.TOPOLOGIES[0], m.TOPOLOGIES[3]
     assert m.staff_fte(small, m4) > m.staff_fte(small, m1)
+    # P karari: personel is yukunun PCI esdegerinden; kademe basamagindan bagimsiz
+    a = m.staff_fte(small, m1, load_tps=10000)
+    b = m.staff_fte(big, m1, load_tps=10000)
+    assert abs(a - b) < 1e-9
+    assert m.staff_fte(small, m1, load_tps=20000) > a
+    pci = m.staff_pci_equivalent(10000)
+    assert abs(a - cm.staff_fte(pci, "M1")) < 1e-9
     before = m.SW_PRICE_LEVEL_FACTOR
     rng = m.solve_range(10000, data_tb=20)
     assert m.SW_PRICE_LEVEL_FACTOR == before
@@ -456,9 +463,11 @@ def test_npv_consistency_and_direction():
     assert all(m.is_permanent_upgrade(p, t) for p, t in zip(tiers, tiers[1:]))
     assert tiers[-1].pci > tiers[0].pci
     assert all(r["capex"] >= 0 for r in g["years"])
-    t05 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.10)
+    # F karariyla (w 9,15 -> 12,85) %10 buyumede 5. yil TFP yolu 5xx seri
+    # sinirina takiliyor (BOLUM 8 kurallari); yon testi %5 buyumede yapilir.
+    t05 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.05)
     with m.use_values({"TFP_GROWTH_PRICE_FACTOR": 1.0}):
-        t10 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.10)
+        t10 = m.solve_npv_yearly("steady_oltp", 10000, "tfp", tps_growth=0.05)
     assert t10["npv"] > t05["npv"]
     assert t05["monotonic_base"]
 
@@ -470,20 +479,23 @@ cm = m.cm
 
 
 def test_common_module_preserves_results():
-    """Ortak module tasima sonuclari degistirmemeli: NONPROD_FACTOR = 0 ve
-    aralikta sabit iken tasima oncesi altin kume (data/test/golden_step5.json)
-    birebir yeniden uretilir."""
+    """Ortak module tasima sonuclari degistirmemeli: NONPROD_FACTOR = 0,
+    RANGE_READ_WEIGHT = 1 (F oncesi esit okuma) ve personel kurulu kademeden
+    (P oncesi kural) iken tasima oncesi altin kume (data/test/golden_step5.json)
+    birebir yeniden uretilir. Boylece F ve P disinda hicbir sonucun
+    degismedigi gosterilir."""
     import json, os, sys
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
     import golden_snapshot as g
     with open(g.GOLDEN_PATH) as f:
         gold = json.load(f)
-    cm.PINNED.add("NONPROD_FACTOR")
+    legacy = {"NONPROD_FACTOR": 0.0, "RANGE_READ_WEIGHT": 1.0, "STAFF_BASIS": "installed"}
+    cm.PINNED.update(legacy)
     try:
-        with m.use_values({"NONPROD_FACTOR": 0.0}):
+        with m.use_values(legacy):
             cur = json.loads(json.dumps(g.snapshot()))
     finally:
-        cm.PINNED.discard("NONPROD_FACTOR")
+        cm.PINNED.difference_update(legacy)
 
     def walk(a, b, path=""):
         if isinstance(a, dict):
@@ -536,12 +548,17 @@ def test_storage_price_contract():
 
 
 def test_price_epoch():
-    """Emtia bilesen fiyati secili doneme gore gelmeli; 2026 soku pahali."""
-    assert cm.component_price("dram_usd_per_gb", "2026-Q3") > cm.component_price(
-        "dram_usd_per_gb", "2025-mid")
-    with m.use_values({"PRICE_EPOCH": "2025-mid"}):
-        assert cm.component_price("nvme_usd_per_tb") == 115.0
-    assert cm.component_price("nvme_usd_per_tb") == 753.0
+    """Emtia bilesen fiyati secili doneme ve duzeye gore gelmeli; 2026 soku
+    pahali; ana senaryo 2025-mid (E karari)."""
+    assert cm.PRICE_EPOCH == "2025-mid"
+    for lv in ("low", "mid", "high"):
+        assert cm.component_price("dram_usd_per_gb", "2026-Q3", lv) > cm.component_price(
+            "dram_usd_per_gb", "2025-mid", lv)
+    assert cm.component_price("nvme_usd_per_tb") == 115.0
+    with m.use_values({"PRICE_EPOCH": "2026-Q3"}):
+        assert cm.component_price("nvme_usd_per_tb") == 753.0
+    with m.use_values({"COMPONENT_PRICE_LEVEL": "high"}):
+        assert cm.component_price("nvme_usd_per_tb") == 180.0
 
 
 def test_two_price_modes():

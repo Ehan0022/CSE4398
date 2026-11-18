@@ -93,6 +93,7 @@ KAYNAK ETIKETLERI:
 ================================================================================
 """
 
+import contextlib
 import csv
 import json
 import math
@@ -196,52 +197,66 @@ def cp_equivalents(tier):
 # bellekteki CICS shared data table (VSAM KSDS), ~%4 guncelleme, Db2 yok,
 # neredeyse sifir DASD I/O, ~86 us CPU (z13) [REDP-PROFILE]. Bu islem cok hafif.
 # Gercekci bir OLTP islemi, bilesimiyle tanimlanir ve CPU agirligi w REDP
-# islemine goreli hesaplanir:
-#     CPU(us) = CPU_US_TM_BASE + reads x CPU_US_PER_SQL_READ + writes x CPU_US_PER_SQL_WRITE
+# islemine goreli hesaplanir (F karari, kopruler_v1 KB-01):
+#     CPU(us) = CPU_US_TM_BASE + (nokta + aralik x RANGE_READ_WEIGHT) x CPU_US_PER_SQL_READ
+#             + yazma x CPU_US_PER_SQL_WRITE
 #     w = CPU / CPU_US_TM_BASE                   (REDP profili: w = 1)
-# Ayni bilesim I/O'yu da verir (Db2 buffer pool modeli):
-#     sync_io = reads x GETPAGES_PER_SQL_READ x (1 - BP_HIT_RATIO) + LOG_SYNC_IO_PER_COMMIT
-#     storage_iops = sync_io + writes x ASYNC_WRITE_IO_PER_SQL_WRITE
-# Clustered taraf AYNI bilesimi (reads, writes, commit) kullanir; boylece TPS
-# iki tarafta ayni isi ifade eder (Degerlendirme #1, tehdit 1).
+# RANGE_READ_WEIGHT (3,4 / 3,65 / 3,9) iki tarafta ortaktir (common_model §11).
+# Ayni bilesim I/O'yu da verir (tampon havuzu modeli, common_model §11):
+#     sync_io = okuma x GETPAGES_PER_SQL_READ x (1 - BP_HIT_RATIO) + LOG_SYNC_IO_PER_COMMIT
+#     storage_iops = sync_io + yazma x ASYNC_WRITE_IO_PER_SQL_WRITE
+# I/O okuma SAYISINDAN gelir; aralik agirligi I/O'yu degistirmez (KB-09).
+# Bilesimler (WORKLOAD_MIXES) common_model'dedir; x86 tarafi AYNI bilesimi
+# kullanir (Degerlendirme #1, tehdit 1).
 CPU_US_TM_BASE = 85.9          # REDP islemi, z13 CP-us (CICS + 5 bellek okumasi) [REDP-PROFILE]
 CPU_US_PER_SQL_READ = 30.0     # Db2 tekil/indeksli SELECT, z13-donemi CP-us [ASSUME, aralik 15-60]
 CPU_US_PER_SQL_WRITE = 70.0    # Db2 INSERT/UPDATE/DELETE; CICS'te INSERT ~68 us [CATTERALL-2012]
-GETPAGES_PER_SQL_READ = 4.0    # indeks seviyeleri + veri sayfasi [ASSUME]
-BP_HIT_RATIO = 0.95            # Db2 buffer pool isabet orani, OLTP [ASSUME, aralik 0.90-0.99]
-LOG_SYNC_IO_PER_COMMIT = 1.0   # commit'te senkron log yazimi (dual log paralel) [ASSUME]
-ASYNC_WRITE_IO_PER_SQL_WRITE = 0.5   # deferred write, sayfa birlestirme [ASSUME]
 
 
 class WorkloadProfile:
-    """Bir islem tipinin bilesimi. Override alanlari (sync_io, storage_iops)
-    yalnizca dogrudan olculmus profiller icindir (REDP)."""
+    """Bir islem tipinin bilesimi. reads = nokta okuma; range_reads = aralik
+    okuma (sysbench'te range_size 100). Override alanlari (sync_io,
+    storage_iops) yalnizca dogrudan olculmus profiller icindir (REDP)."""
     def __init__(self, name, reads, writes, commits, ziip_eligible, label,
-                 source, sync_io=None, storage_iops=None):
-        self.name, self.reads, self.writes, self.commits = name, reads, writes, commits
+                 source, sync_io=None, storage_iops=None, range_reads=0):
+        self.name, self.point_reads, self.writes, self.commits = name, reads, writes, commits
+        self.range_reads = range_reads
         self.ziip_eligible = ziip_eligible   # Db2 isi var mi (zIIP'e kayabilir mi)
         self.label, self.source = label, source
         self._sync_io, self._storage_iops = sync_io, storage_iops
 
+    @property
+    def reads(self):
+        """Toplam okuma SQL'i (nokta + aralik); I/O bunun uzerinden."""
+        return self.point_reads + self.range_reads
+
+    def read_units(self):
+        """Nokta okuma esdegeri: nokta + aralik x RANGE_READ_WEIGHT."""
+        return self.point_reads + self.range_reads * cm.RANGE_READ_WEIGHT
+
     def cpu_us(self):
-        return (CPU_US_TM_BASE + self.reads * CPU_US_PER_SQL_READ
+        return (CPU_US_TM_BASE + self.read_units() * CPU_US_PER_SQL_READ
                 + self.writes * CPU_US_PER_SQL_WRITE)
 
     def cpu_weight(self):
         return self.cpu_us() / CPU_US_TM_BASE
 
+    def tm_share(self):
+        """Islem CPU'sunun islem yoneticisine (CICS) dusen payi (KB-12)."""
+        return CPU_US_TM_BASE / self.cpu_us()
+
     def sync_read_io(self):
-        """Senkron okuma I/O'su: buffer pool iskasi. Olculmus profilde 0
+        """Senkron okuma I/O'su: tampon havuzu iskasi. Olculmus profilde 0
         (REDP'nin senkron I/O'su VSAM rewrite, yani yazma)."""
         if self._sync_io is not None:
             return 0.0
-        return self.reads * GETPAGES_PER_SQL_READ * (1.0 - BP_HIT_RATIO)
+        return cm.mix_sync_read_io(self.reads)
 
     def sync_write_io(self):
         """Senkron yazma I/O'su: commit'te log yazimi (olculmus profilde rewrite)."""
         if self._sync_io is not None:
             return self._sync_io
-        return self.commits * LOG_SYNC_IO_PER_COMMIT
+        return cm.mix_sync_write_io(self.commits)
 
     def sync_io(self):
         return self.sync_read_io() + self.sync_write_io()
@@ -249,12 +264,18 @@ class WorkloadProfile:
     def storage_iops(self):
         if self._storage_iops is not None:
             return self._storage_iops
-        return self.sync_io() + self.writes * ASYNC_WRITE_IO_PER_SQL_WRITE
+        return self.sync_io() + self.writes * cm.ASYNC_WRITE_IO_PER_SQL_WRITE
 
     def __repr__(self):
-        return (f"{self.name}: {self.reads:g} okuma + {self.writes:g} yazma SQL, "
+        rr = f" + {self.range_reads:g} aralik" if self.range_reads else ""
+        return (f"{self.name}: {self.point_reads:g} nokta{rr} okuma + {self.writes:g} yazma SQL, "
                 f"w={self.cpu_weight():.2f}, sync I/O={self.sync_io():.2f}, "
                 f"IOPS={self.storage_iops():.2f}")
+
+
+def _profile_from_mix(name):
+    pr, rr, wr, cmt, zi, label, src = cm.WORKLOAD_MIXES[name]
+    return WorkloadProfile(name, pr, wr, cmt, zi, label, src, range_reads=rr)
 
 
 WORKLOAD_PROFILES = {
@@ -263,19 +284,9 @@ WORKLOAD_PROFILES = {
     "redp_light": WorkloadProfile("redp_light", 0, 0, 1, False,
                                   "REDP-5320 islemi (CICS bellek tablosu, Db2 yok)",
                                   "REDP-PROFILE", sync_io=0.047, storage_iops=0.109),
-    # TPC-B / debit-credit bileseni: 1 SELECT + 3 UPDATE + 1 INSERT.
-    "tpcb_like":  WorkloadProfile("tpcb_like", 1, 4, 1, True,
-                                  "Debit-credit (TPC-B bileseni)", "TPC-B"),
-    # sysbench oltp_read_write: 10 point + 4 range SELECT, 2 UPDATE, 1 DELETE,
-    # 1 INSERT, 1 COMMIT. x86 tarafinda yaygin olculen bilesim -> varsayilan.
-    "oltp_rw":    WorkloadProfile("oltp_rw", 14, 4, 1, True,
-                                  "Okuma-yazma OLTP (sysbench oltp_read_write bileseni)",
-                                  "SYSBENCH"),
-    # Agir CICS-Db2 islemi: ~1.3 ms Db2 CPU'luk bir saha olcumunun buyuklugu
-    # [CATTERALL-2019]; bilesim bu buyuklugu verecek sekilde secildi [ASSUME].
-    "oltp_heavy": WorkloadProfile("oltp_heavy", 30, 6, 1, True,
-                                  "Agir CICS-Db2 islemi (~1.3 ms CPU)",
-                                  "CATTERALL-2019"),
+    # Ortak bilesimler (common_model.WORKLOAD_MIXES): tpcb_like, oltp_rw
+    # (sysbench oltp_read_write; varsayilan), oltp_heavy.
+    **{name: _profile_from_mix(name) for name in cm.WORKLOAD_MIXES},
 }
 DEFAULT_WORKLOAD = "oltp_rw"
 
@@ -345,8 +356,6 @@ ZHYPERLINK_READ_SHARE = 0.80   # [ASSUME] isabetli okumalarin zHyperLink'e uygun
 T_ZHYPERLINK_S = 20e-6         # [REDP-5554] zHyperLink kucuk blok okuma < 20 us (~18 us)
 T_FICON_HIT_S = 90e-6          # [TT-2019] zHPF/FICON, DS8900F onbellek isabeti ~90 us
 T_FLASH_MISS_S = 300e-6        # [ASSUME] onbellek iskasi: flash arka uc + FICON
-REPLICATION_S_PER_KM = 10e-6   # [FIZIK] fiberde isik ~5 us/km tek yon -> 10 us/km gidis-donus
-METRO_DISTANCE_KM = 20.0       # [ASSUME] senkron Metro Mirror siteleri arasi mesafe
 
 
 def io_read_time_seconds():
@@ -362,7 +371,7 @@ def io_write_time_seconds(topology=None):
     hizli yazma) + topolojide senkron kopya varsa replikasyon gecikmesi."""
     t = T_FICON_HIT_S
     if topology is not None and getattr(topology, "sync_replication", False):
-        t += METRO_DISTANCE_KM * REPLICATION_S_PER_KM
+        t += cm.METRO_DISTANCE_KM * cm.REPLICATION_S_PER_KM
     return t
 
 
@@ -763,46 +772,63 @@ POWER_KW_PER_SYSTEM = 30.0             # kW/frame  [PWR, orta deger]
 # PERSONEL (altyapi ekibi: z/OS ve CICS sistem programcilari, Db2 sistem DBA'lari,
 # storage, otomasyon/operasyon, kapasite/performans, guvenlik/RACF)
 # ------------------------------------------------------------------------------
-# Personel kurulu kapasiteyle ALT-DOGRUSAL olceklenir: kucuk kurulumlarda sabit
-# bir cekirdek ekip baskin, buyuk kurulumlarda MIPS/FTE artar [GARTNER-ITKMD].
-# Model: FTE = max(TABAN, FTE_1000 x (PCI/1000)^b) x topoloji carpani.
-# Capalar (Bolum 7.7):
-#   - IBM Eagle TCO ekibi, 17 musteri: "5 FTE + her 625 MIPS icin 1 FTE"
-#     (kucuk/orta kurulumlar, ~3.000 MIPS'e kadar) [IBM-EAGLE].
-#   - Gartner IT Key Metrics 2016: kurulu MIPS/FTE 152 -> 268 (5 yil, ortalama)
-#     [GARTNER-ITKMD]; yillik ~%12 verimlilik artisi.
-#   - IBM ornek karsilastirmasi: 3.192 MIPS'i ~4 FTE yonetiyor (~790 MIPS/FTE)
-#     [IBM-TPF-2007]; uretici kaynagi, alt sinira yakin.
+# P karari (Emirhan, 2026-11-16; kopruler_v1 KB-13): personel IKI tarafta ayni
+# ortak egriyle (common_model §12) ve is yukunun SUREKLI PCI esdegerinden
+# hesaplanir; kurulu kademeden degil. Latency icin alinan bos kapasite ve
+# kademe basamagi personeli buyutmez (v3 §7.7.5'teki "kurulu kapasite"
+# tercihi degisti). Yillik modda tepe TPS kullanilir.
+#   PCI_esdeger(TPS) = TPS x w(profil) x (1 - f) / TPS_PER_PCI / 0,90
+# Egri (FTE_1000, b), taban ekip (3 / 4 / 5 FTE) ve yuklu ucret ($122K / $162K /
+# $215K) ortak modulde: cm.STAFF_SCENARIOS, cm.STAFF_FLOOR_FTE, cm.LOADED_WAGE_USD.
 # Uc senaryo (dusuk / orta / yuksek), 20.000 PCI'da MIPS/FTE: ~830 / ~450 / ~260.
-STAFF_SCENARIOS = {
-    #            FTE_1000, b  (taban ekip ve ucret: common_model, Bolum 3)
-    "low":  dict(fte_1000=4.0, exp=0.60),
-    "mid":  dict(fte_1000=5.5, exp=0.70),
-    "high": dict(fte_1000=7.0, exp=0.80),
-}
-# Taban ekip (3 / 4 / 5 FTE, 7/24 nobet) ve yuklu ucret ($122K / $162K / $215K)
-# iki tarafta ortaktir: cm.STAFF_FLOOR_FTE ve cm.LOADED_WAGE_USD. Ucret ayri bir
-# aralik parametresidir (cm.WAGE_LEVEL); STAFF_SCENARIO yalnizca egriyi ve
-# tabani secer. Mainframe ucret capalari (Payscale ~$90K, Glassdoor Db2 z/OS
-# DBA $104-163K) BLS karma brutuyle ($95K / $120K / $150K) uyumludur.
-STAFF_SCENARIO = "mid"
-# DR ve sysplex karmasikligi: ikinci CEC, GDPS, ikinci site operasyonu [ASSUME]
-STAFF_TOPOLOGY_FACTOR = {"M1": 1.00, "M2": 1.05, "M3": 1.15, "M4": 1.25}
+# STAFF_BASIS = "installed" yalnizca regresyon testi icindir: eski (kurulu
+# kademe PCI'si) kurali yeniden uretir.
+STAFF_BASIS = "workload"
 
 
-def staff_fte(tier, topology=None, scenario=None):
-    """Kademeyi (birincil CEC kapasitesi) isletmek icin gereken altyapi FTE'si."""
-    lv = scenario or STAFF_SCENARIO
-    p = STAFF_SCENARIOS[lv]
-    fte = max(cm.STAFF_FLOOR_FTE[lv], p["fte_1000"] * (tier.pci / 1000.0) ** p["exp"])
-    if topology is not None:
-        fte *= STAFF_TOPOLOGY_FACTOR.get(topology.code, 1.0)
-    return fte
+# Platformlar arasi kopruler mainframe CPU agirliklarini okur: personel egrisinin
+# girdisi (KB-13) ve x86 uygulama katmaninin islem yoneticisi payi (KB-12).
+# "current": gecerli degerler (P ve C kurallari; tek platform calismalari ve
+# kendi araliklari). "reference": CPU_US_PER_SQL_READ / _WRITE ve zIIP payi
+# RANGE_PARAMETERS'in mid degerlerinde. Eslestirilmis karsilastirma
+# senaryolarinda (x86_model.COMPARE_SCENARIOS) kullanilir: personel ortak bir
+# kalemdir; mainframe'e ozgu CPU belirsizligi iki taraftaki personeli birlikte
+# kaydirip platforma ozgu etkiyi gizlemesin.
+CROSS_BRIDGE_WEIGHTS = "current"
+_BRIDGE_REFERENCE_PARAMS = ("CPU_US_PER_SQL_READ", "CPU_US_PER_SQL_WRITE", "ZIIP_OFFLOAD_FRACTION")
 
 
-def staff_monthly_cost(tier, topology=None, scenario=None):
+def bridge_reference():
+    """CROSS_BRIDGE_WEIGHTS = 'reference' iken kopru agirliklarini mid'e alan baglam."""
+    if CROSS_BRIDGE_WEIGHTS != "reference":
+        return contextlib.nullcontext()
+    return use_values({r[0]: r[2] for r in RANGE_PARAMETERS if r[0] in _BRIDGE_REFERENCE_PARAMS})
+
+
+def staff_pci_equivalent(tps, workload=DEFAULT_WORKLOAD):
+    """Is yukunun surekli PCI esdegeri (personel egrisinin girdisi, KB-13)."""
+    w = get_workload(workload)
+    with bridge_reference():
+        return (tps * w.cpu_weight() * (1.0 - ziip_fraction(w)) / TPS_PER_PCI
+                / DEFAULT_UTILIZATION_CEILING)
+
+
+def staff_fte(tier, topology=None, scenario=None, load_tps=None, workload=DEFAULT_WORKLOAD):
+    """Altyapi FTE'si. Ana kural: ortak egri, is yukunun PCI esdegerinden
+    (load_tps verilmeli). STAFF_BASIS = 'installed' ya da load_tps yoksa
+    kademenin kurulu PCI'si (eski kural)."""
+    if STAFF_BASIS == "workload" and load_tps is not None:
+        pci = staff_pci_equivalent(load_tps, workload)
+    else:
+        pci = tier.pci
+    return cm.staff_fte(pci, topology.code if topology is not None else None, scenario)
+
+
+def staff_monthly_cost(tier, topology=None, scenario=None, load_tps=None,
+                       workload=DEFAULT_WORKLOAD):
     """Altyapi personelinin AYLIK yuklu maliyeti (USD)."""
-    return staff_fte(tier, topology, scenario) * cm.loaded_wage() / 12.0
+    return (staff_fte(tier, topology, scenario, load_tps, workload)
+            * cm.loaded_wage() / 12.0)
 
 
 # ------------------------------------------------------------------------------
@@ -879,18 +905,12 @@ def load_storage_models(path=DS8900F_CSV):
 DS8900F_MODELS = load_storage_models()
 
 # --- Kapasite zinciri ---------------------------------------------------------
-DEFAULT_DATA_VOLUME_TB = 20.0    # [ASSUME] ornek mantiksal Db2 veri hacmi (indeksler dahil)
-DEFAULT_DATA_GROWTH = 0.15       # [ASSUME] yillik veri buyumesi
-STORAGE_PLANNING_YEARS = 3       # [ASSUME] dizi, bu kadar yillik buyumeye gore boyutlanir
 DB_OVERHEAD_FACTOR = 1.5         # [ASSUME] Db2 log/arsiv log, image copy, work alani,
                                  #   z/OS sistem hacimleri ve bos alan
 HOST_COMPRESSION_RATIO = 1.0     # [ASSUME] Db2 sikistirmasi (z16 on-chip); 1.0 = yok
 SAFEGUARDED_COPY = True          # [REDP-5554] fidye yazilimi korumasi (birincil dizide)
 SAFEGUARDED_RESERVE = 0.25       # [ASSUME] Safeguarded Copy icin ek kapasite orani
 RAID_USABLE_FRACTION = 0.75      # [ASSUME] RAID 6 (6+P+Q) kullanilabilir/ham (doğrulanmalı)
-STORAGE_IOPS_CEILING = 0.70      # [ASSUME] dizi, ureticinin tepe IOPS'unun bu oranina kadar
-                                 #   yuklenir (tepe deger onbellek isabetli kucuk blok olcumu;
-                                 #   compute'taki %90 operasyonel tavanin storage karsiligi)
 
 # --- Fiyat --------------------------------------------------------------------
 DS8900F_FLASH_LIST_USD_PER_TB = 8620.0   # [ITJUNGLE-22] ham TB, liste
@@ -906,9 +926,9 @@ def storage_capacity_tb(data_tb=None, growth=None):
     """Bir kopyanin (dizinin) ham kapasite ihtiyaci, Safeguarded rezervi haric.
     mantiksal veri -> planlama ufkundaki veri -> Db2/z/OS ek yuku -> host
     sikistirmasi -> RAID 6 ham kapasitesi."""
-    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
-    growth = DEFAULT_DATA_GROWTH if growth is None else growth
-    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    data_tb = cm.DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = cm.DEFAULT_DATA_GROWTH if growth is None else growth
+    planned = data_tb * (1.0 + growth) ** cm.STORAGE_PLANNING_YEARS
     usable = planned * DB_OVERHEAD_FACTOR / HOST_COMPRESSION_RATIO
     return usable / RAID_USABLE_FRACTION
 
@@ -918,7 +938,7 @@ def _size_array(raw_tb, iops):
     best = None
     for sm in DS8900F_MODELS:
         n = max(1, math.ceil(raw_tb / sm.max_raw_tb),
-                math.ceil(iops / (sm.max_iops * STORAGE_IOPS_CEILING)))
+                math.ceil(iops / (sm.max_iops * cm.STORAGE_IOPS_CEILING)))
         per_array_tb = raw_tb / n
         kw = sm.power_kw
         if sm.expansion_threshold_tb and per_array_tb > sm.expansion_threshold_tb:
@@ -1007,9 +1027,9 @@ def describe_storage(plan):
 #   image copy = veri x hafta x (1 tam + 6 artimli x gunluk degisim)   [IDUG-2024]
 #   arsiv log  = ort. TPS x islem basina log bayti x 86400 x 7 x hafta
 # Kisitlar:
-#   pencere   : gunluk yazma / hedef verimi <= BACKUP_WINDOW_HOURS
+#   pencere   : gunluk yazma / hedef verimi <= cm.BACKUP_WINDOW_HOURS
 #   geri donus: yalnizca alternatif sitesi olmayan topolojide (M1) yedek DR
-#               yolundadir: tam geri yukleme suresi <= RTO x BACKUP_RESTORE_RTO_FRACTION.
+#               yolundadir: tam geri yukleme suresi <= RTO x cm.BACKUP_RESTORE_RTO_FRACTION.
 #               M2-M4'te saha kaybini replikasyon karsilar.
 #   TCT verimi: nesne hedefleri DS8900F'in Ethernet portlarindan gecer;
 #               TCT_MAX_MB_S'yi asan ihtiyac bu hedefleri eler.
@@ -1019,18 +1039,6 @@ def describe_storage(plan):
 # o secenege ozgu oldugu icin dahildir.
 BACKUP_TARGET = "auto"               # "auto" | "ts7770" | "cos_onprem" | "aws_s3"
 BACKUP_TARGETS = ("ts7770", "cos_onprem", "aws_s3")
-BACKUP_SITES = 2                     # [DB2-BACKUP] her yedek seviyesinin iki kopyasi
-BACKUP_RETENTION_WEEKS = 4           # [ASSUME] aralik 2-8; tam kopya + loglarin saklanma suresi
-BACKUP_DAILY_CHANGE = 0.03           # [ASSUME] gunluk degisen veri payi (artimli kopya)
-                                     #  haftada %10'u asan degisimde tam kopya onerilir [IDUG-2024]
-LOG_BYTES_PER_SQL_WRITE = 400.0      # [ASSUME] Db2 log kaydi: once/sonra goruntusu + baslik
-LOG_BYTES_PER_COMMIT = 200.0         # [ASSUME] commit/begin-UR kayitlari
-STATIC_PEAK_TO_AVG = 1.5             # [ASSUME] statik modda TPS tepe kabul edilir; log hacmi
-                                     #  ortalama yukle (steady_oltp orani) hesaplanir
-BACKUP_WINDOW_HOURS = 8.0            # [ASSUME] gunluk yedek penceresi
-BACKUP_RESTORE_RTO_FRACTION = 0.5    # [ASSUME] M1 RTO'sunun geri yuklemeye ayrilan payi
-                                     #  (geri kalani donanim, IPL, log uygulama)
-BACKUP_RESTORES_PER_YEAR = 1.0       # [ASSUME] yillik tam geri yukleme testi (S3 cikis ucreti)
 # --- TS7770 ---
 BACKUP_COMPRESSION = 2.0             # [TS7700-2024 -> ASSUME] IBM nominal 3:1; aralik 1,5-3,0
 BACKUP_CACHE_INCREMENT_TB = 20.0     # [TS7700-2024] cache CoD adimi
@@ -1048,32 +1056,21 @@ OBJECT_COMPRESSION = 1.0             # [SG24-8381] TS7700 disi hedefte DS8000 si
 
 def backup_volume_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
     """Bir sitede saklanan yedek hacmi (sikistirma oncesi, TB):
-    (image copy TB, arsiv log TB, gunluk yazma TB)."""
-    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
-    growth = DEFAULT_DATA_GROWTH if growth is None else growth
-    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
+    (image copy TB, arsiv log TB, gunluk yazma TB). Hacim kurali ortak
+    (common_model.backup_volumes, KB-10)."""
     w = get_workload(workload)
-    ic = planned * BACKUP_RETENTION_WEEKS * (1.0 + 6.0 * BACKUP_DAILY_CHANGE)
-    log_per_tx = w.writes * LOG_BYTES_PER_SQL_WRITE + w.commits * LOG_BYTES_PER_COMMIT
-    log_day = avg_tps * log_per_tx * 86400.0 / 1e12
-    logs = log_day * 7.0 * BACKUP_RETENTION_WEEKS
-    # gunluk yazma: tam kopyalar haftaya yayilir + artimli + log
-    daily = planned / 7.0 + planned * BACKUP_DAILY_CHANGE + log_day
+    ic, logs, daily, _ = cm.backup_volumes(avg_tps, w.writes, w.commits, data_tb, growth)
     return ic, logs, daily
 
 
 def backup_restore_tb(avg_tps, workload=DEFAULT_WORKLOAD, data_tb=None, growth=None):
     """En kotu durumda tam geri yukleme hacmi (TB): son tam kopya + 6 artimli
     + bir haftalik log."""
-    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
-    growth = DEFAULT_DATA_GROWTH if growth is None else growth
-    planned = data_tb * (1.0 + growth) ** STORAGE_PLANNING_YEARS
-    _, logs, _ = backup_volume_tb(avg_tps, workload, data_tb, growth)
-    return planned * (1.0 + 6.0 * BACKUP_DAILY_CHANGE) + logs / BACKUP_RETENTION_WEEKS
+    w = get_workload(workload)
+    return cm.backup_volumes(avg_tps, w.writes, w.commits, data_tb, growth)[3]
 
 
-def _hours(tb, mb_s):
-    return tb * 1e6 / mb_s / 3600.0 if mb_s > 0 else float("inf")
+_hours = cm.transfer_hours
 
 
 def _restore_budget_hours(topology):
@@ -1081,7 +1078,7 @@ def _restore_budget_hours(topology):
     topo = TOPOLOGIES[0] if topology is None else topology
     if topo.recovery_minutes() != float("inf"):
         return None
-    return topo.rto_minutes / 60.0 * BACKUP_RESTORE_RTO_FRACTION
+    return topo.rto_minutes / 60.0 * cm.BACKUP_RESTORE_RTO_FRACTION
 
 
 def _hw_monthly(hw_capex):
@@ -1095,13 +1092,13 @@ def _plan_ts7770(ic, logs, daily, restore_tb, budget_h):
     cache = (ic + logs) / BACKUP_COMPRESSION
     cache = max(BACKUP_CACHE_INCREMENT_TB,
                 math.ceil(cache / BACKUP_CACHE_INCREMENT_TB) * BACKUP_CACHE_INCREMENT_TB)
-    window_tb = BACKUP_CLUSTER_MB_S * BACKUP_WINDOW_HOURS * 3600.0 / 1e6
+    window_tb = BACKUP_CLUSTER_MB_S * cm.BACKUP_WINDOW_HOURS * 3600.0 / 1e6
     n = max(1, math.ceil(cache / BACKUP_CLUSTER_MAX_CACHE_TB), math.ceil(daily / window_tb))
     if budget_h is not None:   # geri yukleme bir sitedeki kumelerden okunur
         n = max(n, math.ceil(restore_tb * 1e6 / (BACKUP_CLUSTER_MB_S * budget_h * 3600.0)))
-    clusters = n * BACKUP_SITES
+    clusters = n * cm.BACKUP_SITES
     hw = (clusters * BACKUP_CLUSTER_LIST_USD
-          + BACKUP_SITES * cache * BACKUP_CACHE_LIST_USD_PER_TB) * (1.0 - STORAGE_DISCOUNT)
+          + cm.BACKUP_SITES * cache * BACKUP_CACHE_LIST_USD_PER_TB) * (1.0 - STORAGE_DISCOUNT)
     amort, maint = _hw_monthly(hw)
     kw = clusters * BACKUP_KW_PER_CLUSTER
     mb_s = n * BACKUP_CLUSTER_MB_S
@@ -1115,7 +1112,7 @@ def _plan_ts7770(ic, logs, daily, restore_tb, budget_h):
 
 def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
     stored = (ic + logs) / OBJECT_COMPRESSION
-    need = BACKUP_WINDOW_HOURS * 3600.0
+    need = cm.BACKUP_WINDOW_HOURS * 3600.0
     req_mb_s = daily * 1e6 / need
     if budget_h is not None:
         req_mb_s = max(req_mb_s, restore_tb * 1e6 / (budget_h * 3600.0))
@@ -1127,7 +1124,7 @@ def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
                                            f"{TCT_MAX_MB_S:,.0f} MB/s)")
         return base
     if target == "cos_onprem":
-        o = cm.onprem_object_store(stored, BACKUP_SITES)   # fiyat fonksiyonu ortak
+        o = cm.onprem_object_store(stored, cm.BACKUP_SITES)   # fiyat fonksiyonu ortak
         amort, maint = _hw_monthly(o["hw_capex"])
         base.update(feasible=True, throughput_mb_s=TCT_MAX_MB_S, hw_capex=o["hw_capex"],
                     capex=o["hw_capex"], amortization=amort, maintenance=maint,
@@ -1136,8 +1133,8 @@ def _plan_object(target, ic, logs, daily, restore_tb, budget_h):
                     links=0)
         return base
     # aws_s3: tek kopya; hat sayisi verim ihtiyacindan (fiyat fonksiyonu ortak)
-    o = cm.s3_hybrid(stored, daily, restore_tb, req_mb_s, BACKUP_RETENTION_WEEKS,
-                     BACKUP_RESTORES_PER_YEAR)
+    o = cm.s3_hybrid(stored, daily, restore_tb, req_mb_s, cm.BACKUP_RETENTION_WEEKS,
+                     cm.BACKUP_RESTORES_PER_YEAR)
     base.update(feasible=True, throughput_mb_s=min(TCT_MAX_MB_S, o["link_mb_s"]),
                 hw_capex=0.0, capex=0.0, amortization=0.0, maintenance=0.0,
                 service=o["service"], power_kw=0.0, energy=0.0,
@@ -1187,10 +1184,10 @@ def describe_backup(plan):
     t = plan["target"]
     head = f"{BACKUP_TARGET_LABELS[t]}"
     if t == "ts7770":
-        head += (f": {plan['clusters']}x TS7770 ({BACKUP_SITES} site), site basina "
+        head += (f": {plan['clusters']}x TS7770 ({cm.BACKUP_SITES} site), site basina "
                  f"{plan['cache_tb_per_site']:,.0f} TB cache")
     elif t == "cos_onprem":
-        head += f": {BACKUP_SITES} site x {plan['stored_tb_per_site']:,.0f} TB"
+        head += f": {cm.BACKUP_SITES} site x {plan['stored_tb_per_site']:,.0f} TB"
     else:
         head += f": {plan['stored_tb_per_site']:,.0f} TB Standard-IA, {plan['links']}x 10G DX"
     if plan.get("forced_fallback"):
@@ -1292,7 +1289,7 @@ def software_monthly_cost(msu, breakdown=False):
     return (total, parts) if breakdown else total
 
 
-def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
+def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD, load_tps=None):
     """Asama 5: bir kademenin topology'ye gore toplam AYLIK maliyeti.
 
     Maliyet hesaplama mantigi:
@@ -1308,8 +1305,8 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
       - maintenance:  hardware'a oranli, garanti yili sonrasi
       - energy:       frame sayisi x kW x elektrik
       - gdps:         GDPS teklifinin sabit aylik bedeli (M3, M4)
-      - staff:        altyapi personeli, birincil kademenin PCI'sina gore
-                      alt-dogrusal (STAFF_SCENARIOS), topoloji carpaniyla
+      - staff:        altyapi personeli, ortak egri (cm.STAFF_SCENARIOS): is
+                      yukunun (load_tps) PCI esdegerinden, topoloji carpaniyla
     """
     msu = tier.msu if billed_msu is None else billed_msu
     # Yazilim lisansi: AWLC kademeli  [AWLC, IBM-2004]
@@ -1324,7 +1321,7 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
     energy = POWER_KW_PER_SYSTEM * cm.ELECTRICITY_USD_PER_KWH * cm.HOURS_PER_MONTH
 
     mult = topology.cost_multiplier
-    staff = staff_monthly_cost(tier, topology)
+    staff = staff_monthly_cost(tier, topology, load_tps=load_tps, workload=workload)
     gdps = gdps_monthly_cost(topology)
     return {
         "software": software,
@@ -1332,7 +1329,7 @@ def monthly_cost(tier, topology, billed_msu=None, workload=DEFAULT_WORKLOAD):
         "maintenance": maint_monthly * mult,
         "energy": energy * topology.n_frames,       # DR frame de acik
         "gdps": gdps,                               # sabit, kapasiteden bagimsiz
-        "staff": staff,                             # birincil CEC kapasitesine gore
+        "staff": staff,                             # is yukunun PCI esdegerine gore
         "total": (software + (hw_monthly + maint_monthly) * mult
                   + energy * topology.n_frames + gdps + staff),
     }
@@ -1404,13 +1401,13 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
     candidates = []  # liste: (tier, topology, cost, util, rho_max)
     for topo in feasible_topos:
         splan = storage_plan(tps, workload, topo, data_tb, data_growth)
-        bplan = backup_plan(tps / STATIC_PEAK_TO_AVG, workload, topo, data_tb, data_growth)
+        bplan = backup_plan(tps / cm.STATIC_PEAK_TO_AVG, workload, topo, data_tb, data_growth)
         for tier in Z16_TIERS:
             if is_capacity_feasible(tier, tps, workload, latency_target_s, percentile_frac, topo):
                 # Sabit yukte R4HA = tps -> sub-capacity faturasi  [R4HA]
                 cost = monthly_cost(tier, topo,
                                     billed_msu=consumed_msu(tier, tps, workload),
-                                    workload=workload)
+                                    workload=workload, load_tps=tps)
                 cost["storage"] = splan["monthly_total"]
                 cost["storage_plan"] = splan
                 cost["backup"] = bplan["monthly_total"]
@@ -1468,7 +1465,8 @@ def solve(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
             print(f"       GDPS:     ${cost['gdps']:,.0f}  ({topo.gdps})")
         print(f"       bakim:    ${cost['maintenance']:,.0f}")
         print(f"       personel: ${cost['staff']:,.0f}  "
-              f"({staff_fte(tier, topo):.1f} FTE, senaryo={STAFF_SCENARIO})")
+              f"({staff_fte(tier, topo, load_tps=tps, workload=workload):.1f} FTE, "
+              f"senaryo={cm.STAFF_SCENARIO})")
         print(f"       enerji:   ${cost['energy']:,.0f}")
         sp = cost["storage_plan"]
         print(f"       storage:  ${cost['storage']:,.0f}  ({describe_storage(sp)})")
@@ -1973,8 +1971,8 @@ def solve_yearly(preset_name=None, yearly_avg_tps=10000,
         stp_m = storage_primary_monthly(splan)
         bplan = backup_plan(avg_load, workload, topo, data_tb, data_growth)
         bk_m = bplan["monthly_total"]
-        # personel tepe yuku tasiyan kademeye gore: stratejiden bagimsiz
-        stf_m = staff_monthly_cost(perm_tier, topo)
+        # personel tepe yukun PCI esdegerine gore (KB-13): stratejiden bagimsiz
+        stf_m = staff_monthly_cost(perm_tier, topo, load_tps=peak_load, workload=workload)
         sim_perm = simulate_yearly(profile, perm_tier, topo, workload, latency_ms,
                                    latency_percentile, strategy="permanent",
                                    storage_monthly=st_m, staff_monthly=stf_m,
@@ -2072,7 +2070,7 @@ def _print_strategy_detail(sim):
         print(f"  Yedekleme:".ljust(34) + f"${sim['yearly_backup']:>13,.0f}"
               f"  [{describe_backup(sim['backup_plan'])}]")
     if sim.get("yearly_staff"):
-        print(f"  Personel ({STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
+        print(f"  Personel ({cm.STAFF_SCENARIO}):".ljust(34) + f"${sim['yearly_staff']:>13,.0f}")
     if sim.get("yearly_nonprod"):
         print(f"  Uretim disi ortamlar:".ljust(34) + f"${sim['yearly_nonprod']:>13,.0f}")
     if sim["corridor_cost_total"]:
@@ -2179,6 +2177,7 @@ RANGE_PARAMETERS = [
     ("AWLC_UPPER_DECAY", 0.70, 0.80, 1.00, "AWLC L4+ kademe dusus orani"),
     ("CPU_US_PER_SQL_READ", 15.0, 30.0, 60.0, "Okuma SQL CPU, us (is yuku agirligi)"),
     ("CPU_US_PER_SQL_WRITE", 40.0, 70.0, 140.0, "Yazma SQL CPU, us (is yuku agirligi)"),
+    ("RANGE_READ_WEIGHT", 3.4, 3.65, 3.9, "Aralik okuma / nokta okuma CPU orani (ortak, F)"),
     ("ZIIP_OFFLOAD_FRACTION", 0.25, 0.10, 0.0, "zIIP'e kayan CPU payi"),
     ("HARDWARE_COST_PER_MIPS", 150.0, 200.0, 300.0, "Donanim USD/PCI"),
     ("HW_FRAME_BASE_COST", 250000.0, 500000.0, 1000000.0, "Donanim frame tabani, USD"),
@@ -2325,9 +2324,9 @@ def mainframe_hw_value(tier, topology, workload=DEFAULT_WORKLOAD, ziip_tier=None
 def _layer_cycles(peaks, avgs, workload, topology, data_tb, growth, years):
     """Storage + yedekleme: dongu basinda alim, yil basina kurulu deger ve kW.
     Donus: yil listesi, her biri {capex, hw_installed, kw, ...}."""
-    data_tb = DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
-    growth = DEFAULT_DATA_GROWTH if growth is None else growth
-    cycle = max(1, STORAGE_PLANNING_YEARS)
+    data_tb = cm.DEFAULT_DATA_VOLUME_TB if data_tb is None else data_tb
+    growth = cm.DEFAULT_DATA_GROWTH if growth is None else growth
+    cycle = max(1, cm.STORAGE_PLANNING_YEARS)
     rows = []
     cur = {"s_capex": 0.0, "s_hw": 0.0, "b_capex": 0.0, "b_hw": 0.0, "kw": 0.0,
            "splan": None, "bplan": None, "target": None}
@@ -2417,9 +2416,10 @@ def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         if not cands:
             return None
         prev = min(cands, key=lambda t: monthly_cost(
-            t, topo, billed_msu=consumed_msu(t, load, workload), workload=workload)["total"])
+            t, topo, billed_msu=consumed_msu(t, load, workload), workload=workload,
+            load_tps=load)["total"])
         tiers.append(prev)
-    layers = _layer_cycles(loads, [x / STATIC_PEAK_TO_AVG for x in loads], workload, topo,
+    layers = _layer_cycles(loads, [x / cm.STATIC_PEAK_TO_AVG for x in loads], workload, topo,
                            data_tb, data_growth, years)
 
     rows, capex_events, v_prev = [], [], 0.0
@@ -2428,7 +2428,7 @@ def solve_npv(tps, availability=0.999, workload=DEFAULT_WORKLOAD,
         hw_capex = v - v_prev
         v_prev = v
         c = monthly_cost(tier, topo, billed_msu=consumed_msu(tier, load, workload),
-                         workload=workload)
+                         workload=workload, load_tps=load)
         maint_on = y > HW_WARRANTY_YEARS
         s_maint_on = y > STORAGE_WARRANTY_YEARS
         opex = {
@@ -2713,6 +2713,9 @@ Ornekler:
                         help="Ozel profil: islem basina okuma SQL sayisi")
     parser.add_argument("--sql-writes", type=float, default=None,
                         help="Ozel profil: islem basina yazma SQL sayisi")
+    parser.add_argument("--sql-range-reads", type=float, default=None,
+                        help="Ozel profil: islem basina aralik okuma SQL sayisi "
+                             "(--sql-reads nokta okumadir)")
     parser.add_argument("--rpo-seconds", type=float, default=None,
                         help="Saha felaketinde kabul edilen en fazla veri kaybi, saniye")
     parser.add_argument("--rto-minutes", type=float, default=None,
@@ -2725,9 +2728,9 @@ Ornekler:
 
     # Storage
     parser.add_argument("--data-tb", type=float, default=None,
-                        help=f"Mantiksal Db2 veri hacmi, TB (varsayilan: {DEFAULT_DATA_VOLUME_TB:g})")
+                        help=f"Mantiksal Db2 veri hacmi, TB (varsayilan: {cm.DEFAULT_DATA_VOLUME_TB:g})")
     parser.add_argument("--data-growth", type=float, default=None,
-                        help=f"Yillik veri buyumesi, oran (varsayilan: {DEFAULT_DATA_GROWTH:g})")
+                        help=f"Yillik veri buyumesi, oran (varsayilan: {cm.DEFAULT_DATA_GROWTH:g})")
     parser.add_argument("--backup-target", choices=("auto",) + BACKUP_TARGETS, default=None,
                         help="Yedek hedefi: auto (kisitlari karsilayan en ucuz; varsayilan), "
                              "ts7770, cos_onprem (on-prem nesne depolama), aws_s3 (hibrit)")
@@ -2792,12 +2795,14 @@ Ornekler:
             print(f"  {year}  {name:<32} {mod:<16} {src}")
         sys.exit(0)
 
-    if args.sql_reads is not None or args.sql_writes is not None:
+    if (args.sql_reads is not None or args.sql_writes is not None
+            or args.sql_range_reads is not None):
         r, w = args.sql_reads or 0.0, args.sql_writes or 0.0
-        if r < 0 or w < 0:
-            parser.error("--sql-reads ve --sql-writes negatif olamaz")
-        args.workload = WorkloadProfile("custom", r, w, 1, (r + w) > 0,
-                                        "Ozel bilesim", "USER")
+        rr = args.sql_range_reads or 0.0
+        if r < 0 or w < 0 or rr < 0:
+            parser.error("--sql-reads, --sql-range-reads ve --sql-writes negatif olamaz")
+        args.workload = WorkloadProfile("custom", r, w, 1, (r + rr + w) > 0,
+                                        "Ozel bilesim", "USER", range_reads=rr)
 
     if args.calibration:
         print_calibration()
