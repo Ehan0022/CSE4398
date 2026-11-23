@@ -1,0 +1,46 @@
+{
+  "case": 4,
+  "baslik": "Availability / RPO / RTO: (%99,9 = Case 1) -> M2-X2 -> M4-X3 ve infeasible sinir",
+  "aciklama": "Availability, RPO ve RTO değişir. Model topolojiyi (M1-M4 / X1-X4) olay tabanlı availability denklemiyle seçer; hiçbir topoloji karşılamazsa 'infeasible' raporlar.",
+  "ozet_deseni": "SECILEN TOPOLOJI|SECILEN YIGIN|availability:|DR payi|GDPS:|donanim:|SONUC|mainframe:|x86: |oran \\(",
+  "kosular": [
+    {
+      "etiket": "%99,99 + RPO 0 + RTO 120 dk",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "availability": 0.9999,
+        "rpo_seconds": 0,
+        "rto_minutes": 120,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "%99,999",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "availability": 0.99999,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "mainframe %99,999 + RPO 0 + RTO 30 dk",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "availability": 0.99999,
+        "rpo_seconds": 0,
+        "rto_minutes": 30
+      }
+    },
+    {
+      "etiket": "mainframe %99,999 dokum",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "availability": 0.99999
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "case": 7,
+  "baslik": "Yedek hedefi: 100 TB'ta zorlanan hedefler (auto = Case 5) ve 500 TB'ta kisit",
+  "aciklama": "Yedek hedefi elle zorlanır. Model maliyeti ve RTO kısıtını kontrol eder; kısıtı karşılamayan hedefte otomatik seçime (TS7770) geri döner.",
+  "ozet_deseni": "AYLIK|yedekleme:",
+  "kosular": [
+    {
+      "etiket": "100 TB, ts7770",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 100,
+        "backup_target": "ts7770"
+      }
+    },
+    {
+      "etiket": "100 TB, aws_s3",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 100,
+        "backup_target": "aws_s3"
+      }
+    },
+    {
+      "etiket": "500 TB, cos_onprem zorla",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 500,
+        "backup_target": "cos_onprem"
+      }
+    }
+  ]
+}

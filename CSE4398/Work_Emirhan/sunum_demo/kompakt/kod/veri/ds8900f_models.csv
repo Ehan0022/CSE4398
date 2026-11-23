@@ -1,0 +1,16 @@
+# IBM DS8900F modelleri (z16 ile ayni nesil, all-flash, HPFE Gen2).
+# Kaynaklar:
+#   [REDP-5554]  IBM Storage DS8900F Product Guide, Release 9.3.2 (redbooks.ibm.com/redpapers/pdfs/redp5554.pdf):
+#                maks. ham kapasite (15.36 TB drive ile), tepe guc (kW), zHyperLink port sayisi
+#   [ITCANDOR]   itcandor.com/ibm-storage-q419 (DS8900F duyurusu, 2019): maks. IOPS 860K (DS8910F) / 2,320K (DS8950F)
+#   [TT-2019]    TechTarget, "IBM Storage syncs new DS8900F array to z15 mainframe launch" (2019):
+#                IBM'e gore baslangic fiyati $134,000 (DS8910F) ve $196,000 (DS8950F)
+# Notlar:
+#   - 993 maks. ham kapasitesi z16/LinuxONE cercevesindeki 16U yerlesim icin (48 drive); musteri rafinda 1,475 TB.
+#   - 996 icin ham kapasite 2,949 TB'yi asarsa E96 genisleme cercevesi (+3.9 kW) gerekir.
+#   - DS8980F (998) modeli kapsam disi: yayimlanmis IOPS ve fiyat yok.
+#   - IOPS degerleri uretici tepe degerleridir (onbellek isabetli kucuk blok); gercek is yukunde daha dusuktur.
+model,family,max_raw_tb,max_iops,base_price_list_usd,power_kw,expansion_threshold_tb,expansion_power_kw,zhyperlink_adapters,note
+993,DS8910F,737,860000,134000,2.2,,,4,z16 cercevesine monte (16U)
+994,DS8910F,2949,860000,134000,4.6,,,6,bagimsiz raf
+996,DS8950F,5898,2320000,196000,6.2,2949,3.9,12,E96 ile 5898 TB

@@ -1,0 +1,35 @@
+{
+  "case": 8,
+  "baslik": "Fiyatlama stratejileri A / B / C (yillik mod, 3 preset)",
+  "aciklama": "Yıllık modda üç yük profili. A (Permanent), B (Base + CoD) ve C (Tailored Fit Pricing) stratejileri aynı yıl için karşılaştırılır.",
+  "ozet_deseni": "Secilen strateji|Alternatif|Base kademe|Corridor tavani|CoD tepe|TOPLAM|ucuz",
+  "kosular": [
+    {
+      "etiket": "steady_oltp",
+      "model": "mainframe",
+      "girdi": {
+        "yearly": true,
+        "preset": "steady_oltp",
+        "avg_tps": 10000
+      }
+    },
+    {
+      "etiket": "batch_heavy",
+      "model": "mainframe",
+      "girdi": {
+        "yearly": true,
+        "preset": "batch_heavy",
+        "avg_tps": 10000
+      }
+    },
+    {
+      "etiket": "retail_bursty",
+      "model": "mainframe",
+      "girdi": {
+        "yearly": true,
+        "preset": "retail_bursty",
+        "avg_tps": 10000
+      }
+    }
+  ]
+}

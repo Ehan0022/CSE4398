@@ -862,3 +862,22 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 ### 4. Açık kalanlar
 - Slayt içeriği metin olarak hazır; görsel deste (grafikler, crossover haritası) henüz yok.
 - Önceki oturumun açık kalanları değişmedi: K6 ölçümü, `docs/kopruler_v2.md`, RAC USL kaynağı, sunucu ihale kaydı, drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu.
+
+## 2026-11-23 — Oturum 10: Girdileri dosyadan okuyan kompakt demo
+
+### 1. Aksiyon
+- `sunum_demo/kompakt/` açıldı. `src/` altındaki model kodu değiştirilmedi; üç modülün kopyası `kompakt/kod/` altına alındı.
+- Kopyada üç değişiklik: `common_model.py`'ye "Dışarıdan girdi dosyası" bölümü (JSON girdi sözlüğünü komut satırı seçeneklerine çevirir); iki modele `--input DOSYA` ve `--kosu N` seçenekleri; mainframe veri klasörü `kod/veri/`.
+- Ana demodaki 10 case (42 koşu) `kompakt/inputs/case_NN_*.json` dosyalarına yazıldı. Her dosyada başlık, neyin değiştiğinin açıklaması, özet deseni ve koşular (etiket, model, girdi) var.
+- `kompakt/calistir.py`: case'leri sırayla çalıştırır; her koşu için girdiyi, eşdeğer komutu ve çıktıyı basar. `--adim` her koşudan önce Enter bekler, `--tam` bütün çıktıyı basar.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-23): sunumda girdileri ve çıktıları kod üzerinde göstermek; girdilerin bir klasörde durması ve sırayla çalıştırılabilmesi.
+- Girdi, JSON'dan okunduktan sonra aynı argparse yolundan geçirildi. Böylece doğrulama kuralları ve varsayılanlar komut satırıyla aynı kalır ve kopya, model hesabına dokunmadan girdiyi dışarıdan alır.
+
+### 3. Sonuç
+- `calistir.py` 42 koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktılarla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır: 42'si aynı. Kopya, aynı girdiye orijinal modelle aynı çıktıyı veriyor.
+- Hatalı kullanımda model açık hata verir (çok koşulu dosyada `--kosu` yoksa, koşu başka modele aitse).
+
+### 4. Açık kalanlar
+- Kopya, `src/` değiştiğinde eskir; yeniden kopyalama ve üç değişikliğin tekrar uygulanması gerekir (`kompakt/README.md`).

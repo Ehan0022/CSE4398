@@ -9,6 +9,7 @@
 | `DEMO_SENARYOLARI.md` | 10 demo senaryosu: komut, çıktı özeti, neyin neden değiştiği, sunum akışı |
 | `demo_calistir.py` | 10 senaryoyu (42 komut) modellere koşturan ve çıktıların birbirinden farklı olduğunu doğrulayan betik |
 | `ciktilar/` | Her case'in tam model çıktısı (`case_NN_*.txt`) ve betiğin özet çıktısı (`demo_ozet.txt`) |
+| `kompakt/` | Sunumda kod üzerinde göstermek için: girdileri `inputs/*.json`'dan okuyan model kopyası ve case'leri sırayla çalıştıran `calistir.py` (ayrıntı `kompakt/README.md`) |
 | `slaytlar/01_giris_ve_mainframe.md` | Giriş (3 slayt) + mainframe katmanları (14 katman × 2 = 28 slayt) |
 | `slaytlar/02_acik_sistem.md` | Açık sistem katmanları ve opsiyonları (14 katman × 2 = 28 slayt) |
 | `slaytlar/03_kopruler.md` | Köprü haritası + KB-01 – KB-18 (18 köprü × 2 = 36 slayt) |

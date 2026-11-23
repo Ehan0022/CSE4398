@@ -1,0 +1,79 @@
+{
+  "case": 10,
+  "baslik": "NPV ufku (3 / 5 / 10 yil) ve belirsizlik araligi (--range)",
+  "aciklama": "NPV ufku (3/5/10 yıl) ve --range. Seviyelendirilmiş $/TPS ufukla değişir; --range low/mid/high, tornado ve eşleştirilmiş senaryoları basar.",
+  "ozet_deseni": "NPV:|seviyelendirilmis|^\\s+\\d+ \\|\\s+[\\d,]+ \\| 3931|^\\s+(low|mid|high)\\s|x86_lehine|^\\s+orta\\s|mainframe_lehine|ortak_(low|high)",
+  "kosular": [
+    {
+      "etiket": "mainframe NPV 3 yil",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 3
+      }
+    },
+    {
+      "etiket": "mainframe NPV 5 yil",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 5
+      }
+    },
+    {
+      "etiket": "mainframe NPV 10 yil",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 10
+      }
+    },
+    {
+      "etiket": "x86 NPV 3 yil",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 3
+      }
+    },
+    {
+      "etiket": "x86 NPV 5 yil",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 5
+      }
+    },
+    {
+      "etiket": "x86 NPV 10 yil",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "npv": true,
+        "years": 10
+      }
+    },
+    {
+      "etiket": "mainframe --range",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "range": true
+      }
+    },
+    {
+      "etiket": "x86 --range --compare",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "range": true,
+        "compare": true
+      }
+    }
+  ]
+}
