@@ -1,0 +1,105 @@
+--- 100 TB, ts7770: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target ts7770  (cikis kodu 0, sha 62ed81b2d869)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_rw | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+     -> 0.62 islem / s / PCI (zIIP payi f=0.10 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 7.27
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,119
+     utilization: 88.9%  (x1 frame)
+     AYLIK maliyet: $1,183,514
+       yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
+       bakim:    $32,405
+       personel: $521,333  (38.6 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $31,749  (birincil: 1x DS8910F-993 (380 TB ham))
+     I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
+       yedekleme: $20,750  (TS7770 sanal teyp: 2x TS7770 (2 site), site basina 380 TB cache; image copy 718 TB + log 29 TB; geri donus ~13.0 sa)
+       uretim disi: $106,905  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
+--- 100 TB, aws_s3: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target aws_s3  (cikis kodu 0, sha c1207a0b79d2)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_rw | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+     -> 0.62 islem / s / PCI (zIIP payi f=0.10 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 7.27
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,119
+     utilization: 88.9%  (x1 frame)
+     AYLIK maliyet: $1,180,551
+       yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
+       bakim:    $32,405
+       personel: $521,333  (38.6 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $31,749  (birincil: 1x DS8910F-993 (380 TB ham))
+     I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
+       yedekleme: $17,787  (AWS S3 (hibrit): 747 TB Standard-IA, 2x 10G DX; image copy 718 TB + log 29 TB; geri donus ~25.9 sa)
+       uretim disi: $106,905  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
+--- 500 TB, cos_onprem zorla: python src/mainframe_model.py --tps 10000 --data-tb 500 --backup-target cos_onprem  (cikis kodu 0, sha fd5a45cb204a)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_rw | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+     -> 0.62 islem / s / PCI (zIIP payi f=0.10 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 7.27
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,119
+     utilization: 88.9%  (x1 frame)
+     AYLIK maliyet: $1,383,956
+       yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
+       bakim:    $32,405
+       personel: $521,333  (38.6 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $153,226  (birincil: 1x DS8910F-994 (1,901 TB ham))
+     I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
+       yedekleme: $75,420  (TS7770 sanal teyp: 4x TS7770 (2 site), site basina 1,820 TB cache [cos_onprem kisiti karsilamadi]; image copy 3,589 TB + log 29 TB; geri donus ~31.4 sa)
+       uretim disi: $131,201  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
