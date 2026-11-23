@@ -5,9 +5,11 @@ Kullanim (herhangi bir klasorden):
     python sunum_demo/kompakt/calistir.py 3 7          # yalnizca Case 3 ve Case 7
     python sunum_demo/kompakt/calistir.py 4 --adim     # her kosudan once Enter bekler
     python sunum_demo/kompakt/calistir.py 1 --tam      # model ciktisinin tamamini basar
+    python sunum_demo/kompakt/calistir.py --kisa       # girdi tablosunda yalnizca farkli alanlar
 
 Her case bir JSON dosyasidir (inputs/case_NN_*.json). Dosyadaki her kosu icin:
-  1. GIRDI: JSON'daki girdi sozlugu ve modelin bunu nasil okudugu (esdeger komut),
+  1. GIRDI: modelin butun senaryo girdileri (deger, birim, aciklama; Case 1
+     referansindan farkli olanlar '>>' ile isaretli) ve esdeger komut,
   2. CIKTI: modelin ciktisi (varsayilan: case'in ozet_deseni'ne uyan satirlar),
   3. tam cikti kompakt/ciktilar/case_NN_*.txt dosyasina yazilir.
 
@@ -43,6 +45,29 @@ def kosu_calistir(case_dosyasi, kosu_no, model):
     return p.returncode, p.stdout + p.stderr
 
 
+def deger_yaz(v):
+    if v is None:
+        return "-"
+    if v is True:
+        return "evet"
+    if v is False:
+        return "hayir"
+    return str(v)
+
+
+def girdi_tablosu(kosu, sozluk, kisa=False):
+    """Kosunun butun girdilerini basar; referanstan farkli olanlar '>>' ile isaretli."""
+    farkli = set(kosu.get("referanstan_farkli", []))
+    print("  GIRDI  (>> = Case 1 referansindan farkli; - = verilmedi, anlami aciklamada)")
+    for anahtar, deger in kosu["girdi"].items():
+        if kisa and anahtar not in farkli:
+            continue
+        s = sozluk.get(anahtar, {})
+        isaret = ">>" if anahtar in farkli else "  "
+        print(f"    {isaret} {anahtar:<20} {deger_yaz(deger):>10}  {s.get('birim', ''):<11} "
+              f"{s.get('aciklama', '')}")
+
+
 def orijinal_hashler():
     """sunum_demo/ciktilar/ basliklarindan (case, etiket) -> sha12 eslemesi."""
     sonuc = {}
@@ -59,6 +84,7 @@ def orijinal_hashler():
 def main(argv):
     adim = "--adim" in argv
     tam = "--tam" in argv
+    kisa = "--kisa" in argv
     secim = {int(a) for a in argv if a.isdigit()}
     os.makedirs(CIKTI, exist_ok=True)
     referans = orijinal_hashler()
@@ -82,9 +108,9 @@ def main(argv):
             for i, kosu in enumerate(case["kosular"], start=1):
                 girdi_json = json.dumps(kosu["girdi"], ensure_ascii=False)
                 esdeger = " ".join(cm.girdi_sozlugu_argv(kosu["girdi"]))
-                print(f"--- Kosu {i}/{len(case['kosular'])}: {kosu['etiket']}")
-                print(f"  GIRDI  model={kosu['model']}  {girdi_json}")
-                print(f"         (esdeger komut: python {BETIK[kosu['model']]} {esdeger})")
+                print(f"--- Kosu {i}/{len(case['kosular'])}: {kosu['etiket']}  (model: {kosu['model']})")
+                girdi_tablosu(kosu, case.get("girdi_sozlugu", {}), kisa)
+                print(f"         esdeger komut: python {BETIK[kosu['model']]} {esdeger}")
                 if adim:
                     input("  [Enter ile calistir]")
                 rc, out = kosu_calistir(yol, i, kosu["model"])

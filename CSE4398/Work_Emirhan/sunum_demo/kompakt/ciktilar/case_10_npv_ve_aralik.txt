@@ -1,4 +1,4 @@
---- mainframe NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 1  [{"tps": 10000, "npv": true, "years": 3}]  (cikis kodu 0, sha 03720ddaef54)
+--- mainframe NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 03720ddaef54)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -52,7 +52,7 @@ NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
     enerji                                         $       97,998  (% 0.2)
     yedek hizmeti (abonelik / S3 / bulut hatti)    $       45,634  (% 0.1)
 
---- mainframe NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 2  [{"tps": 10000, "npv": true, "years": 5}]  (cikis kodu 0, sha b7e907bc0aea)
+--- mainframe NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha b7e907bc0aea)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -108,7 +108,7 @@ NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
     yedekleme alimi (TS7770 / nesne depolama)      $      140,000  (% 0.2)
     yedek hizmeti (abonelik / S3 / bulut hatti)    $       83,854  (% 0.1)
 
---- mainframe NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 3  [{"tps": 10000, "npv": true, "years": 10}]  (cikis kodu 0, sha a238d2cde11c)
+--- mainframe NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a238d2cde11c)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -169,7 +169,7 @@ NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
     yedek hizmeti (abonelik / S3 / bulut hatti)    $      217,193  (% 0.2)
     yedekleme alimi (TS7770 / nesne depolama)      $      140,000  (% 0.1)
 
---- x86 NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 4  [{"tps": 10000, "npv": true, "years": 3}]  (cikis kodu 0, sha ebc8756693e1)
+--- x86 NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha ebc8756693e1)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -222,7 +222,7 @@ x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %
     veri storage alimi (NVMe / AFA)                      $       14,573  (% 0.1)
     enerji                                               $       12,351  (% 0.1)
 
---- x86 NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 5  [{"tps": 10000, "npv": true, "years": 5}]  (cikis kodu 0, sha 9e755935f4f4)
+--- x86 NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 9e755935f4f4)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -278,7 +278,7 @@ x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %
     veri storage alimi (NVMe / AFA)                      $       17,817  (% 0.1)
     sunucu bakimi                                        $       12,131  (% 0.0)
 
---- x86 NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 6  [{"tps": 10000, "npv": true, "years": 10}]  (cikis kodu 0, sha 1de8ae8f9f77)
+--- x86 NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 1de8ae8f9f77)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -339,7 +339,7 @@ x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %
     enerji                                               $       39,895  (% 0.1)
     veri storage alimi (NVMe / AFA)                      $       29,925  (% 0.0)
 
---- mainframe --range: --input case_10_npv_ve_aralik.json --kosu 7  [{"tps": 10000, "range": true}]  (cikis kodu 0, sha 7effa621a892)
+--- mainframe --range: --input case_10_npv_ve_aralik.json --kosu 7  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 7effa621a892)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -403,7 +403,7 @@ ARALIK (aylik toplam, 10,000 TPS):
     TS7770 cache liste fiyati, USD/TB          $   1,139,294 .. $   1,139,294
     On-prem nesne depolama donanimi, USD/TB    $   1,139,294 .. $   1,139,294
 
---- x86 --range --compare: --input case_10_npv_ve_aralik.json --kosu 8  [{"tps": 10000, "range": true, "compare": true}]  (cikis kodu 0, sha 6a52e0c5f137)
+--- x86 --range --compare: --input case_10_npv_ve_aralik.json --kosu 8  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 6a52e0c5f137)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================

@@ -881,3 +881,20 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 
 ### 4. Açık kalanlar
 - Kopya, `src/` değiştiğinde eskir; yeniden kopyalama ve üç değişikliğin tekrar uygulanması gerekir (`kompakt/README.md`).
+
+## 2026-11-23 — Oturum 11: Kompakt demoda tam girdi seti
+
+### 1. Aksiyon
+- `sunum_demo/kompakt/inputs/case_*.json` yeniden üretildi: her koşuda modelin bütün senaryo girdileri açıkça yazılı (mainframe 25, x86 28 alan). Verilmeyen girdiler varsayılan değeriyle ya da `null` olarak görünüyor.
+- Her case dosyasına `girdi_sozlugu` (varsayılan, birim, ait olduğu model, açıklama) ve her koşuya `referanstan_farkli` (Case 1 referansından farklı alanlar) eklendi.
+- Modelin 43 kaynaklı fiyat/maliyet parametresi `inputs/_fiyat_parametreleri.json`'a yazıldı (senaryo girdisi değil; `prices` alanıyla değiştirilir).
+- `calistir.py` her koşuda tam girdi tablosunu basıyor; referanstan farklı alanlar `>>` ile işaretli. `--kisa` yalnızca farklı alanları basar.
+
+### 2. Sebep
+- Emirhan'ın sorusu (2026-11-23): girdi dosyalarında yalnızca `tps` ve `workload` görünüyordu. Önceki sürümde yalnızca varsayılandan farklı girdiler yazılıydı; sunumda bir koşunun hangi girdilerle çalıştığının tamamı görünmeli.
+
+### 3. Sonuç
+- 42 koşunun 42'si orijinal `src/` çıktısıyla aynı (SHA-256). Varsayılanların açıkça verilmesi sonucu değiştirmiyor.
+
+### 4. Açık kalanlar
+- Yok (Oturum 10'daki kopya senkronizasyonu notu geçerli).

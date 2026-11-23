@@ -1,4 +1,4 @@
---- 10 TB, mainframe: --input case_05_veri_hacmi.json --kosu 1  [{"tps": 10000, "data_tb": 10}]  (cikis kodu 0, sha 79b6f13d2cc3)
+--- 10 TB, mainframe: --input case_05_veri_hacmi.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 79b6f13d2cc3)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -33,7 +33,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 100 TB, mainframe: --input case_05_veri_hacmi.json --kosu 2  [{"tps": 10000, "data_tb": 100}]  (cikis kodu 0, sha de1e17424edd)
+--- 100 TB, mainframe: --input case_05_veri_hacmi.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha de1e17424edd)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -68,7 +68,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 500 TB, mainframe: --input case_05_veri_hacmi.json --kosu 3  [{"tps": 10000, "data_tb": 500}]  (cikis kodu 0, sha fb8c0358d55f)
+--- 500 TB, mainframe: --input case_05_veri_hacmi.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fb8c0358d55f)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -103,7 +103,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 10 TB, x86: --input case_05_veri_hacmi.json --kosu 4  [{"tps": 10000, "data_tb": 10, "compare": true}]  (cikis kodu 0, sha 2eb7a5c6668a)
+--- 10 TB, x86: --input case_05_veri_hacmi.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 2eb7a5c6668a)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -150,7 +150,7 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $546,078/ay ($54.61/TPS)
   basabas personel orani: 2.15  (x86 personeli, ayni is yuku icin mainframe personelinin 2.15 katindan azsa x86 ucuz)
 
---- 100 TB, x86: --input case_05_veri_hacmi.json --kosu 5  [{"tps": 10000, "data_tb": 100, "compare": true}]  (cikis kodu 0, sha 506af41fc252)
+--- 100 TB, x86: --input case_05_veri_hacmi.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 506af41fc252)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -197,7 +197,7 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $553,120/ay ($55.31/TPS)
   basabas personel orani: 2.21  (x86 personeli, ayni is yuku icin mainframe personelinin 2.21 katindan azsa x86 ucuz)
 
---- 500 TB, x86: --input case_05_veri_hacmi.json --kosu 6  [{"tps": 10000, "data_tb": 500, "compare": true}]  (cikis kodu 0, sha 4eddad5fd858)
+--- 500 TB, x86: --input case_05_veri_hacmi.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 4eddad5fd858)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================

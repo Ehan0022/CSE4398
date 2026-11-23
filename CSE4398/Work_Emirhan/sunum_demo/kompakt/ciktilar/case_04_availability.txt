@@ -1,4 +1,4 @@
---- %99,99 + RPO 0 + RTO 120 dk: --input case_04_availability.json --kosu 1  [{"tps": 10000, "availability": 0.9999, "rpo_seconds": 0, "rto_minutes": 120, "compare": true}]  (cikis kodu 0, sha 0a34977f0b23)
+--- %99,99 + RPO 0 + RTO 120 dk: --input case_04_availability.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.9999, "rpo_seconds": 0, "rto_minutes": 120, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 0a34977f0b23)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -45,7 +45,7 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $626,111/ay ($62.61/TPS)
   basabas personel orani: 2.12  (x86 personeli, ayni is yuku icin mainframe personelinin 2.12 katindan azsa x86 ucuz)
 
---- %99,999: --input case_04_availability.json --kosu 2  [{"tps": 10000, "availability": 0.99999, "compare": true}]  (cikis kodu 0, sha 006498683ba9)
+--- %99,999: --input case_04_availability.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.99999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 006498683ba9)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -92,7 +92,7 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $626,111/ay ($62.61/TPS)
   basabas personel orani: 2.37  (x86 personeli, ayni is yuku icin mainframe personelinin 2.37 katindan azsa x86 ucuz)
 
---- mainframe %99,999 + RPO 0 + RTO 30 dk: --input case_04_availability.json --kosu 3  [{"tps": 10000, "availability": 0.99999, "rpo_seconds": 0, "rto_minutes": 30}]  (cikis kodu 1, sha 1e06a3455c4c)
+--- mainframe %99,999 + RPO 0 + RTO 30 dk: --input case_04_availability.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.99999, "rpo_seconds": 0, "rto_minutes": 30, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 1, sha 1e06a3455c4c)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -107,7 +107,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
 
 Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).
 
---- mainframe %99,999 dokum: --input case_04_availability.json --kosu 4  [{"tps": 10000, "availability": 0.99999}]  (cikis kodu 0, sha fecd3eb98ad4)
+--- mainframe %99,999 dokum: --input case_04_availability.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.99999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fecd3eb98ad4)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================

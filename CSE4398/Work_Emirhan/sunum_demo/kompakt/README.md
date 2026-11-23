@@ -7,7 +7,8 @@ Sunumda girdileri ve çıktıları kod üzerinde göstermek için. Model kodunun
 | Yol | Ne |
 |---|---|
 | `calistir.py` | `inputs/` altındaki bütün case'leri sırayla çalıştırır: her koşu için girdiyi, modelin ona karşılık gelen komutunu ve çıktıyı basar |
-| `inputs/case_01_referans.json` … `case_10_npv_ve_aralik.json` | 10 case, 42 koşu (ana demodaki senaryoların aynısı) |
+| `inputs/case_01_referans.json` … `case_10_npv_ve_aralik.json` | 10 case, 42 koşu (ana demodaki senaryoların aynısı); her koşuda tam girdi seti |
+| `inputs/_fiyat_parametreleri.json` | Modelin 43 kaynaklı fiyat/maliyet parametresi (senaryo girdisi değil; `prices` ile değiştirilir) |
 | `kod/common_model.py`, `mainframe_model.py`, `x86_model.py` | `src/` kopyası, yalnızca girdi okuma eklendi |
 | `kod/veri/` | Modelin okuduğu iki veri tablosu (z16 A01 kademeleri, DS8900F) |
 | `ciktilar/` | `calistir.py`'nin yazdığı tam çıktılar |
@@ -19,6 +20,7 @@ python sunum_demo/kompakt/calistir.py              # bütün case'ler, özet sat
 python sunum_demo/kompakt/calistir.py 3 7          # yalnızca Case 3 ve 7
 python sunum_demo/kompakt/calistir.py 4 --adim     # her koşudan önce Enter bekler (canlı sunum)
 python sunum_demo/kompakt/calistir.py 1 --tam      # model çıktısının tamamı
+python sunum_demo/kompakt/calistir.py --kisa       # girdi tablosunda yalnızca farklı alanlar
 ```
 
 Modeli doğrudan da çalıştırabilirsiniz (`kod/` klasöründen):
@@ -33,21 +35,39 @@ Birden fazla koşu içeren dosyada `--kosu N` ile biri seçilir. Koşu başka mo
 
 ## Girdi dosyası biçimi
 
+Her koşuda modelin bütün senaryo girdileri açıkça yazılıdır: verilmeyen bir girdi de varsayılan değeriyle ya da `null` olarak görünür. Böylece bir koşunun tam olarak hangi girdilerle çalıştığı dosyadan okunur.
+
 ```json
 {
   "case": 3,
   "baslik": "Latency hedefi: ...",
   "aciklama": "Bu case'te neyin neden değiştiği",
-  "ozet_deseni": "calistir.py'nin ekrana basacağı satırlar (regex)",
+  "ozet_deseni": "calistir.py'nin ekrana basacağı çıktı satırları (regex)",
+  "girdi_sozlugu": {
+    "latency_ms": {"varsayilan": null, "birim": "ms", "model": "ikisi",
+                   "aciklama": "Yanıt süresi hedefi. null = hedef yok"}
+  },
   "kosular": [
-    {"etiket": "p99 50 ms", "model": "mainframe", "girdi": {"tps": 10000, "latency_ms": 50}}
+    {"etiket": "p99 50 ms", "model": "mainframe",
+     "referanstan_farkli": ["latency_ms"],
+     "girdi": {"tps": 10000, "workload": "oltp_rw", "availability": 0.999,
+               "latency_ms": 50, "data_tb": 20, "...": "..."}}
   ]
 }
 ```
 
-`girdi` içindeki her anahtar aynı adlı komut satırı seçeneğine çevrilir (`latency_ms` → `--latency-ms`). `true` bir bayraktır (`"compare": true` → `--compare`), `false` ve `null` yazılmaz. Kullanılabilir anahtarlar modellerin `--help` çıktısındaki seçeneklerdir (`tps`, `availability`, `workload`, `latency_ms`, `data_tb`, `rpo_seconds`, `rto_minutes`, `backup_target`, `staff_ratio`, `npv`, `years`, `range`, `yearly`, `preset`, `avg_tps`, `compare`, …).
+- `girdi_sozlugu`: o case'te kullanılan modellerin her girdisi için varsayılan, birim, hangi modele ait olduğu ve kısa açıklama.
+- `girdi`: koşunun tam girdi seti. Mainframe koşusunda 25, x86 koşusunda 28 alan var.
+- `referanstan_farkli`: Case 1 referansından (10K TPS, diğer her şey varsayılan) farklı olan alanlar. `calistir.py` bunları `>>` ile işaretler.
+- `null`: o girdi verilmedi; anlamı açıklamada yazılı (ör. `rpo_seconds: null` = kısıt yok, `db: null` = iki veritabanı da aday).
+
+Her anahtar aynı adlı komut satırı seçeneğine çevrilir (`latency_ms` → `--latency-ms`). `true` bir bayraktır (`"compare": true` → `--compare`), `false` ve `null` yazılmaz.
+
+**Senaryo girdisi olmayanlar:** Fiyat ve maliyet parametreleri (43 adet: AWLC kademeleri, sunucu, disk, lisans, personel ücreti …) senaryo girdisi değil, modelin kaynaklı parametreleridir. Hepsi değerleriyle `inputs/_fiyat_parametreleri.json`'da. Değiştirmek için dosyanın bir kopyası düzenlenip koşunun `prices` alanına yolu yazılır. `--list-prices`, `--price-vintages`, `--calibration` ve `--demo` girdi değil, ayrı yardımcı komutlar olduğu için listede yok.
 
 Yeni bir senaryo için bir case dosyasını kopyalayıp `girdi` değerlerini değiştirmek yeterli.
+
+**Çalıştırıcı:** Her koşuda tam girdi tablosunu basar (değer, birim, açıklama). `--kisa` verilirse yalnızca referanstan farklı alanları basar.
 
 ## Koddaki değişiklikler (`src/` ile fark)
 
@@ -55,6 +75,6 @@ Yeni bir senaryo için bir case dosyasını kopyalayıp `girdi` değerlerini de�
 2. `mainframe_model.py` ve `x86_model.py`: `--input` / `--kosu` seçenekleri ve `parse_args` çağrısı girdiyi dosyadan genişletir. Girdi aynı argparse yolundan geçtiği için doğrulama ve varsayılanlar komut satırıyla birebir aynıdır.
 3. `mainframe_model.py`: veri klasörü `../data` yerine `kod/veri`.
 
-Model hesabına dokunulmadı. `calistir.py` her koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktıyla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır. Son koşu: 42 koşunun 42'si aynı.
+Model hesabına dokunulmadı. `calistir.py` her koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktıyla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır. Son koşu: 42 koşunun 42'si aynı. Bu, varsayılanların açıkça yazılmasının sonucu değiştirmediğini de gösterir.
 
 Model `src/` altında değişirse bu kopya eskir. O durumda üç dosya yeniden kopyalanıp yukarıdaki üç değişiklik tekrar uygulanmalıdır.

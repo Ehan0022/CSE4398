@@ -1,4 +1,4 @@
---- 1000 TPS: --input case_02_tps_olcegi.json --kosu 1  [{"tps": 1000, "compare": true}]  (cikis kodu 0, sha 866295d4e510)
+--- 1000 TPS: --input case_02_tps_olcegi.json --kosu 1  [{"tps": 1000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 866295d4e510)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -45,7 +45,7 @@ KARSILASTIRMA (1,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $129,279/ay ($129.28/TPS)
   basabas personel orani: 2.66  (x86 personeli, ayni is yuku icin mainframe personelinin 2.66 katindan azsa x86 ucuz)
 
---- 3000 TPS: --input case_02_tps_olcegi.json --kosu 2  [{"tps": 3000, "compare": true}]  (cikis kodu 0, sha 3e0db25dee17)
+--- 3000 TPS: --input case_02_tps_olcegi.json --kosu 2  [{"tps": 3000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 3e0db25dee17)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -92,7 +92,7 @@ KARSILASTIRMA (3,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $249,757/ay ($83.25/TPS)
   basabas personel orani: 2.37  (x86 personeli, ayni is yuku icin mainframe personelinin 2.37 katindan azsa x86 ucuz)
 
---- 30000 TPS: --input case_02_tps_olcegi.json --kosu 3  [{"tps": 30000, "compare": true}]  (cikis kodu 0, sha 599294fb8a22)
+--- 30000 TPS: --input case_02_tps_olcegi.json --kosu 3  [{"tps": 30000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 599294fb8a22)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -139,7 +139,7 @@ KARSILASTIRMA (30,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $1,173,986/ay ($39.13/TPS)
   basabas personel orani: 2.06  (x86 personeli, ayni is yuku icin mainframe personelinin 2.06 katindan azsa x86 ucuz)
 
---- 50000 TPS: --input case_02_tps_olcegi.json --kosu 4  [{"tps": 50000, "compare": true}]  (cikis kodu 0, sha 1f8adc11cb69)
+--- 50000 TPS: --input case_02_tps_olcegi.json --kosu 4  [{"tps": 50000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 1f8adc11cb69)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================

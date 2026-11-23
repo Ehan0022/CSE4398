@@ -1,4 +1,4 @@
---- steady_oltp: --input case_08_fiyatlama_abc.json --kosu 1  [{"yearly": true, "preset": "steady_oltp", "avg_tps": 10000}]  (cikis kodu 0, sha 5d38bbfbb401)
+--- steady_oltp: --input case_08_fiyatlama_abc.json --kosu 1  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "steady_oltp", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 5d38bbfbb401)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -53,7 +53,7 @@ Alternatif: Strateji B: Base kademe + On/Off CoD
   -> secilen strateji bundan $388,159 (%2.2) ucuz
 
 
---- batch_heavy: --input case_08_fiyatlama_abc.json --kosu 2  [{"yearly": true, "preset": "batch_heavy", "avg_tps": 10000}]  (cikis kodu 0, sha dc289552fdd4)
+--- batch_heavy: --input case_08_fiyatlama_abc.json --kosu 2  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "batch_heavy", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha dc289552fdd4)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -110,7 +110,7 @@ Alternatif: Strateji A: Permanent peak kademe
   -> secilen strateji bundan $1,178,755 (%4.8) ucuz
 
 
---- retail_bursty: --input case_08_fiyatlama_abc.json --kosu 3  [{"yearly": true, "preset": "retail_bursty", "avg_tps": 10000}]  (cikis kodu 0, sha 8eb0921526a8)
+--- retail_bursty: --input case_08_fiyatlama_abc.json --kosu 3  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "retail_bursty", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 8eb0921526a8)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================

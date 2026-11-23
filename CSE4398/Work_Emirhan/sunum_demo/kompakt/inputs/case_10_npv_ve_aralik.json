@@ -3,76 +3,489 @@
   "baslik": "NPV ufku (3 / 5 / 10 yil) ve belirsizlik araligi (--range)",
   "aciklama": "NPV ufku (3/5/10 yıl) ve --range. Seviyelendirilmiş $/TPS ufukla değişir; --range low/mid/high, tornado ve eşleştirilmiş senaryoları basar.",
   "ozet_deseni": "NPV:|seviyelendirilmis|^\\s+\\d+ \\|\\s+[\\d,]+ \\| 3931|^\\s+(low|mid|high)\\s|x86_lehine|^\\s+orta\\s|mainframe_lehine|ortak_(low|high)",
+  "not": "Her kosuda modelin butun senaryo girdileri acikca yazilidir. 'referanstan_farkli', Case 1 referansindan (10K TPS, diger her sey varsayilan) farkli olan alanlardir. null = o girdi verilmedi (anlami girdi_sozlugu'nde). Fiyat ve maliyet parametreleri _fiyat_parametreleri.json'dadir.",
+  "girdi_sozlugu": {
+    "tps": {
+      "varsayilan": null,
+      "birim": "islem/s",
+      "model": "ikisi",
+      "aciklama": "Statik modda hedef throughput (tepe TPS). Statik modda zorunlu; yillik modda kullanilmaz."
+    },
+    "workload": {
+      "varsayilan": "oltp_rw",
+      "birim": "-",
+      "model": "ikisi",
+      "aciklama": "Is yuku profili, islem basina SQL bilesimi: redp_light / tpcb_like / oltp_rw / oltp_heavy."
+    },
+    "availability": {
+      "varsayilan": 0.999,
+      "birim": "oran (0-1)",
+      "model": "ikisi",
+      "aciklama": "Hedef yillik erisilebilirlik (0.999 = %99,9)."
+    },
+    "rpo_seconds": {
+      "varsayilan": null,
+      "birim": "s",
+      "model": "ikisi",
+      "aciklama": "Saha felaketinde kabul edilen en fazla veri kaybi. null = kisit yok."
+    },
+    "rto_minutes": {
+      "varsayilan": null,
+      "birim": "dk",
+      "model": "ikisi",
+      "aciklama": "Saha felaketinde kabul edilen en fazla kurtarma suresi. null = kisit yok."
+    },
+    "latency_ms": {
+      "varsayilan": null,
+      "birim": "ms",
+      "model": "ikisi",
+      "aciklama": "Yanit suresi hedefi. null = hedef yok (yalnizca kullanim tavani)."
+    },
+    "latency_percentile": {
+      "varsayilan": 99,
+      "birim": "persentil",
+      "model": "ikisi",
+      "aciklama": "Latency hedefinin persentili: 50 / 90 / 95 / 99."
+    },
+    "data_tb": {
+      "varsayilan": 20,
+      "birim": "TB",
+      "model": "ikisi",
+      "aciklama": "Mantiksal veri hacmi (indeksler dahil)."
+    },
+    "data_growth": {
+      "varsayilan": 0.15,
+      "birim": "oran/yil",
+      "model": "ikisi",
+      "aciklama": "Yillik veri buyumesi."
+    },
+    "sql_reads": {
+      "varsayilan": null,
+      "birim": "SQL/islem",
+      "model": "ikisi",
+      "aciklama": "Ozel bilesim: nokta okuma sayisi. null = workload profilinden."
+    },
+    "sql_range_reads": {
+      "varsayilan": null,
+      "birim": "SQL/islem",
+      "model": "ikisi",
+      "aciklama": "Ozel bilesim: aralik okuma sayisi. null = workload profilinden."
+    },
+    "sql_writes": {
+      "varsayilan": null,
+      "birim": "SQL/islem",
+      "model": "ikisi",
+      "aciklama": "Ozel bilesim: yazma sayisi. null = workload profilinden."
+    },
+    "backup_target": {
+      "varsayilan": "auto",
+      "birim": "-",
+      "model": "yalnizca mainframe",
+      "aciklama": "Mainframe yedek hedefi: auto (kisitlari karsilayan en ucuz) / ts7770 / cos_onprem / aws_s3."
+    },
+    "staff_ratio": {
+      "varsayilan": 1.0,
+      "birim": "kat",
+      "model": "yalnizca x86",
+      "aciklama": "STAFF_RATIO_X86: x86 personelinin mainframe personeline orani (1,0 = notr)."
+    },
+    "db": {
+      "varsayilan": null,
+      "birim": "-",
+      "model": "yalnizca x86",
+      "aciklama": "x86 veritabani filtresi: postgresql / oracle. null = ikisi de aday."
+    },
+    "hypervisor": {
+      "varsayilan": null,
+      "birim": "-",
+      "model": "yalnizca x86",
+      "aciklama": "x86 sanallastirma filtresi: vsphere / ocpv. null = ikisi de aday."
+    },
+    "placement": {
+      "varsayilan": null,
+      "birim": "-",
+      "model": "yalnizca x86",
+      "aciklama": "x86 yerlesim filtresi: vm / k8s / openshift. null = hepsi aday."
+    },
+    "price_epoch": {
+      "varsayilan": "2025-mid",
+      "birim": "-",
+      "model": "yalnizca x86",
+      "aciklama": "Emtia fiyat donemi (sunucu, bellek, disk fiyatlari)."
+    },
+    "allow_extrapolation": {
+      "varsayilan": false,
+      "birim": "bayrak",
+      "model": "yalnizca x86",
+      "aciklama": "Kapasite kalibrasyon araliginin disina cikmaya izin ver."
+    },
+    "compare": {
+      "varsayilan": false,
+      "birim": "bayrak",
+      "model": "yalnizca x86",
+      "aciklama": "Mainframe ile yan yana karsilastir; oran ve basabas personel oranini bas."
+    },
+    "range": {
+      "varsayilan": false,
+      "birim": "bayrak",
+      "model": "ikisi",
+      "aciklama": "Kaynakli araliklarla low / mid / high ve tek-parametre salinimi (tornado)."
+    },
+    "npv": {
+      "varsayilan": false,
+      "birim": "bayrak",
+      "model": "ikisi",
+      "aciklama": "Nakit akisi ve NPV hesapla."
+    },
+    "years": {
+      "varsayilan": 5,
+      "birim": "yil",
+      "model": "ikisi",
+      "aciklama": "NPV ufku."
+    },
+    "discount_rate": {
+      "varsayilan": 0.07,
+      "birim": "oran/yil",
+      "model": "ikisi",
+      "aciklama": "NPV nominal iskonto orani."
+    },
+    "tps_growth": {
+      "varsayilan": 0.1,
+      "birim": "oran/yil",
+      "model": "ikisi",
+      "aciklama": "NPV icin yillik TPS buyumesi."
+    },
+    "yearly": {
+      "varsayilan": false,
+      "birim": "bayrak",
+      "model": "ikisi",
+      "aciklama": "Yillik mod: saatlik yuk profili ve A / B / C fiyatlama stratejileri."
+    },
+    "preset": {
+      "varsayilan": null,
+      "birim": "-",
+      "model": "ikisi",
+      "aciklama": "Yillik mod yuk profili: steady_oltp / batch_heavy / retail_bursty. null = ozel profil."
+    },
+    "avg_tps": {
+      "varsayilan": 10000,
+      "birim": "islem/s",
+      "model": "ikisi",
+      "aciklama": "Yillik mod: yillik ortalama TPS."
+    },
+    "peak_ratio": {
+      "varsayilan": null,
+      "birim": "kat",
+      "model": "yalnizca mainframe",
+      "aciklama": "Yillik mod: tepe / ortalama orani. null = preset'ten."
+    },
+    "peak_days": {
+      "varsayilan": null,
+      "birim": "gun",
+      "model": "yalnizca mainframe",
+      "aciklama": "Yillik mod: yillik tepe gun sayisi. null = preset'ten."
+    },
+    "csv": {
+      "varsayilan": null,
+      "birim": "dosya oneki",
+      "model": "yalnizca mainframe",
+      "aciklama": "Yillik mod: saatlik ve aylik CSV ciktisi. null = yazma."
+    },
+    "prices": {
+      "varsayilan": null,
+      "birim": "dosya",
+      "model": "ikisi",
+      "aciklama": "Kullanici fiyat dosyasi (JSON). null = kaynakli fiyat seti (bkz. _fiyat_parametreleri.json)."
+    }
+  },
   "kosular": [
     {
       "etiket": "mainframe NPV 3 yil",
       "model": "mainframe",
+      "referanstan_farkli": [
+        "npv",
+        "years"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "backup_target": "auto",
+        "range": false,
         "npv": true,
-        "years": 3
+        "years": 3,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "peak_ratio": null,
+        "peak_days": null,
+        "csv": null,
+        "prices": null
       }
     },
     {
       "etiket": "mainframe NPV 5 yil",
       "model": "mainframe",
+      "referanstan_farkli": [
+        "npv"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "backup_target": "auto",
+        "range": false,
         "npv": true,
-        "years": 5
+        "years": 5,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "peak_ratio": null,
+        "peak_days": null,
+        "csv": null,
+        "prices": null
       }
     },
     {
       "etiket": "mainframe NPV 10 yil",
       "model": "mainframe",
+      "referanstan_farkli": [
+        "npv",
+        "years"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "backup_target": "auto",
+        "range": false,
         "npv": true,
-        "years": 10
+        "years": 10,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "peak_ratio": null,
+        "peak_days": null,
+        "csv": null,
+        "prices": null
       }
     },
     {
       "etiket": "x86 NPV 3 yil",
       "model": "x86",
+      "referanstan_farkli": [
+        "npv",
+        "years"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "staff_ratio": 1.0,
+        "db": null,
+        "hypervisor": null,
+        "placement": null,
+        "price_epoch": "2025-mid",
+        "allow_extrapolation": false,
+        "compare": false,
+        "range": false,
         "npv": true,
-        "years": 3
+        "years": 3,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "prices": null
       }
     },
     {
       "etiket": "x86 NPV 5 yil",
       "model": "x86",
+      "referanstan_farkli": [
+        "npv"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "staff_ratio": 1.0,
+        "db": null,
+        "hypervisor": null,
+        "placement": null,
+        "price_epoch": "2025-mid",
+        "allow_extrapolation": false,
+        "compare": false,
+        "range": false,
         "npv": true,
-        "years": 5
+        "years": 5,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "prices": null
       }
     },
     {
       "etiket": "x86 NPV 10 yil",
       "model": "x86",
+      "referanstan_farkli": [
+        "npv",
+        "years"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "staff_ratio": 1.0,
+        "db": null,
+        "hypervisor": null,
+        "placement": null,
+        "price_epoch": "2025-mid",
+        "allow_extrapolation": false,
+        "compare": false,
+        "range": false,
         "npv": true,
-        "years": 10
+        "years": 10,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "prices": null
       }
     },
     {
       "etiket": "mainframe --range",
       "model": "mainframe",
+      "referanstan_farkli": [
+        "range"
+      ],
       "girdi": {
         "tps": 10000,
-        "range": true
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "backup_target": "auto",
+        "range": true,
+        "npv": false,
+        "years": 5,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "peak_ratio": null,
+        "peak_days": null,
+        "csv": null,
+        "prices": null
       }
     },
     {
       "etiket": "x86 --range --compare",
       "model": "x86",
+      "referanstan_farkli": [
+        "compare",
+        "range"
+      ],
       "girdi": {
         "tps": 10000,
+        "workload": "oltp_rw",
+        "availability": 0.999,
+        "rpo_seconds": null,
+        "rto_minutes": null,
+        "latency_ms": null,
+        "latency_percentile": 99,
+        "data_tb": 20,
+        "data_growth": 0.15,
+        "sql_reads": null,
+        "sql_range_reads": null,
+        "sql_writes": null,
+        "staff_ratio": 1.0,
+        "db": null,
+        "hypervisor": null,
+        "placement": null,
+        "price_epoch": "2025-mid",
+        "allow_extrapolation": false,
+        "compare": true,
         "range": true,
-        "compare": true
+        "npv": false,
+        "years": 5,
+        "discount_rate": 0.07,
+        "tps_growth": 0.1,
+        "yearly": false,
+        "preset": null,
+        "avg_tps": 10000,
+        "prices": null
       }
     }
   ]
