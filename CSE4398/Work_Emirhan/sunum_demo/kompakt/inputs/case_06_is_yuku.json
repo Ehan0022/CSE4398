@@ -1,0 +1,50 @@
+{
+  "case": 6,
+  "baslik": "Is yuku profili: redp_light / tpcb_like / (oltp_rw = Case 1, 3) / oltp_heavy",
+  "aciklama": "Yalnızca iş yükü profili (işlem başına SQL bileşimi) değişir. İşlem başına CPU ve I/O değişir, kademe ve yazılım maliyeti onunla birlikte değişir.",
+  "ozet_deseni": "is yuku profili|islem / s / PCI|KADEME|AYLIK|yazilim:|I/O:|DUGUMU|mainframe:|x86: ",
+  "kosular": [
+    {
+      "etiket": "redp_light",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "workload": "redp_light"
+      }
+    },
+    {
+      "etiket": "tpcb_like",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "workload": "tpcb_like"
+      }
+    },
+    {
+      "etiket": "oltp_heavy",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "workload": "oltp_heavy"
+      }
+    },
+    {
+      "etiket": "tpcb_like, x86",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "workload": "tpcb_like",
+        "compare": true
+      }
+    },
+    {
+      "etiket": "oltp_heavy, x86",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "workload": "oltp_heavy",
+        "compare": true
+      }
+    }
+  ]
+}

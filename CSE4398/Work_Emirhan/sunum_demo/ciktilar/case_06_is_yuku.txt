@@ -1,0 +1,199 @@
+--- redp_light: python src/mainframe_model.py --tps 10000 --workload redp_light  (cikis kodu 0, sha 530b45d39d92)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=redp_light | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: redp_light: 0 nokta okuma + 0 yazma SQL, w=1.00, sync I/O=0.05, IOPS=0.11
+     -> 7.94 islem / s / PCI (zIIP payi f=0.00 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-601 (1 CP, 1,496 PCI, 185 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 0.66
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,689
+     utilization: 84.2%  (x1 frame)
+     AYLIK maliyet: $265,149
+       yazilim:  $108,083  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $13,320  (1 frame; 0 zIIP, f=0.00)
+       bakim:    $6,660
+       personel: $93,948  (7.0 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
+     I/O: 1,090 IOPS, I/O basina 90 us, islem basina D_io = 0.00 ms
+       yedekleme: $5,376  (on-prem nesne depolama: 2 site x 147 TB; image copy 144 TB + log 3 TB; geri donus ~2.0 sa)
+       uretim disi: $27,637  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
+--- tpcb_like: python src/mainframe_model.py --tps 10000 --workload tpcb_like  (cikis kodu 0, sha 6afdcb30eb55)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=tpcb_like | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: tpcb_like: 1 nokta okuma + 4 yazma SQL, w=4.61, sync I/O=1.20, IOPS=3.20
+     -> 1.72 islem / s / PCI (zIIP payi f=0.10 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-429 (29 CP, 5,876 PCI, 720 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 2.61
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,122
+     utilization: 88.9%  (x1 frame)
+     AYLIK maliyet: $608,811
+       yazilim:  $235,897  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $29,798  (1 frame; 1 zIIP, f=0.10)
+       bakim:    $14,899
+       personel: $254,316  (18.8 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
+     I/O: 32,000 IOPS, I/O basina 85 us, islem basina D_io = 0.10 ms
+       yedekleme: $5,635  (on-prem nesne depolama: 2 site x 173 TB; image copy 144 TB + log 29 TB; geri donus ~2.4 sa)
+       uretim disi: $58,143  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
+--- oltp_heavy: python src/mainframe_model.py --tps 10000 --workload oltp_heavy  (cikis kodu 0, sha 716def924785)
+======================================================================
+MAINFRAME FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_heavy | uptime hedefi=99.900000%
+         latency hedefi: yok -> default %90 utilization tavani
+  -> Kapasite koprusu: ~7.94 REDP-islemi / s / PCI [REDP+LSPR]
+     is yuku profili: oltp_heavy: 30 nokta okuma + 6 yazma SQL, w=16.37, sync I/O=7.00, IOPS=10.00
+     -> 0.49 islem / s / PCI (zIIP payi f=0.10 haric)
+  -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
+       M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
+       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
+  -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
+     Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
+     availability: 99.96193% (3.34 saat/yil kesinti; aralik 99.83903% - 99.99267%)
+  -> SECILEN KADEME: 3931-532 (32 CP, 20,924 PCI, 2,507 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 9.29
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,150
+     utilization: 88.7%  (x1 frame)
+     AYLIK maliyet: $1,328,424
+       yazilim:  $454,763  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $81,835  (1 frame; 2 zIIP, f=0.10)
+       bakim:    $40,918
+       personel: $617,494  (45.7 FTE, senaryo=mid)
+       enerji:   $2,628
+       storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
+     I/O: 100,000 IOPS, I/O basina 65 us, islem basina D_io = 0.45 ms
+       yedekleme: $5,764  (on-prem nesne depolama: 2 site x 186 TB; image copy 144 TB + log 42 TB; geri donus ~2.6 sa)
+       uretim disi: $117,528  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
+
+
+--- tpcb_like, x86: python src/x86_model.py --tps 10000 --workload tpcb_like --compare  (cikis kodu 0, sha 3ac41e832471)
+======================================================================
+x86 FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=tpcb_like | uptime hedefi=99.900000% | fiyat donemi=2025-mid
+         latency hedefi: yok -> x86 kullanim tavani %70
+     is yuku profili: tpcb_like: 1 nokta + 0 aralik okuma + 4 yazma, x86 goreli agirlik=0.44, IOPS=3.20
+     kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
+  -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
+  -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
+     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+  -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
+     cekirdek basina 2,103 TPS; yuku tasiyan ham verim 33,643 TPS; kullanim %29.7 (tavan %70.0)
+     sabit gecikme (ag + I/O + replikasyon) 1.35 ms; p99 ~ 4.46 ms
+     uygulama katmani: 1.3 mesgul cekirdek -> site basina 2 x 2x8c
+     toplam 5 fiziksel sunucu, 80 cekirdek
+     AYLIK maliyet: $269,535  ($26.95/TPS)
+       yazilim/abonelik: $5,210
+       donanim:  $932   bakim: $233   enerji: $189
+       personel: $254,316  (18.8 FTE, oran 1)
+       storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
+       yedekleme: $4,917  (cos_onprem, site basina 101 TB)
+       uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
+     DR payi %0.0; uygulama katmani payi %0.7
+     fiyat modu: kaynakli fiyat seti
+  Yigin secim motoru (yigin basina en ucuz):
+     $    269,535  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    269,535  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    271,535  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x8c
+     $    271,535  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x8c
+     $    282,720  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    284,720  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x8c
+     $    305,264  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    306,864  OpenShift Virt / VM / Oracle               X1 2x8c k=2
+
+
+KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
+  mainframe: $     608,811/ay  ($60.88/TPS)  M1 3931-429
+  x86:       $     269,535/ay  ($26.95/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+  oran (mainframe / x86): 2.26
+  personel haric: mainframe $354,495 | x86 $15,219 (oran 23.29)
+  personel orani 1.25: x86 $333,114/ay ($33.31/TPS)
+  personel orani 2: x86 $523,851/ay ($52.39/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $272,772/ay ($27.28/TPS), personel haric $18,455; vSphere / VM / PostgreSQL+Patroni X1 2x16c
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $279,837/ay ($27.98/TPS)
+  basabas personel orani: 2.33  (x86 personeli, ayni is yuku icin mainframe personelinin 2.33 katindan azsa x86 ucuz)
+
+--- oltp_heavy, x86: python src/x86_model.py --tps 10000 --workload oltp_heavy --compare  (cikis kodu 0, sha a5396965d14a)
+======================================================================
+x86 FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_heavy | uptime hedefi=99.900000% | fiyat donemi=2025-mid
+         latency hedefi: yok -> x86 kullanim tavani %70
+     is yuku profili: oltp_heavy: 30 nokta + 0 aralik okuma + 6 yazma, x86 goreli agirlik=1.31, IOPS=10.00
+     kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
+  -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
+  -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
+     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+  -> VERITABANI DUGUMU: R760-sinifi 2x12c (24 cekirdek); site basina {'A': 3}; tek yazici (birincil)
+     cekirdek basina 678 TPS; yuku tasiyan ham verim 16,270 TPS; kullanim %61.5 (tavan %70.0)
+     sabit gecikme (ag + I/O + replikasyon) 6.82 ms; p99 ~ 24.44 ms
+     uygulama katmani: 1.0 mesgul cekirdek -> site basina 2 x 2x8c
+     toplam 5 fiziksel sunucu, 104 cekirdek
+     AYLIK maliyet: $634,460  ($63.45/TPS)
+       yazilim/abonelik: $6,210
+       donanim:  $979   bakim: $245   enerji: $209
+       personel: $617,494  (45.7 FTE, oran 1)
+       storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
+       yedekleme: $5,046  (cos_onprem, site basina 114 TB)
+       uretim disi: $3,973  (NONPROD_FACTOR_X86=0.5)
+     DR payi %0.0; uygulama katmani payi %0.3
+     fiyat modu: kaynakli fiyat seti
+  Yigin secim motoru (yigin basina en ucuz):
+     $    634,460  vSphere / VM / PostgreSQL+Patroni          X1 2x12c
+     $    634,460  vSphere / K8s / PostgreSQL+Patroni         X1 2x12c
+     $    636,460  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    636,460  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    652,145  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x12c
+     $    654,145  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    687,758  vSphere / VM / Oracle                      X1 2x12c k=2
+     $    689,358  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+
+
+KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
+  mainframe: $   1,328,424/ay  ($132.84/TPS)  M1 3931-532
+  x86:       $     634,460/ay  ($63.45/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x12c
+  oran (mainframe / x86): 2.09
+  personel haric: mainframe $710,931 | x86 $16,966 (oran 41.90)
+  personel orani 1.25: x86 $788,833/ay ($78.88/TPS)
+  personel orani 2: x86 $1,251,953/ay ($125.20/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $771,218/ay ($77.12/TPS), personel haric $153,724; vSphere / VM / Oracle X1 2x8c k=7
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $646,380/ay ($64.64/TPS)
+  basabas personel orani: 2.12  (x86 personeli, ayni is yuku icin mainframe personelinin 2.12 katindan azsa x86 ucuz)
+

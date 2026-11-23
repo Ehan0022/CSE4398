@@ -1,0 +1,35 @@
+{
+  "case": 9,
+  "baslik": "Personel orani (STAFF_RATIO_X86): (1,0 = Case 1) / 1,25 / 2,16 / 3,0",
+  "aciklama": "Yalnızca x86 personel oranı (STAFF_RATIO_X86) değişir. Başabaş oranı ~2,16; bunun üstünde mainframe öne geçer.",
+  "ozet_deseni": "personel:|mainframe:|x86: |oran \\(",
+  "kosular": [
+    {
+      "etiket": "oran 1.25",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "staff_ratio": 1.25,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "oran 2.16",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "staff_ratio": 2.16,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "oran 3.0",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "staff_ratio": 3.0,
+        "compare": true
+      }
+    }
+  ]
+}

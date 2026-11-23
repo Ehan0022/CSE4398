@@ -1,0 +1,169 @@
+--- steady_oltp: --input case_08_fiyatlama_abc.json --kosu 1  [{"yearly": true, "preset": "steady_oltp", "avg_tps": 10000}]  (cikis kodu 0, sha 5d38bbfbb401)
+======================================================================
+MAINFRAME YILLIK SIMULASYON MODELI
+======================================================================
+  Workload: steady_oltp - Bankacilik core / kurumsal OLTP - duzgun trafik
+    yillik ortalama: 10,000 TPS  |  peak saat: 15,000 TPS
+    peak/avg orani: 1.50x
+  Availability hedefi: 99.900000%  |  is yuku: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+
+======================================================================
+YILLIK SIMULASYON OZETI
+======================================================================
+Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-532 (32 CP, 20,924 PCI, 2,507 MSU)  [Max39]
+  Corridor tavani:   3931-632 (32 CP, 32,963 PCI, 3,864 MSU)
+  Utilization (tavana gore): ort. 49.1%  maks. 73.7%
+  Yazilim (consumption, MSU-saat):$    5,777,248
+  Donanim + bakim + enerji:       $    1,504,566
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $    8,309,219
+  Uretim disi ortamlar:           $    1,474,352
+  TFP corridor kullanimi:         $        6,977
+  TOPLAM:                         $   17,231,666
+
+Alternatif: Strateji A: Permanent peak kademe
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-539 (39 CP, 24,827 PCI, 2,950 MSU)  [Max39]
+  Utilization (tavana gore): ort. 65.2%  maks. 97.8%
+  Yazilim (R4HA):                 $    5,856,099
+  Donanim + bakim + enerji:       $    1,738,746
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $    8,309,219
+  Uretim disi ortamlar:           $    1,536,958
+  TOPLAM:                         $   17,600,326
+  -> secilen strateji bundan $368,660 (%2.1) ucuz
+
+Alternatif: Strateji B: Base kademe + On/Off CoD
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-538 (38 CP, 24,274 PCI, 2,890 MSU)  [Max39]
+  CoD tepe kademe:   3931-539 (39 CP, 24,827 PCI, 2,950 MSU)  (261 gun / 365)
+  Utilization (tavana gore): ort. 65.5%  maks. 97.8%
+  Yazilim (R4HA):                 $    5,856,099
+  Donanim + bakim + enerji:       $    1,705,566
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $    8,309,219
+  Uretim disi ortamlar:           $    1,530,322
+  On/Off CoD:                     $       59,315
+  TOPLAM:                         $   17,619,825
+  -> secilen strateji bundan $388,159 (%2.2) ucuz
+
+
+--- batch_heavy: --input case_08_fiyatlama_abc.json --kosu 2  [{"yearly": true, "preset": "batch_heavy", "avg_tps": 10000}]  (cikis kodu 0, sha dc289552fdd4)
+======================================================================
+MAINFRAME YILLIK SIMULASYON MODELI
+======================================================================
+  Workload: batch_heavy - Batch agirlikli - ay sonu, vergi donemi
+    yillik ortalama: 10,000 TPS  |  peak saat: 25,000 TPS
+    peak/avg orani: 2.50x
+  Availability hedefi: 99.900000%  |  is yuku: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+
+======================================================================
+YILLIK SIMULASYON OZETI
+======================================================================
+Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-619 (19 CP, 21,303 PCI, 2,552 MSU)  [Max39]
+  Corridor tavani:   3931-625 (25 CP, 26,704 PCI, 3,157 MSU)
+  CoD tepe kademe:   3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  (21 gun / 365)
+  Utilization (tavana gore): ort. 58.6%  maks. 99.2%
+  Yazilim (consumption, MSU-saat):$    7,853,874
+  Donanim + bakim + enerji:       $    1,561,101
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   11,881,037
+  Uretim disi ortamlar:           $    1,900,984
+  TFP corridor kullanimi:         $       31,852
+  On/Off CoD:                     $      121,650
+  TOPLAM:                         $   23,509,802
+
+Alternatif: Strateji B: Base kademe + On/Off CoD
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-624 (24 CP, 25,806 PCI, 3,059 MSU)  [Max39]
+  CoD tepe kademe:   3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  (30 gun / 365)
+  Utilization (tavana gore): ort. 60.5%  maks. 99.9%
+  Yazilim (R4HA):                 $    7,794,268
+  Donanim + bakim + enerji:       $    1,831,281
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   11,881,037
+  Uretim disi ortamlar:           $    1,943,099
+  On/Off CoD:                     $      132,722
+  TOPLAM:                         $   23,741,710
+  -> secilen strateji bundan $231,908 (%1.0) ucuz
+
+Alternatif: Strateji A: Permanent peak kademe
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  [Max39]
+  Utilization (tavana gore): ort. 39.7%  maks. 99.2%
+  Yazilim (R4HA):                 $    7,794,268
+  Donanim + bakim + enerji:       $    2,730,921
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   11,881,037
+  Uretim disi ortamlar:           $    2,123,027
+  TOPLAM:                         $   24,688,556
+  -> secilen strateji bundan $1,178,755 (%4.8) ucuz
+
+
+--- retail_bursty: --input case_08_fiyatlama_abc.json --kosu 3  [{"yearly": true, "preset": "retail_bursty", "avg_tps": 10000}]  (cikis kodu 0, sha 8eb0921526a8)
+======================================================================
+MAINFRAME YILLIK SIMULASYON MODELI
+======================================================================
+  Workload: retail_bursty - Perakende / e-ticaret - Black Friday, Noel
+    yillik ortalama: 10,000 TPS  |  peak saat: 35,000 TPS
+    peak/avg orani: 3.50x
+  Availability hedefi: 99.900000%  |  is yuku: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
+
+======================================================================
+YILLIK SIMULASYON OZETI
+======================================================================
+Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-717 (17 CP, 28,938 PCI, 3,404 MSU)  [Max39]
+  Corridor tavani:   3931-722 (22 CP, 35,537 PCI, 4,166 MSU)
+  CoD tepe kademe:   3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  (20 gun / 365)
+  Utilization (tavana gore): ort. 43.9%  maks. 99.9%
+  Yazilim (consumption, MSU-saat):$    9,578,637
+  Donanim + bakim + enerji:       $    2,019,201
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   15,036,404
+  Uretim disi ortamlar:           $    2,337,557
+  TFP corridor kullanimi:         $       13,270
+  On/Off CoD:                     $      130,943
+  TOPLAM:                         $   29,275,316
+
+Alternatif: Strateji B: Base kademe + On/Off CoD
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-717 (17 CP, 28,938 PCI, 3,404 MSU)  [Max39]
+  CoD tepe kademe:   3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  (20 gun / 365)
+  Utilization (tavana gore): ort. 53.1%  maks. 99.9%
+  Yazilim (R4HA):                 $    9,578,592
+  Donanim + bakim + enerji:       $    2,019,201
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   15,036,404
+  Uretim disi ortamlar:           $    2,337,548
+  On/Off CoD:                     $      185,181
+  TOPLAM:                         $   29,316,230
+  -> secilen strateji bundan $40,914 (%0.1) ucuz
+
+Alternatif: Strateji A: Permanent peak kademe
+  Topoloji:          M1: Single-frame sysplex (ICF)
+  Base kademe:       3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  [Max39]
+  Utilization (tavana gore): ort. 28.0%  maks. 98.1%
+  Yazilim (R4HA):                 $    9,578,594
+  Donanim + bakim + enerji:       $    3,746,901
+  Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
+  Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
+  Personel (mid):                 $   15,036,404
+  Uretim disi ortamlar:           $    2,683,088
+  TOPLAM:                         $   31,204,290
+  -> secilen strateji bundan $1,928,974 (%6.2) ucuz
+
+

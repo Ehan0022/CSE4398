@@ -1,0 +1,47 @@
+{
+  "case": 3,
+  "baslik": "Latency hedefi: yok / p99 50 ms / 20 ms / 10 ms (mainframe kademesi)",
+  "aciklama": "Yalnızca latency hedefi değişir. Sıkı p99 hedefi kuyruk modelinde (M/M/1) izin verilen kullanım oranını düşürür, model daha büyük kademe seçer.",
+  "ozet_deseni": "KADEME|tavani|utilization:|tahmini p99|p99 ~|kullanim %|AYLIK",
+  "kosular": [
+    {
+      "etiket": "hedef yok",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000
+      }
+    },
+    {
+      "etiket": "p99 50 ms",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "latency_ms": 50
+      }
+    },
+    {
+      "etiket": "p99 20 ms",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "latency_ms": 20
+      }
+    },
+    {
+      "etiket": "p99 10 ms",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "latency_ms": 10
+      }
+    },
+    {
+      "etiket": "x86, p99 20 ms",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "latency_ms": 20
+      }
+    }
+  ]
+}

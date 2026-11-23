@@ -830,3 +830,54 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - `docs/kopruler_v2.md`: dört düzeltme ve iki yeni kural. v1 düzenlenmez.
 - RAC ölçeklenmesi için USL kaynağı. Sunucu fiyatı için yapılandırması belli bir kamu ihale kaydı.
 - Değerlendirme #6'dan: drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu, L4+ AWLC fiyatları, Parallel Sysplex. Citus da simetrik sınırlama olarak açık.
+
+---
+
+## 2026-11-23 — Oturum 9: Hocaya sunum için demo senaryoları ve slayt içeriği
+
+### 1. Aksiyon
+- Yeni klasör `sunum_demo/` açıldı. Model kodu ve orijinal tasarım dokümanları değiştirilmedi.
+- **Demo (`sunum_demo/DEMO_SENARYOLARI.md`, `demo_calistir.py`, `ciktilar/`):**
+  - 10 senaryo, her biri çıktının farklı bir kısmını oynatır: (1) referans 10K TPS, (2) TPS ölçeği, (3) latency hedefi, (4) availability / RPO / RTO, (5) veri hacmi, (6) iş yükü profili, (7) yedek hedefi, (8) fiyatlama stratejileri A / B / C, (9) personel oranı, (10) NPV ufku ve `--range`.
+  - Betik 42 komutu modellere koşturur, tam çıktıları `ciktilar/case_NN_*.txt`'ye yazar ve 42 çıktının SHA-256 ile birbirinden farklı olduğunu doğrular. Aynı çıktıyı verecek tekrarlar (ör. Case 2'deki 10K noktası) çıkarılıp ilgili case'e atıfla verildi.
+- **Slayt içeriği (`sunum_demo/slaytlar/`):** 98 slayt + isteğe bağlı köprü haritası.
+  - Giriş 3; mainframe 14 katman × 2 = 28; açık sistem 14 katman ve opsiyon × 2 = 28; köprüler KB-01 – KB-18 × 2 = 36; kapanış 3.
+  - Her slaytta başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi ve konuşmacı notu.
+  - Kapsam dışılar (MQ, z16 A02 rack-mount, Parallel Sysplex / Citus) giriş ve kapanışta sınırlılık olarak.
+- Modellerin test takımı koşturuldu: 54 test geçti.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-23): hocaya sunum için modelleri gerçekten çalıştıran ve farklı sonuç verdiği doğrulanmış 10 demo girdisi; katman ve köprü başına ikişer slaytlık, akademik bakışla yazılmış içerik.
+- Dokümanlardaki bazı tablolar Adım 7 öncesine ait (ör. v3 §5.5, §6.6, §6.7'deki $846.187'li satırlar). Sunumun tek bir tutarlı sayı kümesine dayanması için bütün sayılar güncel koşudan alındı.
+
+### 3. Sonuç
+- Demo bulguları (hepsi güncel modelden):
+  - 10K TPS: mainframe $113,93, x86 $53,66, başabaş personel oranı 2,16.
+  - Latency hedefi mainframe'i alt-kapasite 5xx'ten tam hızlı 7xx'e taşır (yok → 10 ms: 3931-524 → 714, +%4,5).
+  - %99,99 + RPO 0 + elle geçişte x86 Oracle Data Guard'a geçer (Patroni X2 asenkron); %99,999 + RPO 0 + RTO 30 dk mainframe'de infeasible.
+  - 500 TB'ta mainframe storage + yedek toplamın %16,5'i, yedek TS7770'e döner; x86 PostgreSQL yerel disk sınırı yüzünden Oracle + AFA'ya geçer.
+  - Yıllık modda TFP üç presette kazanır (fark %0,1 – %6,2); personel oranı 3,0'da mainframe %28 ucuz.
+- Slaytlarda kararların yön dengesi tablo halinde: F, U, E mainframe lehine olan, P, C, N x86 lehine olan yanlılıkları kaldırdı (KB-18).
+
+### 4. Açık kalanlar
+- Slayt içeriği metin olarak hazır; görsel deste (grafikler, crossover haritası) henüz yok.
+- Önceki oturumun açık kalanları değişmedi: K6 ölçümü, `docs/kopruler_v2.md`, RAC USL kaynağı, sunucu ihale kaydı, drawer maliyeti, GDPS Metro, planlı kesinti kalibrasyonu.
+
+## 2026-11-23 — Oturum 10: Girdileri dosyadan okuyan kompakt demo
+
+### 1. Aksiyon
+- `sunum_demo/kompakt/` açıldı. `src/` altındaki model kodu değiştirilmedi; üç modülün kopyası `kompakt/kod/` altına alındı.
+- Kopyada üç değişiklik: `common_model.py`'ye "Dışarıdan girdi dosyası" bölümü (JSON girdi sözlüğünü komut satırı seçeneklerine çevirir); iki modele `--input DOSYA` ve `--kosu N` seçenekleri; mainframe veri klasörü `kod/veri/`.
+- Ana demodaki 10 case (42 koşu) `kompakt/inputs/case_NN_*.json` dosyalarına yazıldı. Her dosyada başlık, neyin değiştiğinin açıklaması, özet deseni ve koşular (etiket, model, girdi) var.
+- `kompakt/calistir.py`: case'leri sırayla çalıştırır; her koşu için girdiyi, eşdeğer komutu ve çıktıyı basar. `--adim` her koşudan önce Enter bekler, `--tam` bütün çıktıyı basar.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-23): sunumda girdileri ve çıktıları kod üzerinde göstermek; girdilerin bir klasörde durması ve sırayla çalıştırılabilmesi.
+- Girdi, JSON'dan okunduktan sonra aynı argparse yolundan geçirildi. Böylece doğrulama kuralları ve varsayılanlar komut satırıyla aynı kalır ve kopya, model hesabına dokunmadan girdiyi dışarıdan alır.
+
+### 3. Sonuç
+- `calistir.py` 42 koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktılarla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır: 42'si aynı. Kopya, aynı girdiye orijinal modelle aynı çıktıyı veriyor.
+- Hatalı kullanımda model açık hata verir (çok koşulu dosyada `--kosu` yoksa, koşu başka modele aitse).
+
+### 4. Açık kalanlar
+- Kopya, `src/` değiştiğinde eskir; yeniden kopyalama ve üç değişikliğin tekrar uygulanması gerekir (`kompakt/README.md`).

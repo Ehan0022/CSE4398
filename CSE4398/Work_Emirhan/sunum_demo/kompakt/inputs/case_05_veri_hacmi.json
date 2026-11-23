@@ -1,0 +1,59 @@
+{
+  "case": 5,
+  "baslik": "Veri hacmi: 10 / 100 / 500 TB (storage ve yedek ekseni)",
+  "aciklama": "Yalnızca veri hacmi değişir. Mainframe'de DS8900F modeli ve yedek hedefi, x86'da storage tipi ve veritabanı seçimi değişir.",
+  "ozet_deseni": "AYLIK|storage:|yedekleme:|SECILEN YIGIN|mainframe:|x86: ",
+  "kosular": [
+    {
+      "etiket": "10 TB, mainframe",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 10
+      }
+    },
+    {
+      "etiket": "100 TB, mainframe",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 100
+      }
+    },
+    {
+      "etiket": "500 TB, mainframe",
+      "model": "mainframe",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 500
+      }
+    },
+    {
+      "etiket": "10 TB, x86",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 10,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "100 TB, x86",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 100,
+        "compare": true
+      }
+    },
+    {
+      "etiket": "500 TB, x86",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "data_tb": 500,
+        "compare": true
+      }
+    }
+  ]
+}

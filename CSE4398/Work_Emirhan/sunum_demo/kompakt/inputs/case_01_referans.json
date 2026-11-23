@@ -1,0 +1,16 @@
+{
+  "case": 1,
+  "baslik": "Referans nokta: 10K TPS, oltp_rw, %99,9, 20 TB",
+  "aciklama": "Referans nokta. Bütün diğer case'ler bu noktadan tek bir girdiyi değiştirir. x86 en ucuz yığını seçer, --compare mainframe ile yan yana koyar.",
+  "ozet_deseni": "SECILEN|AYLIK|personel:|mainframe:|x86: |oran \\(|basabas|personel haric",
+  "kosular": [
+    {
+      "etiket": "x86 + karsilastirma",
+      "model": "x86",
+      "girdi": {
+        "tps": 10000,
+        "compare": true
+      }
+    }
+  ]
+}
