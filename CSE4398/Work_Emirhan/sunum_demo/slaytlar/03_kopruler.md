@@ -1,7 +1,5 @@
 # Slayt İçeriği — Bölüm 3: Köprüler (KB-01 – KB-18)
 
-> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
-
 *18 köprü × 2 slayt. Bir köprü, iki platformun aynı girdiyle beslendiği, aynı ölçüyle ölçüldüğü ya da aynı kuralla fiyatlandığı arayüzdür. Her köprünün ilk slaytı "ne ve nasıl", ikinci slaytı "kanıt, karar ve açık kalan"dır. Kaynak: `docs/kopruler_v1.md`; kodlamada yapılan dört düzeltme `docs/x86_model_dokumantasyonu_v1.md` §17'de.*
 
 **Açılış slaytı önerisi (Slayt K0 — Köprü haritası):** 18 köprü dört grupta toplanır. **Ölçü:** KB-01 işlem birimi, KB-02/03 kapasite köprüleri, KB-04 kontrol, KB-05 kullanım ve latency, KB-06 tavanlar. **Dayanıklılık:** KB-07 availability, KB-08 topoloji, KB-09 storage, KB-10 yedek. **Maliyet:** KB-11 lisans, KB-12 kapsam sınırı, KB-13 personel, KB-14 üretim dışı, KB-15 fiyat dönemi, KB-17 enerji. **Zaman ve belirsizlik:** KB-16 NPV, KB-18 aralık. *Konuşmacı notu:* "Köprü yoksa iki model iki ayrı dünyayı ölçer; köprüler bu tezin metodolojik katkısı."
@@ -220,9 +218,9 @@ A = 1 − D / 8.760
 
 ### Slayt KB-07.2 — KB-07: platforma özgü parametreler ve açık kalan
 
-- Mainframe: D_cpc 0,03 / 0,32 / 3,15 sn/yıl; T_planlı M1 4 sa, M2 30 dk, M3 10 dk, M4 30 sn (mid).
+- Mainframe: D_cpc 0,03 / 0,32 / 3,15 sn/yıl; T_planlı M1 4 sa, M2 30 dk, M3 2 dk (Değ #10, X3 ile parite), M4 30 sn (mid). Platform kesintisi iki tarafta aynı kural: N_kesen × ITIC_sunucu × u (z16 0,3 sn, x86 24 dk/sunucu/yıl).
 - x86: düğüm olayı 0,03 / 0,10 / 0,30 /yıl; Patroni failover 15 / 35 / 90 sn (teorik, ölçüm değil); RAC 5 sn / 15 sn / 5 dk; 12 yama switchover/yıl.
-- Sonuç: X1 %99,983 vs M1 %99,962 (fark planlı kesintiden); X3 %99,999 vs M3 %99,998.
+- Sonuç: X1 %99,982 vs M1 %99,962 (fark planlı kesintiden); X3 (PG) %99,9987 vs M3 %99,9998 (fark platform kesintisinden: x86 kümesi daha çok ve daha sık kesilen sunucudan oluşur).
 - Açık kalan: planlı kesinti sıklığı iki tarafta da kaynaksız (en etkili availability varsayımı); bölgesel felaket ayrıca modellenmedi.
 
 **Veri / kaynak:** [PIGSTY-RTO], [ORACLE-MAA-2026], [YELLOWBRICKS-HA]; v3 §6.4; x86 dokümanı §8.3.
@@ -239,7 +237,7 @@ A = 1 − D / 8.760
 |---|---|---|---|---|
 | M1 / X1 | Reliable base | Silver / tek site 3 düğüm | 24 sa (aynı kural) | site yok |
 | M2 / X2 | Failover capable (CBU) | Data Guard SYNC / standby küme | 0 (PG: 5 sn) | 2 sa / 105 dk |
-| M3 / X3 | Fault tolerant (GDPS Metro) | Gold / çok siteli Patroni | 0 | 30 dk / 2 dk |
+| M3 / X3 | Fault tolerant (GDPS Metro) | Gold / çok siteli Patroni | 0 | 2 dk / 2 dk (Değ #10) |
 | M4 / X4 | Adaptive continuity (GDPS CA) | Platinum / PG infeasible | 5 sn | 30 sn / 15 sn |
 
 - RPO ve RTO kullanıcı girdisi iki tarafta aynı biçimde topolojiyi seçer.
@@ -287,7 +285,7 @@ A = 1 − D / 8.760
 
 - AFA_DATA_REDUCTION (geri çevirme) 1,5 / 2,5 / 4,0; PG_BLOAT_FACTOR 1,1 / 1,3 / 1,6 (MVCC şişmesi + WAL); Patroni düğüm içi RAID yok (replika yeterli, [ASSUME]).
 - K1 (a), Emirhan, 2026-11-02: storage tipi DB mimarisine bağlı.
-- Etki (Demo Case 5): 500 TB'ta mainframe storage + yedek toplamın %16,5'i; x86'da PG yerel disk sınırı (~373 TB) Oracle + AFA'ya geçirir.
+- Etki (Demo Case 5): 500 TB'ta mainframe storage + yedek toplamın %16,1'i; x86'da PG yerel disk sınırı (~373 TB) Oracle + AFA'ya geçirir.
 - Açık kalan: DS8900F gerçek indirim oranı (0,50–0,85) için teklif veya ihale kaydı.
 
 **Veri / kaynak:** kopruler_v1 KB-09; x86 dokümanı §11.
@@ -430,7 +428,7 @@ FTE_x86          = FTE_ortak × STAFF_RATIO_X86    (ana senaryo 1,0)
 ```
 
 - **Karar P, Emirhan, 2026-11-16:** personel crossover için nötr; duyarlılık 1,25 ve 2,0.
-- **Başlık çıktısı: başabaş personel oranı** (10K TPS'te 2,16; Demo Case 9). Ek görünüm: personel hariç TCO.
+- **Başlık çıktısı: başabaş personel oranı** (10K TPS'te 2,07; Demo Case 9). Ek görünüm: personel hariç TCO.
 - Tezde: "Personel düzeyi kuruluş düzeyindeki mainframe verisinden gelir ve iki platforma aynı eğriyle uygulanır… sonucun bu varsayıma duyarlılığı başabaş oranıyla gösterilir."
 
 **Veri / kaynak:** kopruler_v1 KB-13 "Kural" ve "Tezde nasıl yazılır".
@@ -467,7 +465,7 @@ FTE_x86          = FTE_ortak × STAFF_RATIO_X86    (ana senaryo 1,0)
 
 **Tasarım gerekçesi:** Tutuculuğun yönü yazılır; okuyucu hangi tarafın lehine yuvarlandığını bilir.
 
-**Konuşmacı notu:** "Mainframe'in burada hafif cezalandırıldığını biliyoruz ve yazıyoruz. Üst sınırı belli: bu kalemin tamamı 10K TPS'te toplamın %9'u; sıfırlansa bile oran 2,12'den ~1,9'a iner, yön değişmez."
+**Konuşmacı notu:** "Mainframe'in burada hafif cezalandırıldığını biliyoruz ve yazıyoruz. Üst sınırı belli: bu kalemin tamamı 10K TPS'te toplamın %9'u; sıfırlansa bile oran 2,05'ten ~1,87'ye iner, yön değişmez."
 
 ---
 
@@ -492,7 +490,7 @@ FTE_x86          = FTE_ortak × STAFF_RATIO_X86    (ana senaryo 1,0)
 - **Karar E (b), Emirhan, 2026-11-16.**
 - Mainframe fiyat yaşları görünür (`--price-vintages`): AWLC 2004, TS7700 2006, z16/DS8900F 2022, ücret 2025, S3/elektrik 2026.
 - **Düzeltme (x86 §17, #3):** R760'ın Dell fiyatına ±%20 kalibrasyonu yapılamadı (kaynak yapılandırmayı vermiyor); yalnızca bant kontrolü.
-- Etki: 2026-Q3'te x86 10K TPS $53,66 → $53,99; mainframe değişmiyor (IBM'in tepkisi bilinmiyor: sınırlılık).
+- Etki: 2026-Q3'te x86 10K TPS $57,65 → $57,98; mainframe değişmiyor (IBM'in tepkisi bilinmiyor: sınırlılık).
 
 **Veri / kaynak:** kopruler_v1 KB-15; x86 dokümanı §4.3, §13.4.
 
@@ -533,7 +531,7 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 
 - Mainframe'e özgü: TFP büyüme fiyatı 0,5 ("IBM mentions 50% discount for growth MSUs" [KYNE-2022]).
 - Tutarlılık testi iki modelde: r = 0, büyüme 0 → NPV = 60 × statik aylık.
-- Etki (Demo Case 10): 10K TPS 5 yıl MF $68,62M / x86 $32,07M.
+- Etki (Demo Case 10): 10K TPS 5 yıl MF $71,01M / x86 $34,45M.
 
 **Veri / kaynak:** kopruler_v1 KB-16; v3 §9.10.4; x86 dokümanı §15.
 
@@ -584,7 +582,7 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 
 **Tasarım gerekçesi:** Yayımlanmamış fiyatlar karşısında tek sayı yanıltıcı kesinlik verir; bölge, okuyucunun kendi koşullarını yerleştirebileceği bir harita.
 
-**Konuşmacı notu:** "Demo Case 10'daki tablo: mid'de oran 2,12; mainframe lehine bütün belirsizliklerle 1,22; x86 lehine 7,23. Bu bir nokta değil, bir harita."
+**Konuşmacı notu:** "Demo Case 10'daki tablo: mid'de oran 2,05; mainframe lehine bütün belirsizliklerle 1,20; x86 lehine 6,80. Bu bir nokta değil, bir harita."
 
 ---
 

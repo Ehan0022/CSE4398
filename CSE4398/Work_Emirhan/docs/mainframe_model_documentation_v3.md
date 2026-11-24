@@ -1623,6 +1623,8 @@ Work_Emirhan/
   data/raw/                            ham IBM verileri (kaynak ve erişim tarihi başlıkta)
   src/mainframe_model.py               model + CLI (yalnızca standard library)
   src/common_model.py                  iki platformun ortak parametre ve kuralları (Adım 6)
+  src/ozet.py                          koşu sonu OZET bloğu (iki tarafın en ucuz feasible yapılandırması)
+  src/tools/kazanan_haritasi.py        kazanan haritası: TPS × availability/RPO × eşleştirilmiş senaryo (Değ #10)
   src/test_mainframe_model.py          tutarlılık testleri
   src/tools/golden_snapshot.py         Adım 6 öncesi altın sonuç kümesi (data/test/golden_step5.json)
   src/tools/build_z16_capacity_table.py  kademe tablosunu ham verilerden üretir
@@ -1642,6 +1644,8 @@ Work_Emirhan/
 python src/mainframe_model.py --tps 10000 --availability 0.999 --workload oltp_rw --latency-ms 200 --data-tb 20 --data-growth 0.15
 
 Özel işlem bileşimi: `--sql-reads 6 --sql-writes 2` (w ve I/O bileşimden hesaplanır). Aralık çıktısı: `--range` (low/mid/high toplam ve tek-parametre salınımı, Bölüm 7.8). Felaket kurtarma hedefleri: `--rpo-seconds 0 --rto-minutes 60` (Bölüm 6.6). Yedek hedefini zorlamak: `--backup-target ts7770 | cos_onprem | aws_s3` (Bölüm 8.10). 5 yıllık NPV: `--npv` (isteğe bağlı `--tps-growth 0.10 --discount-rate 0.07 --years 5`); `--npv --range` NPV aralığını ve tornado'yu verir (Bölüm 9.10). Kullanıcı fiyatları: `--prices fiyatlar.json` (kısmi geçersiz kılma; şablon `--list-prices`, fiyat yaşları `--price-vintages`; Bölüm 7.10).
+
+**Koşu sonu özeti (2026-11-24):** her CLI koşusu bir OZET bloğuyla biter: aynı girdilerle mainframe'in ve x86'nın en ucuz feasible yapılandırması ve aylık maliyeti (`src/ozet.py`; satır biçimi `OZET | taraf | yapılandırma | aylık | $/TPS`). Kurulamayan taraf `kurulamaz`, x86 karşılığı olmayan girdi (`redp_light` profili) `karşılığı yok` yazılır. `--backup-target` yalnızca mainframe tarafını zorlar; x86 tarafı kendi yedek seçimini yapar. `--range` / `--npv` koşularında özet mid / 1. yıl statik değerdir.
 
 ### 10.2. Yıllık Mod
 

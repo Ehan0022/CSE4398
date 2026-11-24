@@ -136,6 +136,7 @@ Emirhan'ın isteği "açık sistemin kendi fundamentallarına ve çalışma şek
 - Aylık maliyet dökümü (8 kalem + personel), DR payı ve uygulama katmanı payı.
 - Yığın seçim motoru: her yığının en ucuz yapılandırması.
 - `--compare`: mainframe ve x86 toplamları, oran, personel hariç toplamlar, 1,25 ve 2,0 personel oranlarında x86, konsolide edilmemiş park senaryosu, üretim dışı stres senaryosu, başabaş personel oranı.
+- **OZET bloğu (her koşunun son satırları, 2026-11-24):** aynı girdilerle iki tarafın en ucuz feasible yapılandırması ve aylık maliyeti, `OZET | taraf | yapılandırma | aylık | $/TPS` biçiminde (`src/ozet.py`). `--compare` verilmese de mainframe tarafı çözülür; kurulamayan taraf `kurulamaz` yazılır. `--range` ve `--npv` koşularında özet mid / 1. yıl statik değerdir; yıllık modda mainframe A / B / C stratejilerinin en ucuzu, x86 tepeye göre kurulu yığındır (aylık = yıllık / 12). Sunum demosu bu satırları toplayıp her case dosyasının sonuna CASE ÖZETİ yazar.
 
 ---
 

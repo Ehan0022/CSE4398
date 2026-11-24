@@ -1,4 +1,4 @@
---- %99,999 + RPO 0 (x86 kurulamaz): python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --compare  (cikis kodu 1, sha 12c0a5d3d947)
+--- %99,999 + RPO 0 (x86 kurulamaz): python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --compare  (cikis kodu 1, sha ec0666d40ab2)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -9,7 +9,13 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   mainframe: $1,383,467/ay ($138.35/TPS) M3 3931-524 | x86: infeasible
   -> yalnizca mainframe bu kisitlari saglayabiliyor
 
---- %99,999, RPO serbest, 50K (x86 Oracle X4): python src/x86_model.py --tps 50000 --availability 0.99999 --compare  (cikis kodu 0, sha 22561b30bc41)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M3 3931-524 (24 CP) | $1,383,467/ay | $138.35/TPS
+OZET | x86       | kurulamaz | - | girdiler bu tarafta saglanamiyor
+----------------------------------------------------------------------
+
+--- %99,999, RPO serbest, 50K (x86 Oracle X4): python src/x86_model.py --tps 50000 --availability 0.99999 --compare  (cikis kodu 0, sha d49a875f3cb2)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -50,7 +56,13 @@ KARSILASTIRMA (50,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $2,667,320/ay ($53.35/TPS)
   basabas personel orani: 1.76  (x86 personeli, ayni is yuku icin mainframe personelinin 1.76 katindan azsa x86 ucuz)
 
---- mainframe %99,999 + RPO 0 dokum, 3K: python src/mainframe_model.py --tps 3000 --availability 0.99999 --rpo-seconds 0  (cikis kodu 0, sha 5ce4c59807fc)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (50,000 TPS)
+OZET | mainframe | M3 3931-759 (59 CP) | $4,116,822/ay | $82.34/TPS
+OZET | x86       | X4 vSphere / VM / Oracle, 10 x 2x12c DB dugumu | $2,481,068/ay | $49.62/TPS
+----------------------------------------------------------------------
+
+--- mainframe %99,999 + RPO 0 dokum, 3K: python src/mainframe_model.py --tps 3000 --availability 0.99999 --rpo-seconds 0  (cikis kodu 0, sha fba82fecce91)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -84,7 +96,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- u = 0,05 duyarliligi: python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --unmasked-share 0.05 --compare  (cikis kodu 0, sha a7c6e13dcb2a)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (3,000 TPS)
+OZET | mainframe | M3 3931-424 (24 CP) | $692,596/ay | $230.87/TPS
+OZET | x86       | kurulamaz | - | girdiler bu tarafta saglanamiyor
+----------------------------------------------------------------------
+
+--- u = 0,05 duyarliligi: python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --unmasked-share 0.05 --compare  (cikis kodu 0, sha d50a78e1cea3)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -125,7 +143,13 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $788,410/ay ($78.84/TPS)
   basabas personel orani: 2.00  (x86 personeli, ayni is yuku icin mainframe personelinin 2.00 katindan azsa x86 ucuz)
 
---- desteksiz PostgreSQL, %99,9: python src/x86_model.py --tps 10000 --pg-support 0 --compare  (cikis kodu 0, sha 231730690dc2)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M3 3931-524 (24 CP) | $1,383,467/ay | $138.35/TPS
+OZET | x86       | X3 vSphere / VM / Oracle, 4 x 2x8c DB dugumu | $736,920/ay | $73.69/TPS
+----------------------------------------------------------------------
+
+--- desteksiz PostgreSQL, %99,9: python src/x86_model.py --tps 10000 --pg-support 0 --compare  (cikis kodu 0, sha 42a956083ec6)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -172,6 +196,12 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $580,756/ay ($58.08/TPS)
   basabas personel orani: 2.08  (x86 personeli, ayni is yuku icin mainframe personelinin 2.08 katindan azsa x86 ucuz)
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,179,197/ay | $117.92/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $573,454/ay | $57.35/TPS
+----------------------------------------------------------------------
+
 --- kazanan haritasi (hizli): python src/tools/kazanan_haritasi.py --hizli  (cikis kodu 0, sha 346fdd13a12c)
 KAZANAN HARITASI (personel orani 1,0; hucre: kazanan oran/basabas personel orani)
   oran = mainframe / x86 aylik maliyet; basabas = x86 personeli bu katin uzerindeyse mainframe ucuz; 'MF tek' = yalnizca mainframe kurulabiliyor
@@ -215,3 +245,23 @@ HASSASIYET: %99,999 sinirinin maskelenemeyen platform payi u'ya bagliligi (10.00
 
 CSV: ../data/out/kazanan_haritasi.csv
 
+==============================================================================
+CASE 11 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  %99,999 + RPO 0 (x86 kurulamaz) (10,000 TPS)
+    mainframe: M3 3931-524 (24 CP)                                          $1,383,467/ay  $138.35/TPS
+    x86:       kurulamaz (girdiler bu tarafta saglanamiyor)
+  %99,999, RPO serbest, 50K (x86 Oracle X4)
+    mainframe: M3 3931-759 (59 CP)                                          $4,116,822/ay  $82.34/TPS
+    x86:       X4 vSphere / VM / Oracle, 10 x 2x12c DB dugumu               $2,481,068/ay  $49.62/TPS
+  mainframe %99,999 + RPO 0 dokum, 3K
+    mainframe: M3 3931-424 (24 CP)                                            $692,596/ay  $230.87/TPS
+    x86:       kurulamaz (girdiler bu tarafta saglanamiyor)
+  u = 0,05 duyarliligi (10,000 TPS)
+    mainframe: M3 3931-524 (24 CP)                                          $1,383,467/ay  $138.35/TPS
+    x86:       X3 vSphere / VM / Oracle, 4 x 2x8c DB dugumu                   $736,920/ay  $73.69/TPS
+  desteksiz PostgreSQL, %99,9 (10,000 TPS)
+    mainframe: M1 3931-524 (24 CP)                                          $1,179,197/ay  $117.92/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $573,454/ay  $57.35/TPS
+  kazanan haritasi (hizli)
+    (izgara araci; tek yapilandirma yok, tablo yukarida)

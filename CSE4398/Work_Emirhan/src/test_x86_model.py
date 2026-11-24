@@ -439,11 +439,6 @@ def test_cli_runs():
             x.STAFF_RATIO_X86 = 1.0
 
 
-if __name__ == "__main__":
-    for name, fn in list(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            fn()
-            print(f"OK  {name}")
 
 
 # ------------------------------------------------------------------------------
@@ -504,3 +499,33 @@ def test_five_nines_with_rpo0_is_mainframe_only():
     assert o["mainframe"][1].code == "M3"
     o2 = x.compare(10000, availability=0.99999)
     assert o2["x86"]["topology"].code == "X4" and o2["x86"]["stack"].db == "oracle"
+
+
+def _cli(argv):
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        x.main(argv)
+    return buf.getvalue()
+
+
+def test_cli_ends_with_ozet_for_both_sides():
+    """Her kosu OZET ile biter: iki tarafta en ucuz feasible yapilandirma ve aylik
+    maliyet; kurulamayan taraf 'kurulamaz' olarak yazilir."""
+    import ozet
+    lines = _cli(["--tps", "10000"]).strip().splitlines()
+    rows = [ozet.parse_line(l) for l in lines[-4:] if ozet.parse_line(l)]
+    assert [r[0] for r in rows] == ["mainframe", "x86"]
+    assert rows[0][1].startswith("M1 3931-524") and rows[1][1].startswith("X1 ")
+    assert rows[0][2] == "$1,179,197/ay"
+    out = _cli(["--tps", "10000", "--availability", "0.99999", "--rpo-seconds", "0"])
+    rows = [ozet.parse_line(l) for l in out.splitlines() if ozet.parse_line(l)]
+    assert rows[0][1].startswith("M3") and rows[1][1] == "kurulamaz"
+
+
+if __name__ == "__main__":
+    for name, fn in list(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn()
+            print(f"OK  {name}")

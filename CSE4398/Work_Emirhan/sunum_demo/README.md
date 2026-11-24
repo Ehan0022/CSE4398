@@ -13,9 +13,9 @@
 | `slaytlar/01_giris_ve_mainframe.md` | Giriş (3 slayt) + mainframe katmanları (14 katman × 2 = 28 slayt) |
 | `slaytlar/02_acik_sistem.md` | Açık sistem katmanları ve opsiyonları (14 katman × 2 = 28 slayt) |
 | `slaytlar/03_kopruler.md` | Köprü haritası + KB-01 – KB-18 (18 köprü × 2 = 36 slayt) |
-| `slaytlar/04_kapanis.md` | Bulgular, geçerlilik tehditleri ve sınırlılıklar, sonraki adımlar (3 slayt) |
+| `slaytlar/04_kapanis.md` | Demo case özetleri, bulgular, geçerlilik tehditleri ve sınırlılıklar, sonraki adımlar (4 slayt) |
 
-Toplam 98 slayt, artı isteğe bağlı bir köprü haritası slaytı (K0). Her slaytta: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu.
+Toplam 99 slayt, artı isteğe bağlı bir köprü haritası slaytı (K0). Her slaytta: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu.
 
 ## Çalıştırma
 
@@ -29,7 +29,7 @@ Python 3.10+, yalnızca standart kütüphane ve modellerin kendi bağımlılıkl
 
 ## Sayıların kaynağı
 
-Bütün sayılar `main` dalındaki modellerin (PR #4 sonrası, Adım 7) varsayılanlarla koşusundan alındı: oltp_rw, %99,9, 20 TB, yılda %15 veri büyümesi, `PRICE_EPOCH` 2025-mid, `STAFF_RATIO_X86` 1,0. Model değişirse `demo_calistir.py` yeniden koşturulmalı ve dokümanlardaki sayılar `ciktilar/` ile karşılaştırılmalıdır. Dokümanlardaki bazı eski tablolar (ör. v3 §5.5, §6.6, §6.7'deki $846.187'li satırlar) Adım 7 öncesine aittir; slaytlarda güncel değerler kullanıldı.
+Bütün sayılar `main` dalındaki modellerin (Değerlendirme #10 sonrası, 2026-11-24) varsayılanlarla koşusundan alındı: oltp_rw, %99,9, 20 TB, yılda %15 veri büyümesi, `PRICE_EPOCH` 2025-mid, `STAFF_RATIO_X86` 1,0. Model değişirse `demo_calistir.py` yeniden koşturulmalı ve dokümanlardaki sayılar `ciktilar/` ile karşılaştırılmalıdır. Dokümanlardaki bazı eski tablolar (ör. v3 §5.5, §6.6, §6.7'deki $846.187'li satırlar) Adım 7 öncesine aittir; slaytlarda güncel değerler kullanıldı.
 
 ## Kapsam dışı (slaytlarda sınırlılık olarak)
 

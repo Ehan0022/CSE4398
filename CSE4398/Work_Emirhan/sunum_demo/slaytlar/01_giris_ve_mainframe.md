@@ -1,8 +1,6 @@
 # Slayt İçeriği — Bölüm 1: Giriş ve Mainframe Katmanları
 
-> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
-
-*Her slayt: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu. Sayılar `main` dalındaki modellerin 2026-11-23 koşusundan; demo case numaraları `sunum_demo/DEMO_SENARYOLARI.md`'ye atıftır. Kaynak etiketleri ([REDP], [LSPR] …) `docs/mainframe_model_documentation_v3.md` §11 ve `docs/kopruler_v1.md` §20'deki listeye karşılık gelir.*
+*Her slayt: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu. Sayılar `main` dalındaki modellerin 2026-11-24 koşusundan (Değerlendirme #10 sonrası); demo case numaraları `sunum_demo/DEMO_SENARYOLARI.md`'ye atıftır. Kaynak etiketleri ([REDP], [LSPR] …) `docs/mainframe_model_documentation_v3.md` §11 ve `docs/kopruler_v1.md` §20'deki listeye karşılık gelir.*
 
 ---
 
@@ -130,7 +128,7 @@
 
 **Tasarım gerekçesi:** oltp_rw = sysbench oltp_read_write, x86 tarafında en yaygın ölçülen OLTP bileşimi. Böylece TPS iki tarafta aynı işi ifade eder (KB-01). w bir oran olduğu için nesilden bağımsızdır.
 
-**Konuşmacı notu:** "Demo Case 6: aynı 10.000 TPS, iş tanımına göre 1 CP'den 32 CP'ye; aylık $265K'dan $1,33M'ye. TPS tek başına anlamsız; bileşimiyle birlikte söylenmeli."
+**Konuşmacı notu:** "Demo Case 6: aynı 10.000 TPS, iş tanımına göre 1 CP'den 32 CP'ye; aylık $265K'dan $1,38M'ye. TPS tek başına anlamsız; bileşimiyle birlikte söylenmeli."
 
 ---
 
@@ -167,10 +165,10 @@
 
 ### Slayt M4.2 — Latency davranışı: alt-kapasite CP'ler yavaştır
 
-- 10K TPS (Demo Case 3): hedef yok 3931-524 ($1,139M) · 50 ms 3931-614 ($1,141M) · 20 ms 3931-710 ($1,153M) · 10 ms 3931-714 ($1,190M).
+- 10K TPS (Demo Case 3): hedef yok 3931-524 ($1,179M) · 50 ms 3931-614 ($1,181M) · 20 ms 3931-710 ($1,193M) · 10 ms 3931-714 ($1,230M).
 - Hedef sıkılaştıkça 5xx → 6xx → 7xx: daha az ama daha hızlı CP.
 - oltp_rw'de en düşük feasible p99 hedefi 6–7 ms (6 ms infeasible).
-- Personel sabit kalır ($521.333): P kararıyla personel kurulu kapasiteden değil iş yükünden hesaplanır.
+- Personel sabit kalır ($561.236): P kararıyla personel kurulu kapasiteden değil iş yükünden hesaplanır.
 - Sınırlılık: ağ, lock/latch beklemesi modellenmez; zIIP'teki işin latency etkisi ayrıca yok.
 
 **Veri / kaynak:** model koşusu; v3 §5.5; `test_latency_monotonic` (maliyet hiçbir senaryoda hedef sıkılaştıkça azalmıyor).
@@ -186,7 +184,7 @@
 - `D = λ_saha × [(1 − p_uzun)·min(d_kısa, T_rec) + p_uzun·min(d_uzun, T_rec)] + λ_planlı × T_planlı + D_cpc`; `A = 1 − D / 8.760`.
 - Saha olayı (veri merkezi düzeyi): 0,15 olay/yıl, kısa 2 sa, %15'i uzun (48 sa).
 - Topolojiler (SG24-8446 desenleri): M1 tek CPC sysplex · M2 DR CPC (CBU) + Metro Mirror, elle geçiş · M3 GDPS Metro Global + HyperSwap · M4 GDPS Continuous Availability.
-- Sonuçlar: M1 %99,962 · M2 %99,994 · M3 %99,998 · M4 %99,99994.
+- Sonuçlar (Değ #10, platform kesintisi ve M3 ↔ X3 paritesiyle): M1 %99,962 · M2 %99,994 · M3 %99,9998 · M4 %99,99994.
 
 **Veri / kaynak:** [UPTIME-2025], [UPTIME-2022], [SG24-8446], [SG24-6374], [GDPS-2026], [ITIC-2023]; v3 §6.2–6.5.
 
@@ -199,9 +197,9 @@
 ### Slayt M5.2 — RPO/RTO kısıtları ve availability'nin maliyeti
 
 - Kullanıcı topoloji seçmez: availability, RPO ve RTO girer, topoloji türetilir.
-- RPO 0 → M2 (senkron); RTO ≤ 60 dk → M3; RTO ≤ 1 dk → M4. **RPO 0 + RTO ≤ 1 dk infeasible:** saniyelik kurtarma yalnızca GDPS CA'nın asenkron replikasyonuyla.
-- Maliyet (Demo Case 4): %99,9 M1 $113,93 · %99,99 M2 $122,29 · %99,999 M4 $143,97.
-- M4'e çıkışta: GDPS $100K/ay, DR frame (CBU, ×0,50), personel ×1,25, 4 storage kopyası; **yazılım değişmez** (CBU kuralı).
+- RPO 0 → M2 (senkron); RTO ≤ 60 dk → M3 (RPO 0 + RTO ≤ 30 dk da M3); RTO ≤ 1 dk → M4. **RPO 0 + RTO ≤ 1 dk infeasible:** saniyelik kurtarma yalnızca GDPS CA'nın asenkron replikasyonuyla.
+- Maliyet (Demo Case 4 özeti): %99,9 M1 3931-524 $117,92 · %99,99 M2 3931-524 $126,48 · %99,999 M3 3931-524 $138,35 (RTO ≤ 1 dk isteyen M4: $148,96).
+- M3 / M4'e çıkışta: GDPS $50K / $100K/ay, DR frame (CBU, ×0,50), personel ×1,25, 4 storage kopyası; **yazılım değişmez** (CBU kuralı).
 - Sınırlılık: bölgesel felaket ve kesintinin dağılımı (stokastik) modellenmedi; planlı kesinti sıklığı kaynaksız.
 
 **Veri / kaynak:** [CBU] "Software charges for the designated CBU machine are based on its permanent configuration."; [GDPS-PRICE] (yayımlanmıyor); v3 §6.6–6.8.
@@ -284,7 +282,7 @@
 
 **Tasarım gerekçesi:** "Tek alternatif" ilkesi (mainframe tarafı tek yığın): rakip diziler kombinasyon sayısını büyütür ama karşılaştırmanın sorusunu değiştirmez. Kopya sayısı kullanıcıya sorulmaz, topolojiden türetilir.
 
-**Konuşmacı notu:** "Demo Case 5: 500 TB'ta storage ve yedek mainframe toplamının %16,5'i. Storage'ı dışarıda bırakan bir çalışma bu ekseni hiç göremez."
+**Konuşmacı notu:** "Demo Case 5: 500 TB'ta storage ve yedek mainframe toplamının %16,1'i. Storage'ı dışarıda bırakan bir çalışma bu ekseni hiç göremez."
 
 ---
 
@@ -341,7 +339,7 @@
 - low / mid / high: FTE_1000 4,0 / 5,5 / 7,0; b 0,60 / 0,70 / 0,80; taban 3 / 4 / 5 FTE.
 - Yüklü ücret $122K / $162K / $215K (BLS OEWS × yan hak çarpanı 1,28–1,43).
 - Topoloji çarpanı M1 1,00 · M2 1,05 · M3 1,15 · M4 1,25.
-- 10K TPS: 38,6 FTE, $521.333/ay, toplamın %46'sı.
+- 10K TPS: 41,6 FTE, $561.236/ay, toplamın %48'i (Değ #10: zIIP'e kayan iş de personel girdisine sayılır).
 
 **Veri / kaynak:** [IBM-EAGLE] "5 FTE to start + 1 FTE for every 625 MIPS"; [GARTNER-ITKMD] 152 → 268 MIPS/FTE; [IBM-TPF-2007]; [BLS-OEWS], [BLS-ECEC], [IDC-2016]; v3 §7.7.
 
@@ -363,7 +361,7 @@
 
 **Tasarım gerekçesi:** Değ. #8'de bulunan tutarsızlık: aynı 10K TPS'te mainframe 30,8 FTE, x86 sunucu saatlerinden 0,39 FTE çıkıyordu. İki taraf farklı sürücüyle ölçülürse crossover'ı teknoloji değil ölçüm farkı belirler.
 
-**Konuşmacı notu:** "Personel konusunda taraf tutmadık: iki platform aynı eğriyle, sonra 'x86 personeli kaç kat olursa sonuç döner' sorusunu ayrıca cevaplıyoruz. O sayı 2,16."
+**Konuşmacı notu:** "Personel konusunda taraf tutmadık: iki platform aynı eğriyle, sonra 'x86 personeli kaç kat olursa sonuç döner' sorusunu ayrıca cevaplıyoruz. O sayı 2,07."
 
 ---
 
@@ -420,7 +418,7 @@
 - **B Base + On/Off CoD:** küçük base; tepe günlerde geçici kapasite (24 saatlik dönemler, ×2,5 primli).
 - **C Tailored Fit Pricing:** base + her zaman açık corridor (kullanıldıkça) + CoD; yazılım MSU-saat tüketimiyle.
 - Resmî sınırlar: geçici kapasite ≤ %100 satın alınan; drawer ekleyemez; alt-kapasite serisi aşağı inemez.
-- Sonuç (Demo Case 8, 10K ort.): steady C $17,23M (A'dan %2,1) · batch C $23,51M (%4,8) · retail C $29,28M (B'den %0,1).
+- Sonuç (Demo Case 8, 10K ort.): steady C $17,87M (A'dan %2,0) · batch C $24,42M (A'dan %4,6) · retail C $30,43M (B'den %0,1).
 
 **Veri / kaynak:** [TFP-HW], [TFP-SW], [COD] SC28-7025; v3 §9.4–9.8.
 
@@ -450,7 +448,7 @@
 
 - 10K TPS, 5 yıl: NPV $68,62M, seviyelendirilmiş $115,70/TPS/ay (x86 $32,07M, $54,07).
 - Kademe yolu: 524 → 527 → 530 → 534 → 537; 10 yıllık ufukta 6. yılda 6xx serisine geçiş (3931-637, $3,29M capex).
-- Ufuk etkisi (Demo Case 10): 3 / 5 / 10 yıl → $121,11 / $115,70 / $111,51 (capex yayıldıkça düşer).
+- Ufuk etkisi (Demo Case 10): 3 / 5 / 10 yıl → $125,12 / $119,73 / $115,57 (capex yayıldıkça düşer).
 - Yıllık modda üç strateji 5 yılda: TFP büyüme fiyatıyla C kazanır (retail_bursty C $152,8M, B $155,2M, A $161,4M).
 - Sınırlılık: kalan değer 0; z17 yenilemesi dışarıda.
 
@@ -466,7 +464,7 @@
 
 - Kaynakla daraltılamayan her parametre low / mid / high; **low = mainframe lehine** uç.
 - Köşe senaryoları (hepsi low / hepsi high) topolojiyi ve kademeyi yeniden seçer.
-- 10K TPS: low $31,44 (3931-438) · mid $113,93 (3931-524) · high $565,95 (M2, 3931-635: high'da availability düştüğü için M1 %99,9'u sağlamaz).
+- 10K TPS: low $33,97 (3931-438) · mid $117,92 (3931-524) · high $565,95 (M2, 3931-635: high'da availability düştüğü için M1 %99,9'u sağlamaz).
 - Availability belirsizliği maliyet aralığına bu yolla girer.
 
 **Veri / kaynak:** model `--range`; v3 §7.8; KB-18.

@@ -1,4 +1,4 @@
---- 100 TB, ts7770: --input case_07_yedek_hedefi.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "ts7770", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 8458cd9af0de)
+--- 100 TB, ts7770: --input case_07_yedek_hedefi.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "ts7770", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 4a36044f9575)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -33,7 +33,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 100 TB, aws_s3: --input case_07_yedek_hedefi.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "aws_s3", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 95f9725e9dd9)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,223,417/ay | $122.34/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $581,023/ay | $58.10/TPS
+----------------------------------------------------------------------
+
+--- 100 TB, aws_s3: --input case_07_yedek_hedefi.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "aws_s3", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 5c71c221f862)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -68,7 +74,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 500 TB, cos_onprem zorla: --input case_07_yedek_hedefi.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "cos_onprem", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha de7fba1498f9)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,220,454/ay | $122.05/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $581,023/ay | $58.10/TPS
+----------------------------------------------------------------------
+
+--- 500 TB, cos_onprem zorla: --input case_07_yedek_hedefi.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "cos_onprem", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fe6c4cad404f)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -103,3 +115,21 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,423,859/ay | $142.39/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu | $654,685/ay | $65.47/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 7 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  100 TB, ts7770
+    mainframe: M1 3931-524 (24 CP)                                          $1,223,417/ay  $122.34/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $581,023/ay  $58.10/TPS
+  100 TB, aws_s3
+    mainframe: M1 3931-524 (24 CP)                                          $1,220,454/ay  $122.05/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $581,023/ay  $58.10/TPS
+  500 TB, cos_onprem zorla
+    mainframe: M1 3931-524 (24 CP)                                          $1,423,859/ay  $142.39/TPS
+    x86:       X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu                   $654,685/ay  $65.47/TPS

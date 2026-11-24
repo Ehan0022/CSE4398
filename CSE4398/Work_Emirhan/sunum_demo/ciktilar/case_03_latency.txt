@@ -1,4 +1,4 @@
---- hedef yok: python src/mainframe_model.py --tps 10000  (cikis kodu 0, sha df00e88d7e0e)
+--- hedef yok: python src/mainframe_model.py --tps 10000  (cikis kodu 0, sha a10b9b3ee9d0)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -33,7 +33,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 50 ms: python src/mainframe_model.py --tps 10000 --latency-ms 50  (cikis kodu 0, sha 371f2a9080d1)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,179,197/ay | $117.92/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 50 ms: python src/mainframe_model.py --tps 10000 --latency-ms 50  (cikis kodu 0, sha 5f6193788d4b)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -69,7 +75,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 20 ms: python src/mainframe_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha 64cba82f7e4d)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-614 (14 CP) | $1,181,023/ay | $118.10/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 20 ms: python src/mainframe_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha 2701887546c0)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -105,7 +117,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 10 ms: python src/mainframe_model.py --tps 10000 --latency-ms 10  (cikis kodu 0, sha a9c679f751a8)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-710 (10 CP) | $1,192,763/ay | $119.28/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 10 ms: python src/mainframe_model.py --tps 10000 --latency-ms 10  (cikis kodu 0, sha a08ffc603ade)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -141,7 +159,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- x86, p99 20 ms: python src/x86_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha e35833256857)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-714 (14 CP) | $1,230,171/ay | $123.02/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 8 x 2x8c DB dugumu | $735,438/ay | $73.54/TPS
+----------------------------------------------------------------------
+
+--- x86, p99 20 ms: python src/x86_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha 543cedfa13dd)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -177,3 +201,27 @@ x86 FEASIBILITY MODELI (STATIK)
      $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-710 (10 CP) | $1,192,763/ay | $119.28/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 3 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  hedef yok (10,000 TPS)
+    mainframe: M1 3931-524 (24 CP)                                          $1,179,197/ay  $117.92/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 50 ms (10,000 TPS)
+    mainframe: M1 3931-614 (14 CP)                                          $1,181,023/ay  $118.10/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 20 ms (10,000 TPS)
+    mainframe: M1 3931-710 (10 CP)                                          $1,192,763/ay  $119.28/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 10 ms (10,000 TPS)
+    mainframe: M1 3931-714 (14 CP)                                          $1,230,171/ay  $123.02/TPS
+    x86:       X1 vSphere / VM / Oracle, 8 x 2x8c DB dugumu                   $735,438/ay  $73.54/TPS
+  x86, p99 20 ms (10,000 TPS)
+    mainframe: M1 3931-710 (10 CP)                                          $1,192,763/ay  $119.28/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS

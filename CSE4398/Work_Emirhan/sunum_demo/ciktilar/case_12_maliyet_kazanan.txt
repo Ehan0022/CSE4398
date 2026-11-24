@@ -1,4 +1,4 @@
---- 30K --range --compare: python src/x86_model.py --tps 30000 --range --compare  (cikis kodu 0, sha e889542ecf58)
+--- 30K --range --compare: python src/x86_model.py --tps 30000 --range --compare  (cikis kodu 0, sha f632dea02d9b)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -101,7 +101,13 @@ KARSILASTIRMA ARALIGI (30,000 TPS; eslestirilmis senaryolar, KB-18)
     ortak_low: ortak parametreler low (iki taraf birlikte), ozgu mid
     ortak_high: ortak parametreler high (iki taraf birlikte), ozgu mid
 
---- 50K --range --compare: python src/x86_model.py --tps 50000 --range --compare  (cikis kodu 0, sha cbbc5eaf3ae7)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (30,000 TPS)
+OZET | mainframe | M1 3931-732 (32 CP) | $2,435,304/ay | $81.18/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x32c DB dugumu | $1,238,271/ay | $41.28/TPS
+----------------------------------------------------------------------
+
+--- 50K --range --compare: python src/x86_model.py --tps 50000 --range --compare  (cikis kodu 0, sha 312a49f6e6ae)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -198,7 +204,13 @@ KARSILASTIRMA ARALIGI (50,000 TPS; eslestirilmis senaryolar, KB-18)
     ortak_low: ortak parametreler low (iki taraf birlikte), ozgu mid
     ortak_high: ortak parametreler high (iki taraf birlikte), ozgu mid
 
---- 50K, personel orani 2,5: python src/x86_model.py --tps 50000 --staff-ratio 2.5 --compare  (cikis kodu 0, sha f5faa3e34594)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (50,000 TPS)
+OZET | mainframe | M1 3931-759 (59 CP) | $3,567,412/ay | $71.35/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 7 x 2x8c DB dugumu | $1,885,748/ay | $37.71/TPS
+----------------------------------------------------------------------
+
+--- 50K, personel orani 2,5: python src/x86_model.py --tps 50000 --staff-ratio 2.5 --compare  (cikis kodu 0, sha f5522cfe8e91)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -239,3 +251,21 @@ KARSILASTIRMA (50,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $4,631,897/ay ($92.64/TPS)
   basabas personel orani: 1.97  (x86 personeli, ayni is yuku icin mainframe personelinin 1.97 katindan azsa x86 ucuz)
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (50,000 TPS)
+OZET | mainframe | M1 3931-759 (59 CP) | $3,567,412/ay | $71.35/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 7 x 2x8c DB dugumu | $4,483,009/ay | $89.66/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 12 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  30K --range --compare
+    mainframe: M1 3931-732 (32 CP)                                          $2,435,304/ay  $81.18/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x32c DB dugumu    $1,238,271/ay  $41.28/TPS
+  50K --range --compare
+    mainframe: M1 3931-759 (59 CP)                                          $3,567,412/ay  $71.35/TPS
+    x86:       X1 vSphere / VM / Oracle, 7 x 2x8c DB dugumu                 $1,885,748/ay  $37.71/TPS
+  50K, personel orani 2,5
+    mainframe: M1 3931-759 (59 CP)                                          $3,567,412/ay  $71.35/TPS
+    x86:       X1 vSphere / VM / Oracle, 7 x 2x8c DB dugumu                 $4,483,009/ay  $89.66/TPS

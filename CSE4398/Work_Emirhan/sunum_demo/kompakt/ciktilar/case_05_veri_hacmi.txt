@@ -1,4 +1,4 @@
---- 10 TB, mainframe: --input case_05_veri_hacmi.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 4004305d82dd)
+--- 10 TB, mainframe: --input case_05_veri_hacmi.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 830f5c5cc03a)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -33,7 +33,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 100 TB, mainframe: --input case_05_veri_hacmi.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 4064465648bd)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,174,841/ay | $117.48/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $575,886/ay | $57.59/TPS
+----------------------------------------------------------------------
+
+--- 100 TB, mainframe: --input case_05_veri_hacmi.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha dd27a7067cd5)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -68,7 +74,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 500 TB, mainframe: --input case_05_veri_hacmi.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 4d8dc3e67d2a)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,214,315/ay | $121.43/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $581,023/ay | $58.10/TPS
+----------------------------------------------------------------------
+
+--- 500 TB, mainframe: --input case_05_veri_hacmi.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 7e75e2f430e4)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -103,7 +115,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 10 TB, x86: --input case_05_veri_hacmi.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 1cb06fe20bfc)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,423,859/ay | $142.39/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu | $654,685/ay | $65.47/TPS
+----------------------------------------------------------------------
+
+--- 10 TB, x86: --input case_05_veri_hacmi.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 10, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 483bbc6be988)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -150,7 +168,13 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $585,981/ay ($58.60/TPS)
   basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
 
---- 100 TB, x86: --input case_05_veri_hacmi.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha f2af5f863bad)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,174,841/ay | $117.48/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $575,886/ay | $57.59/TPS
+----------------------------------------------------------------------
+
+--- 100 TB, x86: --input case_05_veri_hacmi.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 100, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 3ec36ae6d21a)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -197,7 +221,13 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $593,023/ay ($59.30/TPS)
   basabas personel orani: 2.13  (x86 personeli, ayni is yuku icin mainframe personelinin 2.13 katindan azsa x86 ucuz)
 
---- 500 TB, x86: --input case_05_veri_hacmi.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 653c5fb55d47)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,214,315/ay | $121.43/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $581,023/ay | $58.10/TPS
+----------------------------------------------------------------------
+
+--- 500 TB, x86: --input case_05_veri_hacmi.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 500, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 707b3ef5456a)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -238,3 +268,30 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $719,919/ay ($71.99/TPS)
   basabas personel orani: 2.37  (x86 personeli, ayni is yuku icin mainframe personelinin 2.37 katindan azsa x86 ucuz)
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,423,859/ay | $142.39/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu | $654,685/ay | $65.47/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 5 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  10 TB, mainframe
+    mainframe: M1 3931-524 (24 CP)                                          $1,174,841/ay  $117.48/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $575,886/ay  $57.59/TPS
+  100 TB, mainframe
+    mainframe: M1 3931-524 (24 CP)                                          $1,214,315/ay  $121.43/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $581,023/ay  $58.10/TPS
+  500 TB, mainframe
+    mainframe: M1 3931-524 (24 CP)                                          $1,423,859/ay  $142.39/TPS
+    x86:       X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu                   $654,685/ay  $65.47/TPS
+  10 TB, x86
+    mainframe: M1 3931-524 (24 CP)                                          $1,174,841/ay  $117.48/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $575,886/ay  $57.59/TPS
+  100 TB, x86
+    mainframe: M1 3931-524 (24 CP)                                          $1,214,315/ay  $121.43/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $581,023/ay  $58.10/TPS
+  500 TB, x86
+    mainframe: M1 3931-524 (24 CP)                                          $1,423,859/ay  $142.39/TPS
+    x86:       X1 vSphere / VM / Oracle, 2 x 2x8c DB dugumu                   $654,685/ay  $65.47/TPS

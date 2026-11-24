@@ -66,6 +66,7 @@ import math
 import sys
 
 import common_model as cm
+import ozet
 import mainframe_model as mf
 
 # Parametre sahipligi: x86'ya ozgu parametreler burada; ortak olanlar common_model'de;
@@ -1787,6 +1788,7 @@ def main(argv=None):
                   data_growth=a.data_growth, rpo_seconds=a.rpo_seconds, rto_minutes=a.rto_minutes)
     if a.yearly:
         r = solve_yearly(a.preset, a.avg_tps, stacks=stacks, **common)
+        _ozet_yearly(a, r, wl, common)
         return 0 if r else 1
     if a.tps is None:
         p.print_help()
@@ -1808,11 +1810,28 @@ def main(argv=None):
                 print(f"  {lv:<5} " + ("infeasible" if x is None else
                       f"${x['npv']:>14,.0f}  (${x['levelized_per_tps_month']:,.2f}/TPS/ay, "
                       f"{x['stack']} {x['topology'].code})"))
+    m_res = None
     if a.compare:
-        print_compare(compare(a.tps, stacks=stacks, **common), a.tps)
+        c = compare(a.tps, stacks=stacks, **common)
+        m_res = c["mainframe"]
+        print_compare(c, a.tps)
         if a.range:
             print_compare_range(compare_range(a.tps, stacks=stacks, **common), a.tps)
+    else:
+        mf_common = {k: v for k, v in common.items() if k != "workload"}
+        m_res = mf.solve(a.tps, workload=get_workload(wl).mainframe_profile(), verbose=False,
+                         **mf_common)
+    ozet.print_ozet(a.tps, ozet.mf_entry(m_res), ozet.x86_entry(r))
     return 0 if r is not None else 1
+
+
+def _ozet_yearly(a, r, wl, common):
+    """Yillik mod OZET: mainframe A/B/C stratejilerinin en ucuzu, x86 tepeye gore kurulu."""
+    mf_common = {k: v for k, v in common.items() if k != "workload"}
+    sim = mf.solve_yearly(preset_name=a.preset, yearly_avg_tps=a.avg_tps, verbose=False,
+                          workload=get_workload(wl).mainframe_profile(), **mf_common)
+    ozet.print_ozet(a.avg_tps, ozet.mf_yearly_entry(sim), ozet.x86_entry(r),
+                    note="yillik ortalama TPS; aylik = yillik toplam / 12")
 
 
 if __name__ == "__main__":

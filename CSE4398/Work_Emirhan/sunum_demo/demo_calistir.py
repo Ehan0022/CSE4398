@@ -3,17 +3,23 @@
 Kullanim (Work_Emirhan klasorunden):
     python sunum_demo/demo_calistir.py            # hepsini kostur, ciktilar/ altina yaz
     python sunum_demo/demo_calistir.py 3 7        # yalnizca Case 3 ve Case 7
+    python sunum_demo/demo_calistir.py --ayrinti  # ekranda case ozetine ek ayrinti satirlari
 
 Her case birden fazla komut icerebilir (ayni eksende birkac nokta). Betik her
-komutu src/ klasorunde calistirir, tam ciktiyi sunum_demo/ciktilar/ altina yazar,
-ekrana ise o case'in ozet satirlarini basar. Sonda butun komut ciktilarinin
-birbirinden farkli oldugunu (SHA-256) dogrular.
+komutu src/ klasorunde calistirir, tam ciktiyi sunum_demo/ciktilar/ altina yazar.
+Her model kosusu OZET satirlariyla biter (src/ozet.py: iki tarafta en ucuz
+feasible yapilandirma ve aylik maliyet); betik bunlari toplayip case dosyasinin
+sonuna CASE OZETI olarak yazar ve ekrana da yalnizca bu ozeti basar. Sonda butun
+komut ciktilarinin birbirinden farkli oldugunu (SHA-256) dogrular.
 """
 import hashlib
 import os
 import re
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
+import ozet  # noqa: E402
 
 KOK = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(KOK, "src")
@@ -22,7 +28,7 @@ CIKTI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ciktilar")
 MF = "mainframe_model.py"
 X86 = "x86_model.py"
 
-# (no, kisa ad, baslik, [(etiket, betik, argumanlar)], ozet icin regex)
+# (no, kisa ad, baslik, [(etiket, betik, argumanlar)], --ayrinti icin regex)
 CASES = [
     (1, "referans", "Referans nokta: 10K TPS, oltp_rw, %99,9, 20 TB",
      [("x86 + karsilastirma", X86, "--tps 10000 --compare")],
@@ -95,7 +101,26 @@ def run(script, args):
     return p.returncode, p.stdout + p.stderr
 
 
+def case_ozeti(no, ozetler):
+    """Case sonu ozeti: her kosu icin iki tarafta en ucuz feasible yapilandirma."""
+    out = ["=" * 78, f"CASE {no} OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet",
+           "=" * 78]
+    for etiket, satirlar in ozetler:
+        out.append(f"  {etiket}")
+        if not satirlar:
+            out.append("    (izgara araci; tek yapilandirma yok, tablo yukarida)")
+            continue
+        for taraf, konf, aylik, notu in satirlar:
+            if aylik == "-":
+                out.append(f"    {taraf + ':':<11}{konf} ({notu})")
+            else:
+                out.append(f"    {taraf + ':':<11}{konf:<58} {aylik:>15}  {notu}")
+    return out
+
+
 def main(argv):
+    ayrinti = "--ayrinti" in argv
+    argv = [a for a in argv if a != "--ayrinti"]
     secim = {int(a) for a in argv} if argv else None
     os.makedirs(CIKTI, exist_ok=True)
     hashes = {}
@@ -106,6 +131,7 @@ def main(argv):
         print(f"CASE {no}: {baslik}")
         print("=" * 78)
         dosya = os.path.join(CIKTI, f"case_{no:02d}_{kisa}.txt")
+        ozetler = []
         with open(dosya, "w", encoding="utf-8") as f:
             for etiket, script, args in komutlar:
                 rc, out = run(script, args)
@@ -113,10 +139,20 @@ def main(argv):
                 hashes.setdefault(h, []).append(f"case {no} / {etiket}")
                 baslik_satiri = f"--- {etiket}: python src/{script} {args}  (cikis kodu {rc}, sha {h})"
                 f.write(baslik_satiri + "\n" + out + "\n")
-                print(baslik_satiri)
-                for line in out.splitlines():
-                    if re.search(desen, line):
-                        print("   " + line.rstrip())
+                satirlar = [r for r in map(ozet.parse_line, out.splitlines()) if r]
+                tps = re.search(r"--(?:avg-)?tps (\d+)", args)
+                ek = tps and not re.search(r"TPS|\d+K\b", etiket)
+                ozetler.append((f"{etiket}" + (f" ({int(tps.group(1)):,} TPS)" if ek else ""),
+                                satirlar))
+                if ayrinti:
+                    print(baslik_satiri)
+                    for line in out.splitlines():
+                        if re.search(desen, line):
+                            print("   " + line.rstrip())
+            ozet_satirlari = case_ozeti(no, ozetler)
+            f.write("\n".join(ozet_satirlari) + "\n")
+        for line in ozet_satirlari[3:]:
+            print(line)
         print(f"   -> tam cikti: sunum_demo/ciktilar/{os.path.basename(dosya)}\n")
     tekrar = {h: v for h, v in hashes.items() if len(v) > 1}
     print("=" * 78)

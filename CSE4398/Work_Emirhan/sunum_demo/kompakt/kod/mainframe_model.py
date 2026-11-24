@@ -2170,6 +2170,7 @@ cm.register_prices(__name__, [
 # ==============================================================================
 
 import argparse
+import ozet
 import sys
 
 
@@ -2667,6 +2668,32 @@ def run_demo():
           rpo_seconds=5, rto_minutes=60)
 
 
+def _ozet_x86(args, tps, yearly=False):
+    """Kosu sonu OZET'i icin x86 tarafi: ayni girdilerle en ucuz feasible yigin.
+    Donus: (x86 sonucu, karsiligi-yok aciklamasi)."""
+    # x86_model 'mainframe_model'i ice aktarir; __main__ olarak kosan bu modulun
+    # ikinci bir kopyasi yuklenmesin (CLI'da degisen globaller ortak kalsin).
+    sys.modules.setdefault("mainframe_model", sys.modules["__main__"])
+    import x86_model as x86
+    if (args.sql_reads is not None or args.sql_writes is not None
+            or args.sql_range_reads is not None):
+        wl = x86.X86Workload("custom", args.sql_reads or 0.0, args.sql_range_reads or 0.0,
+                             args.sql_writes or 0.0, 1, "Ozel bilesim", "USER")
+    elif isinstance(args.workload, str) and args.workload in x86.X86_WORKLOADS:
+        wl = args.workload
+    else:
+        name = getattr(args.workload, "name", args.workload)
+        return None, f"{name} yalnizca mainframe kalibrasyon profili"
+    kw = dict(availability=args.availability, workload=wl, latency_ms=args.latency_ms,
+              latency_percentile=args.latency_percentile, data_tb=args.data_tb,
+              data_growth=args.data_growth, rpo_seconds=args.rpo_seconds,
+              rto_minutes=args.rto_minutes)
+    if yearly:
+        return x86.solve_yearly(args.preset, args.avg_tps, args.peak_ratio, args.peak_days,
+                                verbose=False, **kw), None
+    return x86.solve(tps, verbose=False, **kw), None
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Mainframe (IBM z16) minimum-cost feasibility modeli",
@@ -2869,6 +2896,9 @@ Ornekler:
                 win = min(ok, key=lambda k: ok[k]["npv"])
                 print(f"\n5 yillik NPV'de en ucuz: {STRATEGY_LABELS[win]} "
                       f"(${ok[win]['npv']:,.0f})")
+        xr, why = _ozet_x86(args, args.avg_tps, yearly=True)
+        ozet.print_ozet(args.avg_tps, ozet.mf_yearly_entry(result), ozet.x86_entry(xr),
+                        note="yillik ortalama TPS; aylik = yillik toplam / 12", x86_reason=why)
         sys.exit(0)
 
     # STATIK MOD (varsayilan)
@@ -2914,6 +2944,8 @@ Ornekler:
                     print(f"    {desc:<42} infeasible ucu var")
                 else:
                     print(f"    {desc:<42} ${lo:>14,.0f} .. ${hi:>14,.0f}")
+    xr, why = _ozet_x86(args, args.tps)
+    ozet.print_ozet(args.tps, ozet.mf_entry(result), ozet.x86_entry(xr), x86_reason=why)
     if result is None:
         print("Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).")
         sys.exit(1)

@@ -15,6 +15,17 @@ python sunum_demo/demo_calistir.py 4 8      # yalnızca Case 4 ve Case 8
 
 Betik 51 komutu koşturur, tam çıktıları `sunum_demo/ciktilar/case_NN_*.txt` dosyalarına yazar ve sonda **51 komutun hepsinin birbirinden farklı çıktı verdiğini** SHA-256 ile doğrular (`ciktilar/demo_ozet.txt`). Aynı çıktıyı verecek tekrarlar (ör. Case 2'deki 10K noktası) bilinçli olarak çıkarıldı ve ilgili case'e atıfla verildi.
 
+**Case özeti:** her model koşusu bir OZET bloğuyla biter (iki tarafta en ucuz feasible yapılandırma ve aylık maliyet; `src/ozet.py`). Betik bunları toplar ve her `ciktilar/case_NN_*.txt` dosyasının **sonuna CASE ÖZETİ** yazar; ekrana da yalnızca bu özet basılır (eski ayrıntı satırları için `--ayrinti`). Örnek (Case 1):
+
+```
+CASE 1 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+  x86 + karsilastirma (10,000 TPS)
+    mainframe: M1 3931-524 (24 CP)                              $1,179,197/ay  $117.92/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu  $576,454/ay  $57.65/TPS
+```
+
+Özet satırı her zaman iki tarafı da çözer: yalnızca mainframe komutu olan case'lerde (3, 5, 6, 7, 8) x86 tarafı aynı girdilerle hesaplanır. `--range` / `--npv` koşularında özet mid / 1. yıl statik değerdir; yıllık modda (Case 8) mainframe A / B / C'nin en ucuzu, x86 tepeye göre kurulu yığındır. Kurulamayan taraf `kurulamaz`, `redp_light` için x86 `karşılığı yok` yazılır.
+
 **Ortak varsayılanlar:** oltp_rw iş yükü (10 nokta + 4 aralık okuma + 4 yazma), %99,9 availability, 20 TB veri, yılda %15 veri büyümesi, `PRICE_EPOCH` = 2025-mid, `STAFF_RATIO_X86` = 1,0 (personel nötr), mid senaryo. Değerler aylık USD'dir; "$/TPS" aylık TPS başına maliyettir.
 
 ## Özet tablo
@@ -25,7 +36,7 @@ Betik 51 komutu koşturur, tam çıktıları `sunum_demo/ciktilar/case_NN_*.txt`
 | 2 | TPS: 1K / 3K / 30K / 50K | Kademe, SKU, yığın (PG → Oracle), $/TPS eğrisi | İki eğri de ölçekle düşer; 50K'da x86 Oracle RAC'a geçer |
 | 3 | Latency: yok / 50 / 20 / 10 ms | Mainframe kademe serisi (5xx → 6xx → 7xx), kullanım tavanı | Alt-kapasite CP yavaş; sıkı hedef tam hızlı CP'ye iter |
 | 4 | Availability + RPO/RTO | Topoloji (M1→M2→M3, X1→X2→X4), DR, GDPS, DB seçimi | %99,999'da mainframe M3, x86 Oracle aktif-aktif (X4) |
-| 5 | Veri hacmi: 10 / 100 / 500 TB | Storage modeli, yedek hedefi, x86'da DB | 500 TB'ta mainframe storage + yedek toplamın %16,5'i |
+| 5 | Veri hacmi: 10 / 100 / 500 TB | Storage modeli, yedek hedefi, x86'da DB | 500 TB'ta mainframe storage + yedek toplamın %16,1'i |
 | 6 | İş yükü profili | w, PCI başına TPS, kademe, IOPS, D_io, x86 SKU | Aynı 10K TPS, iş tanımına göre $26,51 – $132,84 |
 | 7 | Yedek hedefi zorlama | Yedek kalemi, geri dönüş süresi, kısıt ihlali | Zorlanan cos_onprem 500 TB'ta kısıtı karşılamaz → TS7770 |
 | 8 | Fiyatlama A / B / C (yıllık) | Base kademe, corridor, CoD günleri, yıllık toplam | Üç presette de TFP kazanır; fark %0,1 – %6,2 |
@@ -132,7 +143,7 @@ Oran 2,05; **başabaş personel oranı 2,07**. Konsolide edilmemiş park senaryo
 | 500 TB | $153.226 (**994**, 1.901 TB ham) | $75.420 (**TS7770**) | $1.383.956 | $14.274 (**AFA**) | $28.216 (nesne) | $614.783 (**Oracle**) |
 
 **Neden değişiyor:**
-- Mainframe'de storage + yedek 10 TB'ta toplamın %0,8'i, 500 TB'ta **%16,5**'idir. Compute sabitken storage veriyle büyüdüğü için veri hacmi TPS'ten bağımsız ikinci bir eksendir.
+- Mainframe'de storage + yedek 10 TB'ta toplamın %0,8'i, 500 TB'ta **%16,1**'idir. Compute sabitken storage veriyle büyüdüğü için veri hacmi TPS'ten bağımsız ikinci bir eksendir.
 - 500 TB'ta DS8910F-993'ün z16 çerçevesine sığan 737 TB'ı aşılır, ayrı raflı 994'e geçilir.
 - Yedek hedefi kendiliğinden değişir: 500 TB'ta tam geri yüklemenin M1'de 36 saate (RTO'nun yarısı) sığması gerekir; nesne depolamanın TCT yolu (5.000 MB/s) buna yetmez, model TS7770'e döner.
 - x86'da 500 TB PostgreSQL'in yerel NVMe yuvalarına (24 × 30,72 TB / 1,3 ≈ 567 TB planlı veri) sığmaz; model paylaşımlı all-flash diziyle Oracle RAC'a geçer (K1: storage tipi DB mimarisine bağlı).

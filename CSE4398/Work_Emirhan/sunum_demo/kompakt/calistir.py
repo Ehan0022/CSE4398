@@ -6,12 +6,15 @@ Kullanim (herhangi bir klasorden):
     python sunum_demo/kompakt/calistir.py 4 --adim     # her kosudan once Enter bekler
     python sunum_demo/kompakt/calistir.py 1 --tam      # model ciktisinin tamamini basar
     python sunum_demo/kompakt/calistir.py --kisa       # girdi tablosunda yalnizca farkli alanlar
+    python sunum_demo/kompakt/calistir.py --ayrinti    # OZET'e ek olarak case'in ozet_deseni satirlari
 
 Her case bir JSON dosyasidir (inputs/case_NN_*.json). Dosyadaki her kosu icin:
   1. GIRDI: modelin butun senaryo girdileri (deger, birim, aciklama; Case 1
      referansindan farkli olanlar '>>' ile isaretli) ve esdeger komut,
-  2. CIKTI: modelin ciktisi (varsayilan: case'in ozet_deseni'ne uyan satirlar),
-  3. tam cikti kompakt/ciktilar/case_NN_*.txt dosyasina yazilir.
+  2. CIKTI: modelin OZET satirlari (iki tarafta en ucuz feasible yapilandirma ve
+     aylik maliyet; --ayrinti ile case'in ozet_deseni'ne uyan satirlar da),
+  3. tam cikti kompakt/ciktilar/case_NN_*.txt dosyasina yazilir; dosyanin sonunda
+     butun kosularin CASE OZETI vardir.
 
 Modeller kod/ klasorundeki kopyadir ve girdiyi kendileri okur:
     python sunum_demo/kompakt/kod/x86_model.py --input sunum_demo/kompakt/inputs/case_01_referans.json
@@ -81,15 +84,34 @@ def orijinal_hashler():
     return sonuc
 
 
+def case_ozeti(no, ozetler):
+    """Case sonu ozeti (ana demodaki demo_calistir.case_ozeti ile ayni bicim)."""
+    out = [CIZGI, f"CASE {no} OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet",
+           CIZGI]
+    for etiket, satirlar in ozetler:
+        out.append(f"  {etiket}")
+        if not satirlar:
+            out.append("    (izgara araci; tek yapilandirma yok, tablo yukarida)")
+            continue
+        for taraf, konf, aylik, notu in satirlar:
+            if aylik == "-":
+                out.append(f"    {taraf + ':':<11}{konf} ({notu})")
+            else:
+                out.append(f"    {taraf + ':':<11}{konf:<58} {aylik:>15}  {notu}")
+    return out
+
+
 def main(argv):
     adim = "--adim" in argv
     tam = "--tam" in argv
     kisa = "--kisa" in argv
+    ayrinti = "--ayrinti" in argv
     secim = {int(a) for a in argv if a.isdigit()}
     os.makedirs(CIKTI, exist_ok=True)
     referans = orijinal_hashler()
     sys.path.insert(0, KOD)
     import common_model as cm  # yalnizca girdi -> komut cevirisini gostermek icin
+    import ozet
     ayni, farkli, kontrolsuz = [], [], []
 
     for yol in sorted(glob.glob(os.path.join(GIRDILER, "case_*.json"))):
@@ -104,6 +126,7 @@ def main(argv):
         print(f"Girdi dosyasi: inputs/{os.path.basename(yol)}\n")
         desen = re.compile(case.get("ozet_deseni") or ".")
         cikti_yolu = os.path.join(CIKTI, os.path.basename(yol).replace(".json", ".txt"))
+        ozetler = []
         with open(cikti_yolu, "w", encoding="utf-8") as cikti:
             for i, kosu in enumerate(case["kosular"], start=1):
                 girdi_json = json.dumps(kosu["girdi"], ensure_ascii=False)
@@ -129,10 +152,13 @@ def main(argv):
                 cikti.write(f"--- {kosu['etiket']}: --input {os.path.basename(yol)} --kosu {i}"
                             f"  [{girdi_json}]  (cikis kodu {rc}, sha {sha})\n{out}\n")
                 print(f"  CIKTI  (cikis kodu {rc}, sha {sha}, {durum})")
+                satirlar = [r for r in map(ozet.parse_line, out.splitlines()) if r]
+                ozetler.append((kosu["etiket"], satirlar))
                 for satir in out.splitlines():
-                    if tam or desen.search(satir):
+                    if tam or (ayrinti and desen.search(satir)) or ozet.parse_line(satir):
                         print("    " + satir.rstrip())
                 print()
+            cikti.write("\n".join(case_ozeti(case["case"], ozetler)) + "\n")
         print(f"  -> tam cikti: kompakt/ciktilar/{os.path.basename(cikti_yolu)}\n")
 
     print(CIZGI)

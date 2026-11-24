@@ -1,4 +1,4 @@
---- steady_oltp: --input case_08_fiyatlama_abc.json --kosu 1  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "steady_oltp", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha aa7a881ab898)
+--- steady_oltp: --input case_08_fiyatlama_abc.json --kosu 1  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "steady_oltp", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 7582cf4ebe61)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -53,7 +53,13 @@ Alternatif: Strateji B: Base kademe + On/Off CoD
   -> secilen strateji bundan $388,159 (%2.1) ucuz
 
 
---- batch_heavy: --input case_08_fiyatlama_abc.json --kosu 2  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "batch_heavy", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 85c8b82be116)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS; yillik ortalama TPS; aylik = yillik toplam / 12)
+OZET | mainframe | M1 base 3931-532, Strateji C: Tailored Fit Pricing | $1,488,971/ay | $148.90/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x16c DB dugumu | $764,035/ay | $76.40/TPS
+----------------------------------------------------------------------
+
+--- batch_heavy: --input case_08_fiyatlama_abc.json --kosu 2  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "batch_heavy", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 3bfe4dc3f083)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -110,7 +116,13 @@ Alternatif: Strateji A: Permanent peak kademe
   -> secilen strateji bundan $1,178,755 (%4.6) ucuz
 
 
---- retail_bursty: --input case_08_fiyatlama_abc.json --kosu 3  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "retail_bursty", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 8ae267926c44)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS; yillik ortalama TPS; aylik = yillik toplam / 12)
+OZET | mainframe | M1 base 3931-619, Strateji C: Tailored Fit Pricing | $2,034,932/ay | $203.49/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x24c DB dugumu | $1,088,605/ay | $108.86/TPS
+----------------------------------------------------------------------
+
+--- retail_bursty: --input case_08_fiyatlama_abc.json --kosu 3  [{"tps": null, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": true, "preset": "retail_bursty", "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 65f70398b18d)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -167,3 +179,21 @@ Alternatif: Strateji A: Permanent peak kademe
   -> secilen strateji bundan $1,928,974 (%6.0) ucuz
 
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS; yillik ortalama TPS; aylik = yillik toplam / 12)
+OZET | mainframe | M1 base 3931-717, Strateji C: Tailored Fit Pricing | $2,535,517/ay | $253.55/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x32c DB dugumu | $1,375,815/ay | $137.58/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 8 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  steady_oltp
+    mainframe: M1 base 3931-532, Strateji C: Tailored Fit Pricing           $1,488,971/ay  $148.90/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x16c DB dugumu      $764,035/ay  $76.40/TPS
+  batch_heavy
+    mainframe: M1 base 3931-619, Strateji C: Tailored Fit Pricing           $2,034,932/ay  $203.49/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x24c DB dugumu    $1,088,605/ay  $108.86/TPS
+  retail_bursty
+    mainframe: M1 base 3931-717, Strateji C: Tailored Fit Pricing           $2,535,517/ay  $253.55/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x32c DB dugumu    $1,375,815/ay  $137.58/TPS

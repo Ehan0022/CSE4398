@@ -1,4 +1,4 @@
---- x86 + karsilastirma: --input case_01_referans.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha e09afb48fc9e)
+--- x86 + karsilastirma: --input case_01_referans.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 98729de4f6f2)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -45,3 +45,15 @@ KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
   uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $586,756/ay ($58.68/TPS)
   basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,179,197/ay | $117.92/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 1 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  x86 + karsilastirma
+    mainframe: M1 3931-524 (24 CP)                                          $1,179,197/ay  $117.92/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS

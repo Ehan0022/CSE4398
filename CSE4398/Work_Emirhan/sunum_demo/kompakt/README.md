@@ -16,7 +16,8 @@ Sunumda girdileri ve çıktıları kod üzerinde göstermek için. Model kodunun
 ## Çalıştırma
 
 ```
-python sunum_demo/kompakt/calistir.py              # bütün case'ler, özet satırları
+python sunum_demo/kompakt/calistir.py              # bütün case'ler, her koşunun OZET satırları
+python sunum_demo/kompakt/calistir.py --ayrinti    # OZET'e ek olarak ozet_deseni satırları
 python sunum_demo/kompakt/calistir.py 3 7          # yalnızca Case 3 ve 7
 python sunum_demo/kompakt/calistir.py 4 --adim     # her koşudan önce Enter bekler (canlı sunum)
 python sunum_demo/kompakt/calistir.py 1 --tam      # model çıktısının tamamı
@@ -42,7 +43,7 @@ Her koşuda modelin bütün senaryo girdileri açıkça yazılıdır: verilmeyen
   "case": 3,
   "baslik": "Latency hedefi: ...",
   "aciklama": "Bu case'te neyin neden değiştiği",
-  "ozet_deseni": "calistir.py'nin ekrana basacağı çıktı satırları (regex)",
+  "ozet_deseni": "--ayrinti ile ekrana basılacak ek çıktı satırları (regex)",
   "girdi_sozlugu": {
     "latency_ms": {"varsayilan": null, "birim": "ms", "model": "ikisi",
                    "aciklama": "Yanıt süresi hedefi. null = hedef yok"}
@@ -78,3 +79,7 @@ Yeni bir senaryo için bir case dosyasını kopyalayıp `girdi` değerlerini de�
 Model hesabına dokunulmadı. `calistir.py` her koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktıyla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır. Son koşu (2026-11-24): 50 koşunun 50'si aynı. Bu, varsayılanların açıkça yazılmasının sonucu değiştirmediğini de gösterir.
 
 Model `src/` altında değişirse bu kopya eskir. O durumda üç dosya yeniden kopyalanıp yukarıdaki üç değişiklik tekrar uygulanmalıdır.
+
+## Case özeti (2026-11-24)
+
+Her koşu, modelin OZET bloğuyla biter: iki tarafta en ucuz feasible yapılandırma ve aylık maliyet (`kod/ozet.py`, `src/ozet.py` ile aynı). `calistir.py` ekrana varsayılan olarak yalnızca bu satırları basar ve her `ciktilar/case_NN_*.txt` dosyasının sonuna bütün koşuların CASE ÖZETİ'ni yazar (biçim ana demodakiyle aynı).

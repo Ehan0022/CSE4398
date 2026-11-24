@@ -929,5 +929,25 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Db2 DDF + dağıtık uygulama yığını (Emirhan'ın kararıyla eklenmedi).
 - M3 çok siteli iş yükünde ikinci sitedeki etkin imajların MSU faturası ihmal edildi.
 - `kopruler_v2.md`'ye KB-07/KB-08 için platform kesintisi terimi ve M3 eşitliği eklenmeli.
-- Slaytlar (`sunum_demo/slaytlar/`) bu oturumdaki sayılarla henüz güncellenmedi.
+- Slaytlar (`sunum_demo/slaytlar/`) bu oturumdaki sayılarla henüz güncellenmedi (Oturum 13'te yapıldı).
 - Önceki açık kalanlar değişmedi: K6 ölçümü, RAC USL kaynağı, sunucu ihale kaydı, drawer maliyeti, planlı kesinti kalibrasyonu.
+
+## 2026-11-24 — Oturum 13: case çıktılarına kısa özet, slayt yenilemesi
+
+### 1. Aksiyon
+- **Koşu sonu özeti (`src/ozet.py`):** iki model CLI'ı da her koşuyu bir OZET bloğuyla bitiriyor: aynı girdilerle mainframe'in ve x86'nın en ucuz feasible yapılandırması ve aylık maliyeti (`OZET | taraf | yapılandırma | aylık | $/TPS`). Kurulamayan taraf `kurulamaz`, x86 karşılığı olmayan girdi (`redp_light`) `karşılığı yok` yazılıyor. `--compare` verilmese de karşı taraf çözülüyor; yıllık modda mainframe A / B / C'nin en ucuzu, x86 tepeye göre kurulu yığın.
+- **Mainframe CLI:** `__main__` olarak koşan modülün ikinci kopyası yüklenmesin diye x86 modeli içe aktarılmadan önce `sys.modules["mainframe_model"]` bu modüle bağlanıyor (CLI'da değişen `BACKUP_TARGET` gibi globaller ortak kalıyor).
+- **Demo betikleri:** `demo_calistir.py` ve kompakt `calistir.py` her case dosyasının sonuna CASE ÖZETİ yazıyor ve ekrana varsayılan olarak yalnızca bunu basıyor (eski ayrıntı satırları `--ayrinti` ile). Kompakt `kod/` yeniden kopyalandı, `kod/ozet.py` eklendi.
+- **Test:** `test_cli_ends_with_ozet_for_both_sides`. `test_x86_model.py`'nin bağımsız çalıştırma bloğu dosya sonuna taşındı (önceden Değ #10 testleri `python test_x86_model.py` ile koşmuyordu).
+- **Slaytlar:** dört slayt dosyasındaki sayılar Değ #10 koşusuyla yenilendi (availability sonuçları, M3 kuralları, personel 41,6 FTE, maliyet eğrileri, karşılaştırma ve eşleştirilmiş senaryo tabloları, NPV, yıllık stratejiler); güncelleme notları kaldırıldı. Kapanışa yeni S0 slaytı "Demo case özetleri" (12 case, iki tarafın en ucuz feasible yapılandırması ve $/TPS) eklendi; bulgular ve tehdit tablosu (u, DDF) güncellendi. Toplam 99 slayt.
+- **Dokümanlar:** x86 v1 §2.2, mainframe v3 §10 (kod yapısı ve statik mod), `DEMO_SENARYOLARI.md`, demo ve kompakt README'leri.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-24): case çıktılarının sonunda yalnızca iki taraftaki en feasible yapılandırmaları ve maliyetlerini veren kısa bir özet; slaytların da buna göre güncellenmesi.
+
+### 3. Sonuç
+- Model sonuçları değişmedi (özet yalnızca mevcut çözümleri raporluyor). Testler: mainframe 30/30, x86 30/30. Demo: 51 komut, hepsi farklı çıktı; kompakt: 50 koşunun 50'si orijinalle aynı.
+
+### 4. Açık kalanlar
+- `DEMO_SENARYOLARI.md`'de Case 3, 5, 6, 7, 8'in ayrıntı tabloları Değ #10 öncesi değerleri taşıyor (case özetleri güncel).
+- Oturum 12'nin açık kalanları sürüyor (u kalibrasyonu, `kopruler_v2.md`, K6 ölçümü vb.).

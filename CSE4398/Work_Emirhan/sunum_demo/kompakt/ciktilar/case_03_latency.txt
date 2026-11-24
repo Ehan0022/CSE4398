@@ -1,4 +1,4 @@
---- hedef yok: --input case_03_latency.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha df00e88d7e0e)
+--- hedef yok: --input case_03_latency.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a10b9b3ee9d0)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -33,7 +33,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 50 ms: --input case_03_latency.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 50, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 371f2a9080d1)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-524 (24 CP) | $1,179,197/ay | $117.92/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 50 ms: --input case_03_latency.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 50, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 5f6193788d4b)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -69,7 +75,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 20 ms: --input case_03_latency.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 64cba82f7e4d)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-614 (14 CP) | $1,181,023/ay | $118.10/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 20 ms: --input case_03_latency.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 2701887546c0)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -105,7 +117,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 10 ms: --input case_03_latency.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 10, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a9c679f751a8)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-710 (10 CP) | $1,192,763/ay | $119.28/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+--- p99 10 ms: --input case_03_latency.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 10, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a08ffc603ade)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -141,7 +159,13 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- x86, p99 20 ms: --input case_03_latency.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha e35833256857)
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-714 (14 CP) | $1,230,171/ay | $123.02/TPS
+OZET | x86       | X1 vSphere / VM / Oracle, 8 x 2x8c DB dugumu | $735,438/ay | $73.54/TPS
+----------------------------------------------------------------------
+
+--- x86, p99 20 ms: --input case_03_latency.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 543cedfa13dd)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -177,3 +201,27 @@ x86 FEASIBILITY MODELI (STATIK)
      $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
+----------------------------------------------------------------------
+OZET: iki tarafta en ucuz feasible yapilandirma (10,000 TPS)
+OZET | mainframe | M1 3931-710 (10 CP) | $1,192,763/ay | $119.28/TPS
+OZET | x86       | X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu | $576,454/ay | $57.65/TPS
+----------------------------------------------------------------------
+
+==============================================================================
+CASE 3 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
+==============================================================================
+  hedef yok
+    mainframe: M1 3931-524 (24 CP)                                          $1,179,197/ay  $117.92/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 50 ms
+    mainframe: M1 3931-614 (14 CP)                                          $1,181,023/ay  $118.10/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 20 ms
+    mainframe: M1 3931-710 (10 CP)                                          $1,192,763/ay  $119.28/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS
+  p99 10 ms
+    mainframe: M1 3931-714 (14 CP)                                          $1,230,171/ay  $123.02/TPS
+    x86:       X1 vSphere / VM / Oracle, 8 x 2x8c DB dugumu                   $735,438/ay  $73.54/TPS
+  x86, p99 20 ms
+    mainframe: M1 3931-710 (10 CP)                                          $1,192,763/ay  $119.28/TPS
+    x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu       $576,454/ay  $57.65/TPS

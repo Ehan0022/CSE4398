@@ -1,8 +1,6 @@
 # Slayt İçeriği — Bölüm 2: Açık Sistem (Kümelenmiş x86) Katmanları ve Opsiyonları
 
-> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
-
-*14 katman × 2 slayt. Sayılar `src/x86_model.py`'nin 2026-11-23 koşusundan ve `docs/x86_model_dokumantasyonu_v1.md`'den. Ana tasarım ilkesi: x86'nın kendi çalışma biçimine sadakat. Ortak olan ortak kurala bağlanır, yapısal fark eşitlenmez, modellenir.*
+*14 katman × 2 slayt. Sayılar `src/x86_model.py`'nin 2026-11-24 koşusundan (Değerlendirme #10 sonrası) ve `docs/x86_model_dokumantasyonu_v1.md`'den. Ana tasarım ilkesi: x86'nın kendi çalışma biçimine sadakat. Ortak olan ortak kurala bağlanır, yapısal fark eşitlenmez, modellenir.*
 
 ---
 
@@ -29,7 +27,7 @@
 - Bileşim iki tarafta tek kaynaktan (`common_model.WORKLOAD_MIXES`): tpcb_like 1+0+4, oltp_rw 10+4+4, oltp_heavy 30+0+6.
 - x86 çapası sysbench oltp_read_write'ın kendisi → oltp_rw göreli ağırlığı tanım gereği 1,00.
 - Diğer profiller ifade maliyetleriyle: `birim = nokta + aralık × 3,65 + yazma × 3,9 + (commit + BEGIN) × 1,0`.
-- Sonuç: tpcb_like 0,44 · oltp_rw 1,00 · oltp_heavy 1,31 (Demo Case 6: $26,95 / $53,66 / $63,45).
+- Sonuç: tpcb_like 0,44 · oltp_rw 1,00 · oltp_heavy 1,31 (Demo Case 6: $28,90 / $57,65 / $68,17).
 - I/O kuralları ortak: 2,8 senkron okuma + 1 WAL yazımı, 5,8 IOPS/işlem.
 
 **Veri / kaynak:** [VONNG-PERF] alt testleri (yazma/nokta 3,65–4,15; BEGIN/COMMIT ≈ 1 nokta), [SYSBENCH]; x86 dokümanı §3.
@@ -60,7 +58,7 @@
 
 - Güç: `(220 W platform + çekirdek × TDP/çekirdek) × 1,25`; SPECpower %100 yük değeri (mainframe tepe güç kullandığı için simetri).
 - Fiyat dönemi: ana senaryo 2025-mid (DRAM $4/GB, NVMe $115/TB); duyarlılık 2026-Q3 (DRAM $35, NVMe $753: bellek/SSD şoku).
-- 2026-Q3 etkisi küçük: 10K TPS $53,66 → $53,99 (bellek/NVMe x86 maliyetinin küçük payı).
+- 2026-Q3 etkisi küçük: 10K TPS $57,65 → $57,98 (bellek/NVMe x86 maliyetinin küçük payı).
 - **KB-15 ±%20 kontrolü yapılamadı:** tek kaynak R760 "amiral" yapılandırma için $53.250 veriyor ama yapılandırmayı vermiyor; yalnızca bant kontrolü ($29.975 – $81.318 içinde).
 
 **Veri / kaynak:** [SPECPOWER-2025Q1], [PCSP-SERVER], [PCSP-SSD], [CAPCOMP-RAM], [BACLOUD-RAM], [TRENDFORCE-2026-08]; x86 dokümanı §4.3–4.4, §13.4.
@@ -117,13 +115,13 @@
 
 **Tasarım gerekçesi:** İki rakip üreticinin kendi lehine ölçümleri arasından orta değer; ikisi de [VENDOR] olduğu için aralık geniş. Oracle'ın konteynerde RAC çalıştırması modellenmedi (bilinçli kapsam).
 
-**Konuşmacı notu:** "Kurumların gerçekte seçtiği yığınlar bunlar. Demo Case 1'deki seçim motoru tablosu sekizini de sıralıyor; 10K TPS'te fark $536K ile $593K arası."
+**Konuşmacı notu:** "Kurumların gerçekte seçtiği yığınlar bunlar. Demo Case 1'deki seçim motoru tablosu sekizini de sıralıyor; 10K TPS'te fark $576K ile $633K arası."
 
 ---
 
 ### Slayt X4.2 — Yığın seçiminin sonuçları ve Oracle verim çarpanı
 
-- 10K TPS (%99,9): vSphere/VM/PG $536.552 = vSphere/K8s/PG (K8s'in %2 ek yükü SKU'yu değiştirmez) · OpenShift yerleşimi +%2,5 · OCP-V bir boy büyük SKU ister · Oracle +%7–11.
+- 10K TPS (%99,9): vSphere/VM/PG $576.454 = vSphere/K8s/PG (K8s'in %2 ek yükü SKU'yu değiştirmez) · OpenShift yerleşimi +%2,3 · OCP-V bir boy büyük SKU ister · Oracle +%6–10.
 - 200K TPS'te OCP-V/VM/Oracle seçilir: düğüm başına OVE fiyatı çok büyük düğümde çekirdek başına vSphere'den ucuz.
 - `ORACLE_THROUGHPUT_FACTOR` 1,30 / **1,00** / 0,80: kalibre edilemez. Oracle OTN lisansı "disclose results of any Program benchmark tests without Oracle's prior consent"i yasaklar.
 - Orta değer 1,0 = kayıtsızlık ilkesi (kaynak yokken yön iddia edilmez).
@@ -220,9 +218,9 @@
 
 ### Slayt X7.2 — Availability denklemi ve sonuçlar
 
-- `D = D_saha(T_kurtarma) [ortak] + λ_planlı × T_planlı + 12 yama switchover × T_sw + N_kesen × λ_düğüm × T_failover`.
+- `D = D_saha(T_kurtarma) [ortak] + λ_planlı × T_planlı + 12 yama switchover × T_sw + N_kesen × λ_düğüm × T_failover × (1 − u) + N_kesen × ITIC_sunucu × u` (son terim Değ #10, iki tarafta aynı kural; u = 0,05 / 0,10 / 0,20).
 - N_kesen: Patroni'de yalnızca birincil; RAC'ta hizmeti taşıyan her düğüm.
-- Sonuçlar (PG): X1 %99,98275 · X2 %99,99499 · X3 %99,99917 · X4 PG infeasible (Oracle %99,99959).
+- Sonuçlar (PG): X1 %99,9823 · X2 %99,9945 · X3 %99,9987 · X4 PG infeasible (Oracle %99,9994). Desteksiz PostgreSQL ITIC'in üst ucuyla (59 dk/sunucu/yıl) sayılır.
 - X1 M1'den biraz yüksek: tek frame'li M1'de planlı kesinti uzun, Patroni yamaları saniyelik switchover. Baskın terim iki tarafta da ortak saha olayı.
 
 **Veri / kaynak:** [VISHWANATH-2010], [PIGSTY-RTO] (27–41 sn), [ORACLE-RAC-2024], [YELLOWBRICKS-HA]; x86 dokümanı §8.3–8.4; KB-07.
@@ -336,7 +334,7 @@
 ### Slayt X11.1 — Personel: ortak eğri × oran
 
 - `FTE_x86 = FTE_ortak(TPS) × STAFF_RATIO_X86`; ana senaryoda oran **1,0** (nötr), aralığa girmez.
-- 10K TPS: iki tarafta da 38,6 FTE, $521.333/ay.
+- 10K TPS: iki tarafta da 41,6 FTE, $561.236/ay.
 - Elenen x86 değişkenleri: sunucu başına 32 saat, imaj başına 36 saat, DBA saati, yığın çarpanı.
 - Duyarlılık: 1,25 (konsolide x86 vakaları) ve 2,0 (bütün FTE vakaları), IBM kaynaklı ve yanlılık notuyla.
 
@@ -368,7 +366,7 @@
 
 - Düğüm grubu (rol × site) başına: yazılım + donanım (/60 ay) + bakım (garanti sonrası) + enerji; + storage + yedek + personel + üretim dışı.
 - Oracle lisansı statik modda 5 yıla amortismanlanır + %22 destek.
-- Maliyet/TPS eğrisi (mid): 1K $118,98 · 10K $53,66 · 30K $38,41 · 50K $35,25 (Oracle) · 100K $29,03 · 200K $24,45.
+- Maliyet/TPS eğrisi (mid): 1K $126,94 · 10K $57,65 · 30K $41,28 · 50K $37,71 (Oracle) · 100K $31,03 · 200K $26,07.
 - Personel payı %87–98: x86 aralığını personel eğrisi ve ücret belirler.
 
 **Veri / kaynak:** model koşusu (Demo Case 1, 2); x86 dokümanı §13.1–13.3.
@@ -383,7 +381,7 @@
 
 - 30K TPS'e kadar PostgreSQL lisanssız: personel hariç $14,96 (1K) → $0,91/TPS (30K).
 - Tavanın üstünde Oracle RAC zorunlu: lisans ve destek personel hariç maliyeti ~3 katına çıkarır ($3,08 @ 50K).
-- %99,999 (X3) yığın tablosu, 10K TPS: vSphere/PG $61,83 … OCP-V/Oracle $73,05.
+- %99,999 yığın tablosu, 10K TPS: PostgreSQL platform kesintisi terimiyle %99,999'u tutamaz; vSphere/Oracle X4 $79,77 … OCP-V/Oracle X4 $83,94.
 - Bu, mainframe karşılaştırmasından bağımsız, x86'nın kendi yapısal crossover'ı (açık kaynak ↔ ticari).
 
 **Veri / kaynak:** x86 dokümanı §13.3.
@@ -414,7 +412,7 @@
 
 - 10K TPS, 5 yıl: x86 NPV $32,07M, seviyelendirilmiş $54,07 (mainframe $68,62M, $115,70).
 - Yol: 1. yıl 2×8c; 2. yılda 2×12c'ye CPU değişimi; 4. yılda ikinci storage döngüsü. NPV'nin %97,2'si personel.
-- Ufuk 3 / 5 / 10 yıl: $54,14 / $54,07 / $54,47 (neredeyse sabit; Demo Case 10).
+- Ufuk 3 / 5 / 10 yıl: $58,14 / $58,09 / $58,53 (neredeyse sabit; Demo Case 10).
 - Yıllık mod: CoD karşılığı yok, kapasite tepeye kurulur. retail_bursty (tepe 35K): x86 $15,36M, mainframe (TFP) $29,28M.
 - retail_bursty'nin 35K tepesi Patroni tavanına çok yakın; biraz daha dalgalı profil x86'yı Oracle'a iter.
 
@@ -430,14 +428,16 @@
 
 | Availability | TPS | Mainframe $/TPS | x86 $/TPS | Başabaş personel oranı |
 |---|---|---|---|---|
-| %99,9 | 1.000 | 291,89 (M1) | 118,98 (PG X1) | 2,66 |
-| %99,9 | 10.000 | 113,93 (M1) | 53,66 (PG X1) | 2,16 |
-| %99,9 | 50.000 | 68,89 (M1) | 35,25 (Oracle X1) | 2,05 |
-| %99,99 | 10.000 | 122,29 (M2) | 56,78 (PG X2) | 2,20 |
-| %99,999 | 10.000 | 143,97 (M4) | 61,83 (PG X3) | 2,37 |
+| %99,9 | 1.000 | 299,85 (M1 3931-407) | 126,94 (PG X1, 3 × 2×8c) | 2,54 |
+| %99,9 | 10.000 | 117,92 (M1 3931-524) | 57,65 (PG X1, 3 × 2×8c) | 2,07 |
+| %99,9 | 50.000 | 71,35 (M1 3931-759) | 37,71 (Oracle X1, 7 × 2×8c) | 1,97 |
+| %99,99 | 10.000 | 126,48 (M2 3931-524) | 61,92 (PG X2) | 2,10 |
+| %99,999 | 10.000 | 138,35 (M3 3931-524) | 79,77 (Oracle X4, 4 × 2×8c) | 1,84 |
+| %99,999 + RPO 0 | 10.000 | 138,35 (M3 3931-524) | **kurulamaz** | — |
 
-- Mid'de x86 bütün noktalarda ucuz; başabaş oranı 2,0 – 3,6.
-- Personel hariç fark 8 – 42 kat; kaynağı neredeyse bütünüyle yazılım lisans modeli.
+- Mid'de x86, kurulabildiği her noktada ucuz; başabaş oranı 1,8 – 2,5.
+- Personel hariç fark 8 – 41 kat; kaynağı neredeyse bütünüyle yazılım lisans modeli.
+- %99,999 + RPO 0 ve %99,9995'te yalnızca mainframe kurulabilir (Değ #10; sınır u'ya duyarlı, u = 0,05'te x86 Oracle X3 $73,69 ile kurulur).
 
 **Veri / kaynak:** model koşusu (`--compare`); x86 dokümanı §16.2.
 
@@ -451,9 +451,9 @@
 
 | TPS | x86 lehine (BE) | orta (BE) | mainframe lehine MF / x86 (BE) |
 |---|---|---|---|
-| 10.000 | 383,08 / 52,95 (7,33) | 113,93 / 53,66 (2,16) | 70,49 / 57,92 (1,24) |
-| 30.000 | 345,99 / 37,78 (9,22) | 78,31 / 38,41 (2,06) | **47,98 / 56,12 (0,78)** |
-| 50.000 | 335,72 / 32,37 (10,43) | 68,89 / 35,25 (2,05) | **40,60 / 50,98 (0,68)** |
+| 10.000 | 387,27 / 56,94 (6,89) | 117,92 / 57,65 (2,07) | 74,48 / 61,91 (1,22) |
+| 30.000 | 349,01 / 40,65 (8,64) | 81,18 / 41,28 (1,99) | **50,85 / 58,99 (0,80)** |
+| 50.000 | 338,31 / 34,83 (9,76) | 71,35 / 37,71 (1,97) | **43,06 / 53,44 (0,70)** |
 
 - Platforma özgü parametreler zıt uçlarda, **ortak parametreler iki tarafta aynı** (`CROSS_BRIDGE_WEIGHTS` = reference).
 - 30K–50K'da mainframe lehine senaryoda mainframe personel nötrken de ucuz: x86 high köşesinde Patroni tavanı ~15K'ya iner, Oracle'ın high köşesi lisansı patlatır.
@@ -462,4 +462,4 @@
 
 **Tasarım gerekçesi:** İki platformun kendi köşelerini ayrı ayrı okumak personeli bir tarafta low, öbür tarafta high yapardı (P kararıyla çelişir). İlk koşuda tam bu hata görüldü: x86 $53,66'dan $89,49'a çıkmıştı; düzeltildi (`test_paired_comparison_scenarios`).
 
-**Konuşmacı notu:** "Tezin başlık cümlesi: mid varsayımlarla ve nötr personelle x86 ~2 kat ucuz; mainframe'in kazandığı bölge ya x86 personelinin ~2 katı aşması ya da bütün belirsizliklerin mainframe lehine çözülüp yükün 15–36K TPS'lik Patroni tavanını aşması."
+**Konuşmacı notu:** "Tezin başlık cümlesi: mid varsayımlarla ve nötr personelle x86 ~2 kat ucuz; mainframe'in kazandığı bölge ya x86 personelinin ~2 katı aşması, ya bütün belirsizliklerin mainframe lehine çözülüp yükün 15–36K TPS'lik Patroni tavanını aşması, ya da %99,999 + RPO 0 gibi yalnızca mainframe'in kurulabildiği bir hedef."
