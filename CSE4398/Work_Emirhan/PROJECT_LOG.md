@@ -989,3 +989,16 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 
 ### 3. Sonuç
 - `case_sonuclari.txt`: 12 case, ~2.900 satır. Demo 51 komut farklı; kompakt 50/50 orijinalle aynı. Model koduna dokunulmadı.
+
+## 2026-11-24 — Oturum 15: köprü slaytları veriyle ve örnek hesaplarla
+
+### 1. Aksiyon
+- `sunum_demo/slaytlar/03_kopruler.md` yeniden yazıldı (36 slayt + K0, yapı korundu). Her köprünün ilk slaytı kullanılan veriyi kaynaktaki değerlerin kendisiyle (REDP-5320 ve LSPR satırları, Vonng QPS'leri, SPECint değerleri, AWLC kademe tablosu, ITIC kesinti değerleri, personel çapaları, fiyat dönemleri, lisans fiyatları vb.) ve türetmeyi adım adım verir; ikinci slayt referans noktada (10K TPS, oltp_rw, %99,9, 20 TB) somut bir örnek hesapla kararı ve açık kalanı verir.
+- Örnek hesapların hepsi modelin kendi fonksiyonlarıyla yeniden üretildi (`raw_tier_tps`, `tier_max_tps`, `consumed_msu`, `software_monthly_cost`, `tps_per_core`, `cluster_raw_tps`, `Topology.availability`, `staff_fte`, `storage_plan`, `backup_plan`, `node_net_capex`, NPV paydası). Kaynak anahtarları `kaynaklar/` kataloğundaki yeni anahtarlar.
+- KB-18.2 denge tablosuna Değ #10 satırı eklendi.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-24): köprüler slaytı daha açıklayıcı olsun, tam olarak hangi verilerin kullanıldığı verinin kendisiyle yazılsın; her köprüye küçük bir örnek eklensin.
+
+### 3. Sonuç
+- Model koduna dokunulmadı. Örneklerdeki ara değerler model çıktısıyla aynı (ör. 3931-524 10.119 TPS, fatura 1.753 MSU, yazılım $402.932; x86 927 TPS/çekirdek, p99 18,9 ms; M1 %99,962, X3 %99,9987; personel 41,6 FTE; başabaş 2,07).
