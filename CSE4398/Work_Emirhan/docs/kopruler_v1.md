@@ -85,9 +85,9 @@ sysbench `oltp_read_write`'ın kendisi ölçülür. Bileşim tanım gereği ayn�
 
 ### Kaynaklardan
 
-**sysbench oltp_read_write bileşimi** [SYSBENCH, TENCENT-METHOD] (aktarım): işlem başına 10 nokta SELECT, 4 aralık SELECT (simple range, SUM, ORDER BY, DISTINCT; `range_size` varsayılanı 100 satır), 2 UPDATE, 1 DELETE, 1 INSERT, BEGIN ve COMMIT. Toplam 20 ifade.
+**sysbench oltp_read_write bileşimi** [Kopytov-sysbench, Tencent-PG-TestMethods] (aktarım): işlem başına 10 nokta SELECT, 4 aralık SELECT (simple range, SUM, ORDER BY, DISTINCT; `range_size` varsayılanı 100 satır), 2 UPDATE, 1 DELETE, 1 INSERT, BEGIN ve COMMIT. Toplam 20 ifade.
 
-**REDP-5320 işlem profili** [REDP-PROFILE], raporun sayaçlarından (v3 §4.4.1):
+**REDP-5320 işlem profili** [Burgess2016-REDP5320], raporun sayaçlarından (v3 §4.4.1):
 
 | Ölçü (18 CP, 174.624 TPS) | Değer | İşlem başına |
 |---|---|---|
@@ -97,10 +97,10 @@ sysbench `oltp_read_write`'ın kendisi ölçülür. Bileşim tanım gereği ayn�
 | CICS CPU | 1.499,4 % (bir CP) | 85,9 µs (z13) |
 
 **SQL CPU maliyetleri:**
-- [CATTERALL-2012] (aktarım): CICS programında tek INSERT ~68 µs CPU (stored procedure içinde 139 µs).
-- [CATTERALL-2019] (aktarım): bir sahada CICS-Db2 işlemi class 2 CPU (GP + zIIP) 1,322 → 1,245 ms.
+- [Catterall2012] (aktarım): CICS programında tek INSERT ~68 µs CPU (stored procedure içinde 139 µs).
+- [Catterall2019] (aktarım): bir sahada CICS-Db2 işlemi class 2 CPU (GP + zIIP) 1,322 → 1,245 ms.
 
-**Vonng alt testleri** [VONNG-PERF], AWS c5d.metal. Şekil altyazısı: "Sysbench 10-item test results (QPS, higher is better)".
+**Vonng alt testleri** [Vonng-PGPerf], AWS c5d.metal. Şekil altyazısı: "Sysbench 10-item test results (QPS, higher is better)".
 
 | Test | QPS (kaynaktaki değer) |
 |---|---|
@@ -134,7 +134,7 @@ sysbench `oltp_read_write`'ın kendisi ölçülür. Bileşim tanım gereği ayn�
 |---|---|---|---|---|
 | RANGE_READ_WEIGHT | 3,4 | 3,65 | 3,9 | Vonng alt testleri [DERIVED]; K6 ile kalibre |
 | CPU_US_PER_SQL_READ (nokta) | 15 | 30 | 60 | [ASSUME] (v3 §4.4.2) |
-| CPU_US_PER_SQL_WRITE | 40 | 70 | 140 | [CATTERALL-2012] |
+| CPU_US_PER_SQL_WRITE | 40 | 70 | 140 | [Catterall2012] |
 
 ### Etkisi [DERIVED, model koşusu]
 
@@ -162,14 +162,14 @@ Benchmark'tan nesilden bağımsız bir "kapasite birimi başına TPS" katsayıs�
 
 ### Kaynaklardan
 
-[REDP] IBM Redpaper REDP-5320, "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13", ve aynı sistemlerin PCI'si [LSPR-z13]:
+[Burgess2016-REDP5320] IBM Redpaper REDP-5320, "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13", ve aynı sistemlerin PCI'si [IBM-LSPR-zOS22]:
 
 | Sistem | CP | TPS | PCI | LSPR (avg) | TPS / PCI |
 |---|---|---|---|---|---|
 | 2964-718 | 18 | 174.000 | 21.579 | 38,55 | 8,063 |
 | 2964-726 | 26 | 227.000 | 29.048 | 51,89 | 7,815 |
 
-[LSPR] (aktarım): IBM Z LSPR ITRR tabloları bütün nesilleri System z9 2094-701 = 1,00 bazında verir. PCI bu ölçeğin sabit bir katıdır. z16 (3931) kademeleri için PCI, MSU ve Low/Average/High değerleri; z16 3931-701 = 2.253 PCI.
+[IBM-LSPR-ITRR] (aktarım): IBM Z LSPR ITRR tabloları bütün nesilleri System z9 2094-701 = 1,00 bazında verir. PCI bu ölçeğin sabit bir katıdır. z16 (3931) kademeleri için PCI, MSU ve Low/Average/High değerleri; z16 3931-701 = 2.253 PCI.
 
 ### Kural
 
@@ -184,7 +184,7 @@ ham_TPS(kademe, profil) = PCI × 7,939 / w / (1 − f)
 
 ### Makullük kontrolü (v3 §4.4.3)
 
-IBM'in z14 duyurusundaki "günde 12 milyardan fazla şifreli işlem" (~139K TPS) [IBM-Z14-PR], z14'ün ~160K PCI olduğu kaba tahminiyle w ≈ 9'a karşılık gelir. Bu yalnızca büyüklük mertebesi teyididir.
+IBM'in z14 duyurusundaki "günde 12 milyardan fazla şifreli işlem" (~139K TPS) [AmwalAlGhad2017-z14], z14'ün ~160K PCI olduğu kaba tahminiyle w ≈ 9'a karşılık gelir. Bu yalnızca büyüklük mertebesi teyididir.
 
 ### Açık kalan
 
@@ -209,7 +209,7 @@ S(n) = düğüm içi ölçeklenme (KB-06); VIRT ve CONT = sanallaştırma ve kon
 
 ### Kaynaklardan
 
-**Çapa adayı** [VONNG-PERF], Feng Ruohang (Vonng), "How Powerful is PostgreSQL Really?":
+**Çapa adayı** [Vonng-PGPerf], Feng Ruohang (Vonng), "How Powerful is PostgreSQL Really?":
 - Makine: "c5d.metal", "96C 192G". c5d.metal = 2 × Xeon Platinum 8275CL, 48 fiziksel / 96 mantıksal çekirdek.
 - Veri: "16 x 10M" tablo, "basically 160M records".
 - Ortam: "We still use AWS c5d.metal, but with full production environment configuration."
@@ -220,17 +220,17 @@ S(n) = düğüm içi ölçeklenme (KB-06); VIRT ve CONT = sanallaştırma ve kon
 
 | Sistem | CPU | Çekirdek | SPECrate2017_int_base | Çekirdek başına [DERIVED] | Kaynak |
 |---|---|---|---|---|---|
-| Dell PowerEdge M640 | 2 × Xeon Platinum 8270 | 52 | 309 | 5,94 | [SPEC-8270] |
-| Dell PowerEdge R760 | 2 × Xeon Gold 6548Y+ | 64 | 628 | 9,81 | [SPEC-R760] |
-| HPE ProLiant DL380 Gen12 | 2 × Xeon 6787P | 172 | 1.570 | 9,13 | [SPEC-DL380G12] |
+| Dell PowerEdge M640 | 2 × Xeon Platinum 8270 | 52 | 309 | 5,94 | [SPEC2019-M640-8270] |
+| Dell PowerEdge R760 | 2 × Xeon Gold 6548Y+ | 64 | 628 | 9,81 | [SPEC2024-R760-6548Y] |
+| HPE ProLiant DL380 Gen12 | 2 × Xeon 6787P | 172 | 1.570 | 9,13 | [SPEC2025-DL380G12] |
 
 **Bağlam ölçümleri** (normalize edilemiyor; çapraz kontrol değil, büyüklük mertebesi bağlamı):
 
 | Kaynak | Ortam | Ölçülen (kaynaktaki değer) |
 |---|---|---|
-| [ROCKDATA-2026] [VENDOR] | Huawei Cloud c9.8xlarge, 32 vCPU, PG 18.6, bellek içi | 15.261 TPS (256 iş parçacığı) |
-| [TENCENT-RESULT] | 1 / 4 / 8 / 48 "çekirdek", tam önbellek | 864 / 4.032 / 5.777 / 8.675 TPS |
-| [ALIBABA-PG16] | 8 çekirdek, ESSD PL3, bellekten büyük veri | 649 TPS |
+| [Rockdata2026] [VENDOR] | Huawei Cloud c9.8xlarge, 32 vCPU, PG 18.6, bellek içi | 15.261 TPS (256 iş parçacığı) |
+| [Tencent-PG-TestResults] | 1 / 4 / 8 / 48 "çekirdek", tam önbellek | 864 / 4.032 / 5.777 / 8.675 TPS |
+| [Alibaba-PolarDB-PG16] | 8 çekirdek, ESSD PL3, bellekten büyük veri | 649 TPS |
 
 ### Türetme [DERIVED] (plan v1 §3.3)
 
@@ -245,9 +245,9 @@ Gen12: 91 × 9,13 ≈ 831 TPS/çekirdek
 
 | Kaynak | Bulgu (aktarım) |
 |---|---|
-| [REDHAT-OCPV-2025] [VENDOR] | OpenShift Virtualization'da MariaDB/HammerDB; 4 örnekte VM'ler bare-metal verimin %80'i |
-| [PT-VSPHERE-OCPV-2024] [VENDOR] | Dell R650, SQL Server TPROC-C, 10 VM: vSphere 8 U3 OpenShift Virtualization 4.16'dan %27,6 fazla NOPM |
-| [EDB-LOCALPV] | Kubernetes yerel kalıcı birim: sıralı okuma −%3,6, yazma −%0,8; ağ tabanlı paylaşımlı PV −%89–95 |
+| [RedHat2025-OCPVDB] [VENDOR] | OpenShift Virtualization'da MariaDB/HammerDB; 4 örnekte VM'ler bare-metal verimin %80'i |
+| [VMware2024-vSphereOCPV] [VENDOR] | Dell R650, SQL Server TPROC-C, 10 VM: vSphere 8 U3 OpenShift Virtualization 4.16'dan %27,6 fazla NOPM |
+| [EDB-LocalPV] | Kubernetes yerel kalıcı birim: sıralı okuma −%3,6, yazma −%0,8; ağ tabanlı paylaşımlı PV −%89–95 |
 
 ### Kural (K kararı)
 
@@ -269,12 +269,12 @@ Gen12: 91 × 9,13 ≈ 831 TPS/çekirdek
 | X86_TPS_PER_SPECINT_CORE | 120 | 91 | 60 | [DERIVED]; K6'ya kadar geniş |
 | VIRT_OVERHEAD vSphere | 0,03 | 0,07 | 0,15 | İki rakip [VENDOR] arasından [ASSUME] |
 | VIRT_OVERHEAD OCP-V | 0,05 | 0,12 | 0,25 | Aynı |
-| CONTAINER_OVERHEAD | 0 | 0,02 | 0,05 | [EDB-LOCALPV] + [ASSUME] |
+| CONTAINER_OVERHEAD | 0 | 0,02 | 0,05 | [EDB-LocalPV] + [ASSUME] |
 | ORACLE_THROUGHPUT_FACTOR | 1,30 | 1,00 | 0,80 | Kalibre edilemez (aşağıda) |
 
 ### Oracle
 
-[ORACLE-OTN] lisansı lisans sahibinin şunu yapmasını yasaklar: "disclose results of any Program benchmark tests without Oracle's prior consent." Bu yüzden aynı donanımda Oracle ile PostgreSQL'i karşılaştıran bağımsız bir ölçüm yoktur. Orta değer 1,0 kayıtsızlık ilkesidir: kaynak yokken bir yön iddia edilmez. Tezde bu, yapısal bir veri sınırı olarak yazılır.
+[Oracle-OTNLicense] lisansı lisans sahibinin şunu yapmasını yasaklar: "disclose results of any Program benchmark tests without Oracle's prior consent." Bu yüzden aynı donanımda Oracle ile PostgreSQL'i karşılaştıran bağımsız bir ölçüm yoktur. Orta değer 1,0 kayıtsızlık ilkesidir: kaynak yokken bir yön iddia edilmez. Tezde bu, yapısal bir veri sınırı olarak yazılır.
 
 ### Karar
 
@@ -301,7 +301,7 @@ Aralık uçları birlikte (CPU_US_PER_SQL_READ 15–60, X86_TPS_PER_SPECINT_CORE
 
 ### Kaynaklardan: literatürdeki "24–80 çekirdek" iddiası
 
-[SHEDLETSKY-2008] [VENDOR] konsolidasyon formülü (aktarım): `N < P_R × U_R × C_R`. Tipik oranlar: performans oranı P_R 1–3, kullanım oranı U_R 10–20 (dağıtık sunucular %5–12, mainframe %80–90 kullanımda), sunucu başına çekirdek 1–64. IBM'in "1 CP = 24–80 x86 çekirdeği" sonucunun büyük kısmı U_R'den ve dev/test kopyalarından gelir, işlemci hızından değil (`benzer_calismalar_v1.md` §3.3). Bizim köprümüz yalnızca P_R'yi ölçer. U_R'nin karşılığı KB-05'te, dev/test KB-14'te.
+[Shedletsky2008] [VENDOR] konsolidasyon formülü (aktarım): `N < P_R × U_R × C_R`. Tipik oranlar: performans oranı P_R 1–3, kullanım oranı U_R 10–20 (dağıtık sunucular %5–12, mainframe %80–90 kullanımda), sunucu başına çekirdek 1–64. IBM'in "1 CP = 24–80 x86 çekirdeği" sonucunun büyük kısmı U_R'den ve dev/test kopyalarından gelir, işlemci hızından değil (`benzer_calismalar_v1.md` §3.3). Bizim köprümüz yalnızca P_R'yi ölçer. U_R'nin karşılığı KB-05'te, dev/test KB-14'te.
 
 ---
 
@@ -338,8 +338,8 @@ D_repl     = senkron replikasyonda commit başına bir gidiş-dönüş (mesafe �
 
 ### Kaynaklardan
 
-- [EDB-SYNCREP] (aktarım): 10 ms yapay gecikmede 40 istemcide `remote_write`, yazma gecikmesine ~6,5 ms ekledi ve verimi %40 düşürdü; 3 ms'de etki yük altında ortadan kalktı.
-- [STORAGEREVIEW-P5520] [VENDOR sponsorlu] (aktarım): yerel NVMe ortalama tamamlanma süresi ~141 µs (karma), %99,99'luk dilim 769 µs.
+- [EDB-SyncRep] (aktarım): 10 ms yapay gecikmede 40 istemcide `remote_write`, yazma gecikmesine ~6,5 ms ekledi ve verimi %40 düşürdü; 3 ms'de etki yük altında ortadan kalktı.
+- [StorageReview2022-P5520] [VENDOR sponsorlu] (aktarım): yerel NVMe ortalama tamamlanma süresi ~141 µs (karma), %99,99'luk dilim 769 µs.
 
 ### Parametreler
 
@@ -372,9 +372,9 @@ Yüksek TPS'te crossover'ın yeri, iki tarafın tek sistem tavanına bağlıdır
 
 ### Kaynaklardan
 
-- [PATRONI-REPL] (aktarım): Patroni tek yazıcılı mimaridir; replikalar yazma kapasitesi eklemez.
-- [ORACLE-RAC-2024] [VENDOR] (aktarım): uygulama ölçeklenmesi %80'in altındaysa çekişme işaretidir; 19c'de düğüm kaybında 15 saniyenin altında toparlanma.
-- [PGCON-2016] (aktarım): PostgreSQL yazma yolu darboğazları (WAL flush, ProcArrayLock, CLOG).
+- [Patroni-ReplModes] (aktarım): Patroni tek yazıcılı mimaridir; replikalar yazma kapasitesi eklemez.
+- [Oracle2024-RAC] [VENDOR] (aktarım): uygulama ölçeklenmesi %80'in altındaysa çekişme işaretidir; 19c'de düğüm kaybında 15 saniyenin altında toparlanma.
+- [Kapila2016-PGCon] (aktarım): PostgreSQL yazma yolu darboğazları (WAL flush, ProcArrayLock, CLOG).
 
 ### Kural
 
@@ -416,12 +416,12 @@ Elle geçişte: `T_rec = MANUAL_FAILOVER_DECISION_MINUTES (ortak) + teknik geçi
 
 ### Kaynaklardan
 
-- [UPTIME-2025] (aktarım): operatörlerin %53'ü son üç yılda kesinti bildirdi (2020'de %78); 2024'te olayların %9'u ciddi/ağır; etkili kesintilerin %54'ü güç kaynaklı, %23'ü BT/ağ.
-- [UPTIME-2022] (aktarım): kamuya yansıyan kesintilerin 24 saatten uzun süren payı 2017'de %8, 2021'de ~%30.
-- [ITIC-2023] (aktarım): 200+ z16 kullanıcısının %96'sı 9 nine, yani sunucu başına yılda 31,56 ms plansız kesinti (sunucu donanımının kendi arızaları).
-- [ITIC-2024] (aktarım): Lenovo ThinkSystem güncel x86 sunucuları 8 nine (yılda 315 ms).
-- [VISHWANATH-2010] (aktarım): 100.000'den fazla sunucuda sunucuların ~%8'i yılda en az bir donanım onarımı gördü; onarımların %78'i sabit disk kaynaklıydı.
-- [SG24-8446] (aktarım): dört desen (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıkları; desen başına availability yüzdesi vermez. DR'de RTO 2–72 saat; 2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister.
+- [Uptime2025-PR] (aktarım): operatörlerin %53'ü son üç yılda kesinti bildirdi (2020'de %78); 2024'te olayların %9'u ciddi/ağır; etkili kesintilerin %54'ü güç kaynaklı, %23'ü BT/ağ.
+- [DCF2022-Uptime] (aktarım): kamuya yansıyan kesintilerin 24 saatten uzun süren payı 2017'de %8, 2021'de ~%30.
+- [ITIC2023-IBMZ] (aktarım): 200+ z16 kullanıcısının %96'sı 9 nine, yani sunucu başına yılda 31,56 ms plansız kesinti (sunucu donanımının kendi arızaları).
+- [TechChannel2024-ITIC] (aktarım): Lenovo ThinkSystem güncel x86 sunucuları 8 nine (yılda 315 ms).
+- [Vishwanath2010] (aktarım): 100.000'den fazla sunucuda sunucuların ~%8'i yılda en az bir donanım onarımı gördü; onarımların %78'i sabit disk kaynaklıydı.
+- [IBM-SG24-8446] (aktarım): dört desen (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıkları; desen başına availability yüzdesi vermez. DR'de RTO 2–72 saat; 2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister.
 
 ### Parametreler
 
@@ -429,28 +429,28 @@ Elle geçişte: `T_rec = MANUAL_FAILOVER_DECISION_MINUTES (ortak) + teknik geçi
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | [UPTIME-2025] |
+| λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | [Uptime2025-PR] |
 | d_kısa (saat) | 1 | 2 | 4 | [ASSUME] |
-| p_uzun | 0,08 | 0,15 | 0,30 | [UPTIME-2022] |
+| p_uzun | 0,08 | 0,15 | 0,30 | [DCF2022-Uptime] |
 | d_uzun (saat) | 24 | 48 | 72 | SG24-8446 DR üst sınırı |
 | MANUAL_FAILOVER_DECISION_MINUTES | 45 | 90 | 180 | [ASSUME]; önceki M2 toplamı 60 / 120 / 240 dk'nın ayrıştırması |
 
-**Mainframe:** D_cpc 0,03 / 0,32 / 3,15 sn/yıl [ITIC-2023]; λ_planlı 0,25 / 0,5 / 1 [ASSUME]; T_planlı M1 2 / 4 / 8 saat, M2 15 / 30 / 60 dk, M3 2 / 10 / 30 dk, M4 20 / 30 / 60 sn (v3 §6.4).
+**Mainframe:** D_cpc 0,03 / 0,32 / 3,15 sn/yıl [ITIC2023-IBMZ]; λ_planlı 0,25 / 0,5 / 1 [ASSUME]; T_planlı M1 2 / 4 / 8 saat, M2 15 / 30 / 60 dk, M3 2 / 10 / 30 dk, M4 20 / 30 / 60 sn (v3 §6.4).
 
 **x86 (plan v1 §8.1, 8.3; Değ. #8 §3.4):**
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| NODE_EVENTS_PER_YEAR | 0,03 | 0,10 | 0,30 | [VISHWANATH-2010] aşağı doğru; high [ASSUME] |
-| T_failover Patroni | 15 sn | 35 sn | 90 sn | [PIGSTY-RTO] |
-| T_failover RAC | 5 sn | 15 sn | 5 dk | [ORACLE-RAC-2024, ORACLE-MAA-2026] |
+| NODE_EVENTS_PER_YEAR | 0,03 | 0,10 | 0,30 | [Vishwanath2010] aşağı doğru; high [ASSUME] |
+| T_failover Patroni | 15 sn | 35 sn | 90 sn | [Pigsty-RTO] |
+| T_failover RAC | 5 sn | 15 sn | 5 dk | [Oracle2024-RAC, Oracle2026-MAA] |
 | λ_planlı | 0,25 | 0,5 | 1 | Mainframe ile aynı aralık |
 | Rolling yama switchover'ı | 12/yıl × 5 sn | 12/yıl × 15 sn | 12/yıl × 30 sn | Değ. #8 §3.4 [ASSUME] |
 | T_planlı X1 | 5 dk | 15 dk | 60 dk | [ASSUME] |
-| T_planlı X3–X4 | 30 sn | 2 dk | 10 dk | [ASSUME]; Oracle Gold < 30 sn [ORACLE-MAA-2026] |
+| T_planlı X3–X4 | 30 sn | 2 dk | 10 dk | [ASSUME]; Oracle Gold < 30 sn [Oracle2026-MAA] |
 
-- [PIGSTY-RTO] (aktarım): Patroni varsayılan ayarlarla düğüm kaybında 27–41 sn, süreç çökmesinde 2–41 sn. Bunlar parametrelerden türetilen teorik sürelerdir, ölçüm değil.
-- [YELLOWBRICKS-HA] (aktarım): vSphere HA'da ikincil host 15–18 sn, birincil host ~50 sn içinde "ölü" ilan edilir. DB katmanı daha hızlı devrettiği için vSphere HA ikincil bir mekanizmadır.
+- [Pigsty-RTO] (aktarım): Patroni varsayılan ayarlarla düğüm kaybında 27–41 sn, süreç çökmesinde 2–41 sn. Bunlar parametrelerden türetilen teorik sürelerdir, ölçüm değil.
+- [YellowBricks2021] (aktarım): vSphere HA'da ikincil host 15–18 sn, birincil host ~50 sn içinde "ölü" ilan edilir. DB katmanı daha hızlı devrettiği için vSphere HA ikincil bir mekanizmadır.
 
 ### Açık kalan
 
@@ -462,7 +462,7 @@ Planlı kesinti sıklığı iki tarafta da kaynaksız (en etkili availability va
 
 ### Kaynaklardan
 
-**Mainframe** [SG24-8446, GDPS-2026] (v3 §6.2):
+**Mainframe** [IBM-SG24-8446, Cook2026-GDPS] (v3 §6.2):
 
 | Kod | Desen | RPO (tek site kaybı) | T_rec (mid, aralık) |
 |---|---|---|---|
@@ -471,9 +471,9 @@ Planlı kesinti sıklığı iki tarafta da kaynaksız (en etkili availability va
 | M3 | Fault tolerant: GDPS Metro Global, HyperSwap | 0 | 30 dk (2–60) |
 | M4 | Adaptive continuity: GDPS CA, yazılım replikasyonu | 5 sn (0–5) | 30 sn (20–60) |
 
-[GDPS-2026] [VENDOR] (aktarım): GDPS Metro RPO 0, RTO ~2 dk (çok-siteli iş yükü) / < 1 saat (tek siteli); GDPS CA RPO 0–5 sn, RTO 20–30 sn (portföy slaytında < 60 sn).
+[Cook2026-GDPS] [VENDOR] (aktarım): GDPS Metro RPO 0, RTO ~2 dk (çok-siteli iş yükü) / < 1 saat (tek siteli); GDPS CA RPO 0–5 sn, RTO 20–30 sn (portföy slaytında < 60 sn).
 
-**x86** [ORACLE-MAA-2026] [VENDOR], [PIGSTY-RTO] (plan v1 §8.2):
+**x86** [Oracle2026-MAA] [VENDOR], [Pigsty-RTO] (plan v1 §8.2):
 
 | Kod | Karşılık | Oracle (MAA) | PostgreSQL + Patroni | RPO | T_rec (site) |
 |---|---|---|---|---|---|
@@ -512,7 +512,7 @@ ham_TB = veri_TB × (1 + büyüme)^3 × 1,5 (DB ek yükü) / 1,0 (sıkıştırma
 
 Kopya: M1 1, M2 2, M3/M4 4.
 
-[ITJUNGLE-22] (aktarım): 16 adet 15,36 TB flash kartı liste fiyatı $2,12M, kart başına $132.381 = $8,62/GB (kontrolcü hariç), Mayıs 2022. Etkin fiyat ~$2.590/TB ham (liste × 0,30).
+[ITJungle2022-Storage] (aktarım): 16 adet 15,36 TB flash kartı liste fiyatı $2,12M, kart başına $132.381 = $8,62/GB (kontrolcü hariç), Mayıs 2022. Etkin fiyat ~$2.590/TB ham (liste × 0,30).
 
 ### x86 tarafı (K1)
 
@@ -521,7 +521,7 @@ Kopya: M1 1, M2 2, M3/M4 4.
 | Oracle RAC | Paylaşımlı all-flash SAN | Site başına 1 + DR sitesinde Data Guard kopyası |
 | PostgreSQL + Patroni | Yerel NVMe | Düğüm sayısı (X1'de 3) |
 
-[VENDORBENCH-AFA] (aktarım), Q1 2026, kullanılabilir/etkin TB: Dell PowerStore $65–170, Pure //X $70–175, NetApp AFF $65–190, HPE Alletra $100–215 (indirimli); liste $140–400. Destek ilk yıl donanımın %10–20'si, yıllık %10–25.
+[VendorBenchmark2026-Storage] (aktarım), Q1 2026, kullanılabilir/etkin TB: Dell PowerStore $65–170, Pure //X $70–175, NetApp AFF $65–190, HPE Alletra $100–215 (indirimli); liste $140–400. Destek ilk yıl donanımın %10–20'si, yıllık %10–25.
 
 ### Fiyat sözleşmesi (`common_model.py` §6)
 
@@ -559,11 +559,11 @@ Kısıtlar: 8 saatlik pencere; M1/X1'de tam geri yüklemenin RTO'nun yarısına 
 
 ### Kaynaklardan
 
-- [DB2-BACKUP]: "Make two copies of each level of image copy data sets".
-- [IDUG-2024] (aktarım): tam image copy tipik olarak haftada bir; haftalık değişim %10'u aşan nesnelerde tam kopya önerilir.
-- [MINIO-TCO] [VENDOR] (aktarım): 60 × 16 TB HDD'li 2U sistem $70K, 720 TB kullanılabilir.
-- [AWS-S3-2026] (aktarım): Standard-IA $0,0125/GB-ay, en kısa süre 30 gün.
-- [AWS-DX-2026] (aktarım): 10 Gbps dedicated port $2,25/saat; ABD içi DX çıkış $0,02/GB.
+- [IBM-Db2z12-Backup]: "Make two copies of each level of image copy data sets".
+- [Hendley2024-IDUG] (aktarım): tam image copy tipik olarak haftada bir; haftalık değişim %10'u aşan nesnelerde tam kopya önerilir.
+- [MinIO-ObjectTCO] [VENDOR] (aktarım): 60 × 16 TB HDD'li 2U sistem $70K, 720 TB kullanılabilir.
+- [Nubbo2026-S3] (aktarım): Standard-IA $0,0125/GB-ay, en kısa süre 30 gün.
+- [AWS-DXPricing] (aktarım): 10 Gbps dedicated port $2,25/saat; ABD içi DX çıkış $0,02/GB.
 
 ### İki taraf
 
@@ -597,12 +597,12 @@ Bu fark gerçek ve yapısaldır. **Eşitlenmez, modellenir** (plan v1 §6.5).
 
 ### Kaynaklardan
 
-- [CBU]: "Software charges for the designated CBU machine are based on its permanent configuration."
-- [ORACLE-CORE] (aktarım): Intel Xeon ve AMD EPYC 9005/9004 için çekirdek faktörü 0,5 (Ocak 2026 tablosu).
-- [ORACLE-PART] (aktarım): VMware yumuşak bölümlemedir; VM'in çalışabileceği bütün fiziksel çekirdekler lisanslanır. Model Oracle'ı adanmış düğümlerde varsayar.
-- [REDRESS-PL2026] [danışman] (aktarım; doğrulanmalı): işlemci başına liste EE $47.500, RAC $23.000, Diagnostics $7.500, Tuning $5.000; destek net lisansın yıllık %22'si.
-- [ACEMQ-VVF] [iş ortağı] (aktarım): VVF $135, VCF $350 / çekirdek / yıl; CPU başına en az 16, sipariş başına en az 72 çekirdek.
-- [ACEMQ-RENEW] [iş ortağı] (aktarım, 37 teklif): VVF 1 yıl $117–196, 3 yıl $100–160; VCF 3 yıl $257–348.
+- [IBM-SC28-7025]: "Software charges for the designated CBU machine are based on its permanent configuration."
+- [Oracle2026-CoreFactor] (aktarım): Intel Xeon ve AMD EPYC 9005/9004 için çekirdek faktörü 0,5 (Ocak 2026 tablosu).
+- [Oracle-Partitioning] (aktarım): VMware yumuşak bölümlemedir; VM'in çalışabileceği bütün fiziksel çekirdekler lisanslanır. Model Oracle'ı adanmış düğümlerde varsayar.
+- [Redress2026-OraclePL] [danışman] (aktarım; doğrulanmalı): işlemci başına liste EE $47.500, RAC $23.000, Diagnostics $7.500, Tuning $5.000; destek net lisansın yıllık %22'si.
+- [AceMQ-VVFvsVCF] [iş ortağı] (aktarım): VVF $135, VCF $350 / çekirdek / yıl; CPU başına en az 16, sipariş başına en az 72 çekirdek.
+- [AceMQ2026-Renewals] [iş ortağı] (aktarım, 37 teklif): VVF 1 yıl $117–196, 3 yıl $100–160; VCF 3 yıl $257–348.
 
 ### Parametreler (plan v1 §12.1)
 
@@ -623,8 +623,8 @@ Bu fark gerçek ve yapısaldır. **Eşitlenmez, modellenir** (plan v1 §6.5).
 
 ### Kaynaklardan
 
-- [REDP-PROFILE]: `CPU_US_TM_BASE` = 85,9 µs (z13), CICS + 5 bellek okuması.
-- [SHEDLETSKY-2008] [VENDOR] (aktarım): uygulama katmanında 4,9 kat komut farkı iddiası. Bağımsız doğrulaması yok.
+- [Burgess2016-REDP5320]: `CPU_US_TM_BASE` = 85,9 µs (z13), CICS + 5 bellek okuması.
+- [Shedletsky2008] [VENDOR] (aktarım): uygulama katmanında 4,9 kat komut farkı iddiası. Bağımsız doğrulaması yok.
 
 ### Kural (C kararı)
 
@@ -653,18 +653,18 @@ uygulama_çekirdekleri = DB_çekirdekleri × TM_payı / (1 − TM_payı)
 
 ### Kaynaklardan: mainframe (kuruluş düzeyi)
 
-- [IBM-EAGLE] [VENDOR], 17 müşteri: "5 FTE to start + 1 FTE for every 625 MIPS".
-- [GARTNER-ITKMD], ikincil aktarım (aktarım): kurulu MIPS / mainframe FTE 152 → 268 (2016, 5 yıl).
-- [RAY-JONES-2007] [VENDOR]: "167-625 MIPS per headcount (500 is typical)".
-- [IBM-TPF-2007] [VENDOR] (aktarım): Gartner'a göre 289 personel / 5.994 MIPS (2001) → 260 personel / 13.272 MIPS (2004).
+- [IBM-CPO2014-Skills] [VENDOR], 17 müşteri: "5 FTE to start + 1 FTE for every 625 MIPS".
+- [CA2016-MFEcosystem], ikincil aktarım (aktarım): kurulu MIPS / mainframe FTE 152 → 268 (2016, 5 yıl).
+- [Jones2007-TCO] [VENDOR]: "167-625 MIPS per headcount (500 is typical)".
+- [Rhoderick2007-TPFUG] [VENDOR] (aktarım): Gartner'a göre 289 personel / 5.994 MIPS (2001) → 260 personel / 13.272 MIPS (2004).
 
 ### Kaynaklardan: x86 (kuruluş düzeyi)
 
-- [SHEDLETSKY-2008] [VENDOR], 3.917 dağıtık sunucu: "7.8 servers per headcount @ $159,800/yr/headcount".
-- [IBM-EAGLE-LABOR] [VENDOR], 2011 (aktarım): adanmış Intel 30,7 sunucu/FTE; sanallaştırılmış Intel 52,5 VM/FTE; donanım işi fiziksel sunucu başına yılda 32 saat, yazılım işi imaj başına yılda 36 saat; yüklü maliyet $159.600/FTE (2.080 saat).
-- [IDC-2007], Computerworld aktarımı: "the average VM to administrator ratio, or average number of virtual images per administrator, is 200".
-- [SHEDLETSKY-2008], Québec vakası: "Each administrator can manage 100 consolidated Linux images."
-- [AVASANT-2008] (aktarım): sistem programcıları ve yöneticiler 2008'de BT personelinin medyan %6,8'i (2006'da %6,6); sunucu/personel oranları ücretli raporda.
+- [Shedletsky2008] [VENDOR], 3.917 dağıtık sunucu: "7.8 servers per headcount @ $159,800/yr/headcount".
+- [Calderon2011-Labor] [VENDOR], 2011 (aktarım): adanmış Intel 30,7 sunucu/FTE; sanallaştırılmış Intel 52,5 VM/FTE; donanım işi fiziksel sunucu başına yılda 32 saat, yazılım işi imaj başına yılda 36 saat; yüklü maliyet $159.600/FTE (2.080 saat).
+- [Computerworld-IDC2007], Computerworld aktarımı: "the average VM to administrator ratio, or average number of virtual images per administrator, is 200".
+- [Shedletsky2008], Québec vakası: "Each administrator can manage 100 consolidated Linux images."
+- [Avasant2008-Headcount] (aktarım): sistem programcıları ve yöneticiler 2008'de BT personelinin medyan %6,8'i (2006'da %6,6); sunucu/personel oranları ücretli raporda.
 
 **Neden doğrudan oranlanamaz [DERIVED]:** mainframe ortalaması MIPS başına, x86 ortalaması sunucu başına. 10K TPS'lik iş yükü mainframe'de 11.743 PCI, yani Gartner'a göre ~44 FTE. Aynı iş x86'da bizim köprümüzle tek bir sunucuya sığıyor, yani ~1/30 FTE. Oran ~1.300 kat çıkar. Fark verimlilikten değil, iki ortalamanın farklı yoğunluktaki parkları ölçmesinden gelir.
 
@@ -674,15 +674,15 @@ Bulunan bütün nicel vakalar IBM ya da IBM bağlantılı. Oran = x86 / mainfram
 
 | # | Kaynak | Karşılaştırma (kaynaktaki sayılar) | Oran [DERIVED] | Birim ve kapsam |
 |---|---|---|---|---|
-| 1 | [IBM-TPF-2007], IBM SWG veri merkezi | 900 dağıtık sunucu vs 3.192 MIPS: sistem personeli 30 FTE vs 3,15 FTE; System z'de 6 FTE operasyon; toplam personel $6.690K vs $793K | 30 / 9,15 = **3,28** (maliyetle 8,4) | FTE; dağınık park |
-| 2 | [IBM-TPF-2007], First National Bank of Omaha | 30+ Sun Solaris ve 560+ Intel sunucu, 24 kişi; z990'a konsolidasyon sonrası 8 kişi | **3,00** | FTE; dağınık park |
-| 3 | [IBM-EAGLE-LABOR], 500 iş yükü senaryosu | Intel: 77 sunucu, 14.992 saat/yıl, 7,21 yönetici; zEnterprise: 12.147 saat/yıl, 5,84 yönetici | **1,23** | FTE, saat tabanlı; sanallaştırılmış x86; mainframe tarafı zLinux |
-| 4 | [IBM-TPF-2007], Baldor | BT personeli 50 → 38 (z990'a geçiş) | **1,32** | Toplam BT personeli |
-| 5 | [RAY-JONES-2007], IBM Global Services | 62 Linux sunucu × $6.000 = $372.000/yıl vs bir yönetici $120.000/yıl | 3,10 | Personel maliyeti; zLinux |
-| 6 | [IBM-TPF-2007], örnek veri merkezi modeli | Dağıtık $2.520.000 vs mainframe $1.680.000 | 1,50 | Personel maliyeti; varsayımsal model |
-| 7 | [SHEDLETSKY-2008], Québec | System Admin $5.944.828 vs $386.518 | 15,4 | Sistem yönetimi maliyeti; zLinux |
-| — | [EAGLE-TCO-2013], DR testi | 14.952 vs 2.051 kişi-saat/yıl | 7,3 | Yalnızca DR testi; dışarıda |
-| — | Solitaire Interglobal 2013 ([IBM-SKILLS] aktarımı) | "as much as 13x smaller" | — | Tabansız üst sınır iddiası; dışarıda |
+| 1 | [Rhoderick2007-TPFUG], IBM SWG veri merkezi | 900 dağıtık sunucu vs 3.192 MIPS: sistem personeli 30 FTE vs 3,15 FTE; System z'de 6 FTE operasyon; toplam personel $6.690K vs $793K | 30 / 9,15 = **3,28** (maliyetle 8,4) | FTE; dağınık park |
+| 2 | [Rhoderick2007-TPFUG], First National Bank of Omaha | 30+ Sun Solaris ve 560+ Intel sunucu, 24 kişi; z990'a konsolidasyon sonrası 8 kişi | **3,00** | FTE; dağınık park |
+| 3 | [Calderon2011-Labor], 500 iş yükü senaryosu | Intel: 77 sunucu, 14.992 saat/yıl, 7,21 yönetici; zEnterprise: 12.147 saat/yıl, 5,84 yönetici | **1,23** | FTE, saat tabanlı; sanallaştırılmış x86; mainframe tarafı zLinux |
+| 4 | [Rhoderick2007-TPFUG], Baldor | BT personeli 50 → 38 (z990'a geçiş) | **1,32** | Toplam BT personeli |
+| 5 | [Jones2007-TCO], IBM Global Services | 62 Linux sunucu × $6.000 = $372.000/yıl vs bir yönetici $120.000/yıl | 3,10 | Personel maliyeti; zLinux |
+| 6 | [Rhoderick2007-TPFUG], örnek veri merkezi modeli | Dağıtık $2.520.000 vs mainframe $1.680.000 | 1,50 | Personel maliyeti; varsayımsal model |
+| 7 | [Shedletsky2008], Québec | System Admin $5.944.828 vs $386.518 | 15,4 | Sistem yönetimi maliyeti; zLinux |
+| — | [IBM2012-TCOLessons-zEC], DR testi | 14.952 vs 2.051 kişi-saat/yıl | 7,3 | Yalnızca DR testi; dışarıda |
+| — | Solitaire Interglobal 2013 ([IBM-CPO2014-Skills] aktarımı) | "as much as 13x smaller" | — | Tabansız üst sınır iddiası; dışarıda |
 
 [DERIVED] Geometrik ortalamalar: FTE vakaları (1–4) **2,0**; konsolide/sanallaştırılmış vakalar (3–4) **~1,25**; bütün vakalar (1–7) **2,7** (medyan 3,0).
 
@@ -714,9 +714,9 @@ aylık personel = FTE × yüklü_ücret(WAGE_LEVEL) / 12                    (iki
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| STAFF_SCENARIO (FTE_1000; b) | 4,0; 0,60 | 5,5; 0,70 | 7,0; 0,80 | [IBM-EAGLE], [GARTNER-ITKMD] (v3 §7.7.3) |
+| STAFF_SCENARIO (FTE_1000; b) | 4,0; 0,60 | 5,5; 0,70 | 7,0; 0,80 | [IBM-CPO2014-Skills], [CA2016-MFEcosystem] (v3 §7.7.3) |
 | STAFF_FLOOR_FTE | 3 | 4 | 5 | [ASSUME] 7/24 nöbet |
-| LOADED_WAGE_USD | $122K | $162K | $215K | [BLS-OEWS] × [BLS-ECEC]/[IDC-2016] |
+| LOADED_WAGE_USD | $122K | $162K | $215K | [BLS-OOH] × [BLS2026-ECEC]/[IDC2016-ConnectedMF] |
 | STAFF_RATIO_X86 | 1,0 (ana senaryo, aralığa girmez) | | | Duyarlılık: 1,25 / 2,0 |
 
 ### Tezde nasıl yazılır
@@ -737,14 +737,14 @@ DR, site otomasyonu (GDPS / MAA), yedek ve personel hariç. Personel KB-13'te ü
 
 ### Kaynaklardan
 
-[IBM-EAGLE-2013] [VENDOR] (aktarım): üretim dışı ortamlar mainframe'de üretimin ~+%20'si, dağıtıkta çoğu zaman +%200'ü; HA için adanmış kopya üretimin 2–2,5 katı.
+[IBM2013-TCOLessons] [VENDOR] (aktarım): üretim dışı ortamlar mainframe'de üretimin ~+%20'si, dağıtıkta çoğu zaman +%200'ü; HA için adanmış kopya üretimin 2–2,5 katı.
 
 ### Parametreler
 
 | Platform | low | mid | high | Stres |
 |---|---|---|---|---|
-| Mainframe | 0 | 0,20 [IBM-EAGLE-2013] | 0,50 [ASSUME] | — |
-| x86 | 0 | 0,50 [DERIVED, ASSUME] | 1,00 [ASSUME] | 2,0 [IBM-EAGLE-2013] |
+| Mainframe | 0 | 0,20 [IBM2013-TCOLessons] | 0,50 [ASSUME] | — |
+| x86 | 0 | 0,50 [DERIVED, ASSUME] | 1,00 [ASSUME] | 2,0 [IBM2013-TCOLessons] |
 
 **x86 orta değerinin türetmesi:** X1'de birincil site 3 düğüm. Üretimle aynı boyutta tek düğümlük bir staging ortamı ≈ 0,33. Küçük dev/test düğümleri ≈ 0,1–0,2. Toplam ≈ 0,5. Üst uç 1,0, staging'in tam bir küme kopyası olmasıdır.
 
@@ -764,11 +764,11 @@ DR, site otomasyonu (GDPS / MAA), yedek ve personel hariç. Personel KB-13'te ü
 
 ### Kaynaklardan
 
-- [PCSP-SERVER] [satıcı] (aktarım): 64 GB DDR5 RDIMM ~$255'ten ~9 ayda ~$1.000'e (Counterpoint aktarımı). Dell 1 Ocak 2026'da standart yapılandırmalara zam yaptı; HPE teklif geçerliliğini 14 güne indirdi.
-- [CAPCOMP-RAM], [BACLOUD-RAM] (aktarım): Ağustos–Ekim 2026 perakende 64 GB $2.245–3.400.
-- [PCSP-SSD] [satıcı] (aktarım): 30 TB sınıfı kurumsal NVMe Q3 2025 ~$115/TB, Q3 2026 ~$753/TB (VDURA aktarımı); yeni U.2 NVMe $300–1.172/TB (Ağustos 2026).
-- [TRENDFORCE-2026-08] (aktarım): sunucu DRAM sözleşme fiyatlarının 2H26–2H27 boyunca artmaya devam etmesi bekleniyor.
-- [GRAY-2005] (aktarım; `benzer_calismalar_v1` B8): fiyat/performans yılda ~%68 değişmiş. Dönem kuralının tarihsel gerekçesi.
+- [PCSP2026-Server] [satıcı] (aktarım): 64 GB DDR5 RDIMM ~$255'ten ~9 ayda ~$1.000'e (Counterpoint aktarımı). Dell 1 Ocak 2026'da standart yapılandırmalara zam yaptı; HPE teklif geçerliliğini 14 güne indirdi.
+- [CapCompute-RAM], [Bacloud2026-RAM] (aktarım): Ağustos–Ekim 2026 perakende 64 GB $2.245–3.400.
+- [PCSP2026-SSD] [satıcı] (aktarım): 30 TB sınıfı kurumsal NVMe Q3 2025 ~$115/TB, Q3 2026 ~$753/TB (VDURA aktarımı); yeni U.2 NVMe $300–1.172/TB (Ağustos 2026).
+- [TrendForce2026-DDR5] (aktarım): sunucu DRAM sözleşme fiyatlarının 2H26–2H27 boyunca artmaya devam etmesi bekleniyor.
+- [Gray2005] (aktarım; `benzer_calismalar_v1` B8): fiyat/performans yılda ~%68 değişmiş. Dönem kuralının tarihsel gerekçesi.
 
 **Mainframe fiyat yaşları** (`--price-vintages`): AWLC 2004; TS7700 tabanı 2006; z16 $/PCI, frame tabanı, DS8900F flash listesi, bakım oranları 2022; ücretler 2025; S3/DX/elektrik 2026.
 
@@ -778,15 +778,15 @@ DR, site otomasyonu (GDPS / MAA), yedek ve personel hariç. Personel KB-13'te ü
 - **"2026-Q3" duyarlılık senaryosudur** ve "mainframe fiyatlarının şoka tepkisi bilinmiyor" notuyla raporlanır.
 - Bellek ve NVMe her dönemde kendi low/mid/high üçlüsüyle tanımlanır. Dönem anahtarı yalnızca hangi üçlünün kullanılacağını seçer. Ayrı `MEM_USD_PER_GB` / `NVME_USD_PER_TB` aralık parametresi olmaz (tornado'da çift sayım olmasın diye).
 - Fiyat tabanı kuralı (KB-09 ile aynı): her bileşen fiyatı önce liste karşılığına çevrilir, indirim bir kez uygulanır. Perakende spot fiyatı OEM indirimiyle birleştirilmez.
-- Bileşen fiyat fonksiyonu bir kalibrasyon kontrolüyle doğrulanır: tanımlı bir R760 yapılandırmasının bileşen toplamı, Dell yapılandırıcı liste fiyatına ±%20 içinde yaklaşmalı ([PCSP-SERVER] aktarımı: R760 amiral yapılandırması $53.250 liste; R760xs tabanı $15.957).
+- Bileşen fiyat fonksiyonu bir kalibrasyon kontrolüyle doğrulanır: tanımlı bir R760 yapılandırmasının bileşen toplamı, Dell yapılandırıcı liste fiyatına ±%20 içinde yaklaşmalı ([PCSP2026-Server] aktarımı: R760 amiral yapılandırması $53.250 liste; R760xs tabanı $15.957).
 - 2004 nominal AWLC otomatik çevrilmez; dönüşüm `SW_PRICE_LEVEL_FACTOR` aralığının işidir.
 
 ### Dönem tablosu (değerler `common_model.PRICE_EPOCHS`'ta; üçlüler kodlamada eklenecek)
 
 | Dönem | DRAM $/GB (mid) | NVMe $/TB (mid) | Kaynak |
 |---|---|---|---|
-| 2025-mid | 4 | 115 | [PCSP-SERVER], [PCSP-SSD] |
-| 2026-Q3 | 35 | 753 | [CAPCOMP-RAM], [BACLOUD-RAM], [PCSP-SSD] |
+| 2025-mid | 4 | 115 | [PCSP2026-Server], [PCSP2026-SSD] |
+| 2026-Q3 | 35 | 753 | [CapCompute-RAM], [Bacloud2026-RAM], [PCSP2026-SSD] |
 
 ### İki fiyat modu (Emirhan'ın önerisi, 2026-11-02)
 
@@ -816,14 +816,14 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 
 | Parametre | Değer | Aralık | Dayanak |
 |---|---|---|---|
-| NPV_DISCOUNT_RATE | 0,07 | tarama %5 / %7 / %10 | [DAMODARAN-2026] (aktarım): toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98 |
+| NPV_DISCOUNT_RATE | 0,07 | tarama %5 / %7 / %10 | [Damodaran2026-WACC] (aktarım): toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98 |
 | NPV_TPS_GROWTH | 0,10 | 0 / 0,05 / 0,10 / 0,20 | Senaryo girdisi |
-| SW_PRICE_ESCALATION | 0,03 | 0–0,06 | [IBM-PRICE-2026] (aktarım): IBM Z yazılımı 2026'da +%6 |
-| HW_SERVICE_ESCALATION | 0,03 | 0–0,06 | [IBM-PRICE-2026]: TLS 2025'te +%4–6 |
-| WAGE_ESCALATION | 0,033 | 0,025–0,045 | [BLS-ECI-2026] (aktarım): özel sektör ücret maliyeti 12 ayda +%3,3 |
-| ENERGY_ESCALATION | 0,04 | 0,015–0,056 | [EIA-EPM] (aktarım): ticari elektrik 10,59 (2020) → 13,37 cent/kWh (2025) |
+| SW_PRICE_ESCALATION | 0,03 | 0–0,06 | [Schneider2026-IBMPrice] (aktarım): IBM Z yazılımı 2026'da +%6 |
+| HW_SERVICE_ESCALATION | 0,03 | 0–0,06 | [Schneider2026-IBMPrice]: TLS 2025'te +%4–6 |
+| WAGE_ESCALATION | 0,033 | 0,025–0,045 | [BLS2026-ECI] (aktarım): özel sektör ücret maliyeti 12 ayda +%3,3 |
+| ENERGY_ESCALATION | 0,04 | 0,015–0,056 | [EIA-EPM-5.3] (aktarım): ticari elektrik 10,59 (2020) → 13,37 cent/kWh (2025) |
 
-Mainframe'e özgü: `TFP_GROWTH_PRICE_FACTOR` 0,5 (0,5–1,0); [TFP-SW-2021]: "very aggressive Growth Price"; [KYNE-2022]: "IBM mentions 50% discount for growth MSUs". x86 yazılım artışları aynı `SW_PRICE_ESCALATION` sınıfına girer.
+Mainframe'e özgü: `TFP_GROWTH_PRICE_FACTOR` 0,5 (0,5–1,0); [IBM2021-TFP-Sensible]: "very aggressive Growth Price"; [Kyne2022-TFP]: "IBM mentions 50% discount for growth MSUs". x86 yazılım artışları aynı `SW_PRICE_ESCALATION` sınıfına girer.
 
 ---
 
@@ -832,13 +832,13 @@ Mainframe'e özgü: `TFP_GROWTH_PRICE_FACTOR` 0,5 (0,5–1,0); [TFP-SW-2021]: "v
 ### Kural
 
 - Elektrik fiyatı ortak: `ELECTRICITY_USD_PER_KWH` = 0,12 [ASSUME]; artış KB-16.
-- Mainframe: frame başına 30 kW (20–40 kW aralığının ortası) [PWR]; storage ve yedek için üretici tepe güçleri.
+- Mainframe: frame başına 30 kW (20–40 kW aralığının ortası) [Alibaba-MFPrice]; storage ve yedek için üretici tepe güçleri.
 - x86: düğüm gücü = SPECpower_ssj2008 %100 yük değeri × `X86_POWER_CONFIG_UPLIFT`. Mainframe tepe gücü kullandığı için simetri gereği %100 yük değeri alınır.
 - PUE (soğutma), raf alanı ve storage ağı iki tarafta da kapsam dışıdır. AWS S3 hattı istisnadır: seçenek onsuz var olamayacağı için maliyete dahildir.
 
 ### Kaynaklardan
 
-[SPECPOWER-2025Q1] (aktarım), %100 yükte / boşta: HPE DL380 Gen12 924 / 220 W; Lenovo SR650 V4 782 / 218 W; Dell R770 943–960 / 157–164 W. SPECpower sistemleri az bellek ve az diskle ölçülür.
+[SPECpower-2025Q1] (aktarım), %100 yükte / boşta: HPE DL380 Gen12 924 / 220 W; Lenovo SR650 V4 782 / 218 W; Dell R770 943–960 / 157–164 W. SPECpower sistemleri az bellek ve az diskle ölçülür.
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
@@ -882,26 +882,28 @@ Mainframe'e özgü: `TFP_GROWTH_PRICE_FACTOR` 0,5 (0,5–1,0); [TFP-SW-2021]: "v
 
 ## 20. Kaynaklar
 
+> Tam künyeler, erişim tarihleri ve yerel kopyalar: [`kaynaklar/KAYNAKCA.md`](../kaynaklar/KAYNAKCA.md). Bu bölümdeki köşeli parantezli anahtarlar oradaki anahtarlardır (2026-11-24 kaynak düzeltmesi).
+
 Mainframe ve ortak modül kaynaklarının tam listesi `mainframe_model_documentation_v3.md` §11'dedir; x86 kaynaklarının tam listesi `acik_sistem_arastirma_plani_v1.md` §15'tedir. Aşağıda bu dokümanda kullanılanlar ve bu dokümanla eklenenler var.
 
-**Kapasite ve işlem birimi:** [REDP] REDP-5320 · https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf · [REDP-PROFILE] aynı raporun sayaçları, `data/raw/redp5320_workload_profile.csv` · [LSPR] https://www.ibm.com/support/pages/ibm-z-lspr-itrrs · [LSPR-z13] https://www.ibm.com/support/pages/node/6953815 · [CATTERALL-2012] https://robertsdb2blog.blogspot.com/2012/07/db2-for-zos-whats-with-ddf-cpu-time.html · [CATTERALL-2019] https://robertsdb2blog.blogspot.com/2019/01/a-case-study-measuring-impact-of-db2.html · [IBM-Z14-PR] https://en.amwalalghad.com/?p=62475 · [VONNG-PERF] http://blog.vonng.com/en/pg/pg-performence/ · [TENCENT-METHOD] https://tencentcloud.com/document/product/409/62415 · [TENCENT-RESULT] https://www.tencentcloud.com/document/product/409/62416 · [ROCKDATA-2026] https://www.rockdata.net/blog/2026-postgres-performance-benchmark-report/ · [ALIBABA-PG16] https://help.aliyun.com/en/polardb/polardb-for-postgresql/performance-comparison-with-open-source-postgresql · [SPEC-8270] https://spec.org/cpu2017/results/res2019q3/cpu2017-20190708-15958.html · [SPEC-R760] https://open.spec.org/cpu2017/results/res2024q2/cpu2017-20240422-43001.html · [SPEC-DL380G12] https://open.spec.org/cpu2017/results/res2025q1/cpu2017-20250210-46265.html · [PGCON-2016] https://www.pgcon.org/2016/schedule/attachments/399_postgresql-96-scalability-perf-improvements.pdf · [ORACLE-OTN] https://www.oracle.com/downloads/licenses/standard-license.html · [REDHAT-OCPV-2025] https://developers.redhat.com/blog/2025/02/25/scalable-database-performance-openshift-virtualization-out-box · [PT-VSPHERE-OCPV-2024] https://blogs.vmware.com/cloud-foundation/2024/12/03/vmware-vsphere-8-supports-1-5-times-more-vms-and-delivers-62-more-data-transactions-than-red-hat-openshift-virtualization/ · [EDB-LOCALPV] https://www.enterprisedb.com/index.php/blog/local-persistent-volumes-and-postgresql-usage-kubernetes
+**Kapasite ve işlem birimi:** [Burgess2016-REDP5320] REDP-5320 · https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf · [Burgess2016-REDP5320] aynı raporun sayaçları, `data/raw/redp5320_workload_profile.csv` · [IBM-LSPR-ITRR] https://www.ibm.com/support/pages/ibm-z-lspr-itrrs · [IBM-LSPR-zOS22] https://www.ibm.com/support/pages/node/6953815 · [Catterall2012] https://robertsdb2blog.blogspot.com/2012/07/db2-for-zos-whats-with-ddf-cpu-time.html · [Catterall2019] https://robertsdb2blog.blogspot.com/2019/01/a-case-study-measuring-impact-of-db2.html · [AmwalAlGhad2017-z14] https://en.amwalalghad.com/?p=62475 · [Vonng-PGPerf] http://blog.vonng.com/en/pg/pg-performence/ · [Tencent-PG-TestMethods] https://tencentcloud.com/document/product/409/62415 · [Tencent-PG-TestResults] https://www.tencentcloud.com/document/product/409/62416 · [Rockdata2026] https://www.rockdata.net/blog/2026-postgres-performance-benchmark-report/ · [Alibaba-PolarDB-PG16] https://help.aliyun.com/en/polardb/polardb-for-postgresql/performance-comparison-with-open-source-postgresql · [SPEC2019-M640-8270] https://spec.org/cpu2017/results/res2019q3/cpu2017-20190708-15958.html · [SPEC2024-R760-6548Y] https://open.spec.org/cpu2017/results/res2024q2/cpu2017-20240422-43001.html · [SPEC2025-DL380G12] https://open.spec.org/cpu2017/results/res2025q1/cpu2017-20250210-46265.html · [Kapila2016-PGCon] https://www.pgcon.org/2016/schedule/attachments/399_postgresql-96-scalability-perf-improvements.pdf · [Oracle-OTNLicense] https://www.oracle.com/downloads/licenses/standard-license.html · [RedHat2025-OCPVDB] https://developers.redhat.com/blog/2025/02/25/scalable-database-performance-openshift-virtualization-out-box · [VMware2024-vSphereOCPV] https://blogs.vmware.com/cloud-foundation/2024/12/03/vmware-vsphere-8-supports-1-5-times-more-vms-and-delivers-62-more-data-transactions-than-red-hat-openshift-virtualization/ · [EDB-LocalPV] https://www.enterprisedb.com/index.php/blog/local-persistent-volumes-and-postgresql-usage-kubernetes
 
-**Availability ve topoloji:** [SG24-8446] https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf · [SG24-6374] https://www.redbooks.ibm.com/redbooks/pdfs/sg246374.pdf · [GDPS-2026] https://vmworkshop.org/2026/present/gdpsover.pdf · [CBU] https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf · [UPTIME-2025] https://www.datacenterknowledge.com/outages/data-center-outages-decline-for-fourth-straight-year-but-issues-persist · [UPTIME-2022] https://www.datacenterfrontier.com/uptime-longer-data-center-outages-are-becoming-more-common · [ITIC-2023] https://itic-corp.com/?p=3107 · [ITIC-2024] https://techchannel.com/industry-news/server-reliability-survey-2024/ · [VISHWANATH-2010] https://www.microsoft.com/en-us/research/wp-content/uploads/2010/06/socc088-vishwanath.pdf · [PATRONI-REPL] https://patroni.readthedocs.io/en/latest/replication_modes.html · [PIGSTY-RTO] https://doc.pigsty.io/docs/concept/ha/rto/ · [ORACLE-RAC-2024] https://oracle.com/a/otn/docs/database/the-new-generation-oracle-rac.pdf · [ORACLE-MAA-2026] https://oracle.com/a/tech/docs/maa-onpremises-overview.pdf · [YELLOWBRICKS-HA] https://www.yellow-bricks.com/2021/01/26/how-long-does-it-take-before-a-host-is-declared-failed · [EDB-SYNCREP] https://enterprisedb.com/blog/the-varying-cost-synchronous-replication · [STORAGEREVIEW-P5520] https://storagereview.com/wp-content/uploads/2022/07/solidigm-d7-p5520-1.pdf
+**Availability ve topoloji:** [IBM-SG24-8446] https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf · [IBM-SG24-6374] https://www.redbooks.ibm.com/redbooks/pdfs/sg246374.pdf · [Cook2026-GDPS] https://vmworkshop.org/2026/present/gdpsover.pdf · [IBM-SC28-7025] https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf · [Uptime2025-PR] https://www.datacenterknowledge.com/outages/data-center-outages-decline-for-fourth-straight-year-but-issues-persist · [DCF2022-Uptime] https://www.datacenterfrontier.com/uptime-longer-data-center-outages-are-becoming-more-common · [ITIC2023-IBMZ] https://itic-corp.com/?p=3107 · [TechChannel2024-ITIC] https://techchannel.com/industry-news/server-reliability-survey-2024/ · [Vishwanath2010] https://www.microsoft.com/en-us/research/wp-content/uploads/2010/06/socc088-vishwanath.pdf · [Patroni-ReplModes] https://patroni.readthedocs.io/en/latest/replication_modes.html · [Pigsty-RTO] https://doc.pigsty.io/docs/concept/ha/rto/ · [Oracle2024-RAC] https://oracle.com/a/otn/docs/database/the-new-generation-oracle-rac.pdf · [Oracle2026-MAA] https://oracle.com/a/tech/docs/maa-onpremises-overview.pdf · [YellowBricks2021] https://www.yellow-bricks.com/2021/01/26/how-long-does-it-take-before-a-host-is-declared-failed · [EDB-SyncRep] https://enterprisedb.com/blog/the-varying-cost-synchronous-replication · [StorageReview2022-P5520] https://storagereview.com/wp-content/uploads/2022/07/solidigm-d7-p5520-1.pdf
 
-**Storage, yedek, lisans, fiyat:** [ITJUNGLE-22] https://www.itjungle.com/2022/05/16/more-price-hikes-from-ibm-now-for-high-end-storage/ · [VENDORBENCH-AFA] https://vendorbenchmark.com/blog/enterprise-storage-per-tb-pricing-benchmark · [DB2-BACKUP] https://www.ibm.com/docs/SSEPEK_12.0.0/admin/src/tpc/db2z_actionstakebackupdata.html · [MINIO-TCO] https://blog.min.io/the-long-term-costs-of-storage-in-the-cloud · [AWS-S3-2026] https://nubbo.app/blog/aws-s3-pricing-2026 · [AWS-DX-2026] https://aws.amazon.com/directconnect/pricing/pay-as-you-go/ · [ORACLE-CORE] https://www.oracle.com/contracts/docs/processor-core-factor-table-070634.pdf · [ORACLE-PART] https://oracle.com/a/ocom/docs/it-infrastructure/partitioning-070609.pdf · [REDRESS-PL2026] https://redresscompliance.com/oracle-price-list-2026-key-changes-and-analysis.html · [ACEMQ-VVF] https://acemq.com/blogs/vmware-cloud-foundation-vs-vsphere-foundation/ · [ACEMQ-RENEW] https://acemq.com/research/state-of-vmware-renewals-2026/ · [PCSP-SERVER] https://pcserverandparts.com/news/how-much-does-a-server-cost-2026/ · [PCSP-SSD] https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/ · [CAPCOMP-RAM] https://capitalandcompute.net/memory-prices/server/ · [BACLOUD-RAM] https://www.bacloud.com/en/blog/307/when-will-ram-prices-drop-still-no-good-news--august-2026-update.html · [TRENDFORCE-2026-08] https://www.trendforce.com/news/2026/08/17/news-germany-ddr5-prices-near-5x-yoy-in-august-china-reportedly-sees-14-wow-jump-as-global-rally-continues/ · [SPECPOWER-2025Q1] https://spec.cs.miami.edu/power_ssj2008/results/res2025q1
+**Storage, yedek, lisans, fiyat:** [ITJungle2022-Storage] https://www.itjungle.com/2022/05/16/more-price-hikes-from-ibm-now-for-high-end-storage/ · [VendorBenchmark2026-Storage] https://vendorbenchmark.com/blog/enterprise-storage-per-tb-pricing-benchmark · [IBM-Db2z12-Backup] https://www.ibm.com/docs/SSEPEK_12.0.0/admin/src/tpc/db2z_actionstakebackupdata.html · [MinIO-ObjectTCO] https://blog.min.io/the-long-term-costs-of-storage-in-the-cloud · [Nubbo2026-S3] https://nubbo.app/blog/aws-s3-pricing-2026 · [AWS-DXPricing] https://aws.amazon.com/directconnect/pricing/pay-as-you-go/ · [Oracle2026-CoreFactor] https://www.oracle.com/contracts/docs/processor-core-factor-table-070634.pdf · [Oracle-Partitioning] https://oracle.com/a/ocom/docs/it-infrastructure/partitioning-070609.pdf · [Redress2026-OraclePL] https://redresscompliance.com/oracle-price-list-2026-key-changes-and-analysis.html · [AceMQ-VVFvsVCF] https://acemq.com/blogs/vmware-cloud-foundation-vs-vsphere-foundation/ · [AceMQ2026-Renewals] https://acemq.com/research/state-of-vmware-renewals-2026/ · [PCSP2026-Server] https://pcserverandparts.com/news/how-much-does-a-server-cost-2026/ · [PCSP2026-SSD] https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/ · [CapCompute-RAM] https://capitalandcompute.net/memory-prices/server/ · [Bacloud2026-RAM] https://www.bacloud.com/en/blog/307/when-will-ram-prices-drop-still-no-good-news--august-2026-update.html · [TrendForce2026-DDR5] https://www.trendforce.com/news/2026/08/17/news-germany-ddr5-prices-near-5x-yoy-in-august-china-reportedly-sees-14-wow-jump-as-global-rally-continues/ · [SPECpower-2025Q1] https://spec.cs.miami.edu/power_ssj2008/results/res2025q1
 
-**NPV:** [DAMODARAN-2026] https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/wacc.html · [IBM-PRICE-2026] https://www.schneider.im/lu/ibm-price-increases-2026/ · [BLS-ECI-2026] https://www.bls.gov/news.release/archives/eci_07312026.htm · [EIA-EPM] https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_3 · [KYNE-2022] https://tuningletter.planetmainframe.com/wp-content/uploads/presentations/2022-08-102-How-Should-I-Think-About-Tailored-Fit-Pricing.pdf
+**NPV:** [Damodaran2026-WACC] https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/wacc.html · [Schneider2026-IBMPrice] https://www.schneider.im/lu/ibm-price-increases-2026/ · [BLS2026-ECI] https://www.bls.gov/news.release/archives/eci_07312026.htm · [EIA-EPM-5.3] https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_3 · [Kyne2022-TFP] https://tuningletter.planetmainframe.com/wp-content/uploads/presentations/2022-08-102-How-Should-I-Think-About-Tailored-Fit-Pricing.pdf
 
 **Personel (bu dokümanla eklenen ya da yeniden okunanlar):**
-- **[IBM-EAGLE]** [VENDOR] IBM, "Mainframe skills: The myths and the reality" v3: "5 FTE to start + 1 FTE for every 625 MIPS"; Solitaire Interglobal 2013 aktarımı "as much as 13x smaller". https://public.dhe.ibm.com/software/os/systemz/pdf/Mainframe_skills_-_The_myths_and_the_reality_v3.pdf
-- **[GARTNER-ITKMD]** Gartner IT Key Metrics Data 2016, Broadcom aktarımı: 152 → 268 MIPS/FTE. https://docs.broadcom.com/doc/why-the-mainframe-should-be-part-of-your-digital-business-ecosystem
-- **[IBM-TPF-2007]** [VENDOR] IBM, "A Fresh Look at the Mainframe: Mainframe Total Cost of Ownership Issues" (TPFUG 2007): SWG veri merkezi, Omaha, Baldor, örnek model. https://public.dhe.ibm.com/software/htp/tpf/tpfug/tgs07/tgs07e.pdf
-- **[IBM-EAGLE-LABOR]** [VENDOR] IBM, "Reducing IT labor costs" (2011): 30,7 sunucu/FTE, 52,5 VM/FTE, 32 / 36 saat, 500 iş yükü senaryosu, $159.600/FTE. https://public.dhe.ibm.com/software/os/systemz/summit/handouts/Session_3_Reducing_IT_labor_costs_Q2.pdf
-- **[SHEDLETSKY-2008]** [VENDOR] J. Shedletsky, "Mainframe versus Distributed TCO Studies and Experiences": 7,8 sunucu/headcount; Québec vakası. https://public.dhe.ibm.com/software/zseries/pdf/sandiego/Mainframe_versus_Distributed_TCO_Studies_and_Experiences_-_John_Shedletsky.pdf
-- **[RAY-JONES-2007]** [VENDOR] R. Jones, "Leveraging your Mainframe Investment: TCO Considerations" (2007): "167-625 MIPS per headcount (500 is typical)"; IGS Linux vakası. https://public.dhe.ibm.com/software/systemz/pdf/datacenter/10_-_Ray_Jones_-_Leveraging_your_Mainframe_Investment_-TCO_Considerations.pdf
-- **[EAGLE-TCO-2013]** [VENDOR] IBM CPO, "TCO Lessons Learned From Customer Engagements": DR testi 14.952 vs 2.051 kişi-saat. https://public.dhe.ibm.com/software/os/systemz/seminars/mainframe/handouts/Session_5_-_Tales_from_the_Eagle_TCO_team.pdf
-- **[IBM-EAGLE-2013]** [VENDOR] Üretim dışı +%20 / +%200. https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf
-- **[IDC-2007]** IDC, "Key IT and Business Benchmarks for Managing Virtual Infrastructure" (Elliot, Villars), Computerworld aktarımı (5 Aralık 2007): 200 VM/yönetici. https://www.computerworld.com/article/1567236/benchmarking-how-well-you-manage-virtualization.html
-- **[AVASANT-2008]** Computer Economics / Avasant, "Server Support Headcounts Hold Steady": medyan %6,8 (2008), %6,6 (2006). https://avasant.com/report/server-support-headcounts-hold-steady/
-- **[ASTADIA-ROI]** [göç satıcısı] Astadia, "Mainframe Modernization: A Guide to Calculating ROI" (2024): personel sayısı vermiyor. https://www.amdocs.com/sites/default/files/2024-11/astadia-roi-calculator-11-2024.pdf
-- **[BLS-OEWS]**, **[BLS-ECEC]**, **[IDC-2016]**: v3 §11.7.
+- **[IBM-CPO2014-Skills]** [VENDOR] IBM Competitive Project Office, "Mainframe Skills – The Myth and the Reality" v3 (2014): "5 FTE to start + 1 FTE for every 625 MIPS"; Solitaire Interglobal 2013 aktarımı "as much as 13x smaller". https://public.dhe.ibm.com/software/os/systemz/pdf/Mainframe_skills_-_The_myths_and_the_reality_v3.pdf
+- **[CA2016-MFEcosystem]** Gartner IT Key Metrics Data 2016, Broadcom aktarımı: 152 → 268 MIPS/FTE. https://docs.broadcom.com/doc/why-the-mainframe-should-be-part-of-your-digital-business-ecosystem
+- **[Rhoderick2007-TPFUG]** [VENDOR] IBM, "A Fresh Look at the Mainframe: Mainframe Total Cost of Ownership Issues" (TPFUG 2007): SWG veri merkezi, Omaha, Baldor, örnek model. https://public.dhe.ibm.com/software/htp/tpf/tpfug/tgs07/tgs07e.pdf
+- **[Calderon2011-Labor]** [VENDOR] IBM, "Reducing IT labor costs" (2011): 30,7 sunucu/FTE, 52,5 VM/FTE, 32 / 36 saat, 500 iş yükü senaryosu, $159.600/FTE. https://public.dhe.ibm.com/software/os/systemz/summit/handouts/Session_3_Reducing_IT_labor_costs_Q2.pdf
+- **[Shedletsky2008]** [VENDOR] J. Shedletsky, "Mainframe versus Distributed TCO Studies and Experiences": 7,8 sunucu/headcount; Québec vakası. https://public.dhe.ibm.com/software/zseries/pdf/sandiego/Mainframe_versus_Distributed_TCO_Studies_and_Experiences_-_John_Shedletsky.pdf
+- **[Jones2007-TCO]** [VENDOR] R. Jones, "Leveraging your Mainframe Investment: TCO Considerations" (2007): "167-625 MIPS per headcount (500 is typical)"; IGS Linux vakası. https://public.dhe.ibm.com/software/systemz/pdf/datacenter/10_-_Ray_Jones_-_Leveraging_your_Mainframe_Investment_-TCO_Considerations.pdf
+- **[IBM2012-TCOLessons-zEC]** [VENDOR] IBM CPO, "TCO Lessons Learned From Customer Engagements": DR testi 14.952 vs 2.051 kişi-saat. https://public.dhe.ibm.com/software/os/systemz/seminars/mainframe/handouts/Session_5_-_Tales_from_the_Eagle_TCO_team.pdf
+- **[IBM2013-TCOLessons]** [VENDOR] Üretim dışı +%20 / +%200. https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf
+- **[Computerworld-IDC2007]** IDC, "Key IT and Business Benchmarks for Managing Virtual Infrastructure" (Elliot, Villars), Computerworld aktarımı (5 Aralık 2007): 200 VM/yönetici. https://www.computerworld.com/article/1567236/benchmarking-how-well-you-manage-virtualization.html
+- **[Avasant2008-Headcount]** Computer Economics / Avasant, "Server Support Headcounts Hold Steady": medyan %6,8 (2008), %6,6 (2006). https://avasant.com/report/server-support-headcounts-hold-steady/
+- **[Astadia2024-ROI]** [göç satıcısı] Astadia, "Mainframe Modernization: A Guide to Calculating ROI" (2024): personel sayısı vermiyor. https://www.amdocs.com/sites/default/files/2024-11/astadia-roi-calculator-11-2024.pdf
+- **[BLS-OOH]**, **[BLS2026-ECEC]**, **[IDC2016-ConnectedMF]**: v3 §11.7.

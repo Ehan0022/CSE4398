@@ -1,6 +1,6 @@
 # Slayt İçeriği — Bölüm 1: Giriş ve Mainframe Katmanları
 
-*Her slayt: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu. Sayılar `main` dalındaki modellerin 2026-11-24 koşusundan (Değerlendirme #10 sonrası); demo case numaraları `sunum_demo/DEMO_SENARYOLARI.md`'ye atıftır. Kaynak etiketleri ([REDP], [LSPR] …) `docs/mainframe_model_documentation_v3.md` §11 ve `docs/kopruler_v1.md` §20'deki listeye karşılık gelir.*
+*Her slayt: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu. Sayılar `main` dalındaki modellerin 2026-11-24 koşusundan (Değerlendirme #10 sonrası); demo case numaraları `sunum_demo/DEMO_SENARYOLARI.md`'ye atıftır. Kaynak etiketleri ([Burgess2016-REDP5320], [IBM-LSPR-ITRR] …) `docs/mainframe_model_documentation_v3.md` §11 ve `docs/kopruler_v1.md` §20'deki listeye karşılık gelir.*
 
 ---
 
@@ -63,7 +63,7 @@
 - 120 kademe doğrudan IBM LSPR'den; 197 kademenin (7xx, 4–200 CP) PCI'si resmî MSU'dan türetildi.
 - Fiziksel özellikler Max39 / 82 / 125 / 168 / 200 (drawer sayısı); geçici kapasite sınırlarında kullanılır.
 
-**Veri / kaynak:** [LSPR] IBM Z LSPR ITRR tabloları; [EXHIBIT] 3931 MSU tablosu; [SG24-8950]; `data/z16_a01_capacity.csv`, `data/raw/`, `src/tools/build_z16_capacity_table.py`.
+**Veri / kaynak:** [IBM-LSPR-ITRR] IBM Z LSPR ITRR tabloları; [IBM2025-MSU-Exhibit] 3931 MSU tablosu; [IBM-SG24-8950]; `data/z16_a01_capacity.csv`, `data/raw/`, `src/tools/build_z16_capacity_table.py`.
 
 **Tasarım gerekçesi:** Kademe tablosu kodun içinde değil, ham IBM verisinden yeniden üretilebilen ayrı bir dosyada; her değer kaynağıyla satır satır karşılaştırılabilir. Önceki sürüm z/VM tablosunu kullanıyordu ve 32 CP'de kesiliyordu (128 kademe ve yapay tavan); denetimde düzeltildi.
 
@@ -79,7 +79,7 @@
 - Bağımsız kontrol: 3931-7K0 için türetilen 215.099 PCI, bağımsız kaynakta 215.089 (fark **%0,004**).
 - Sınırlılık: 7xx 4–200 için LSPR Low/High (RNI) oranları türetilmedi.
 
-**Veri / kaynak:** [LSPR], [EXHIBIT], [STINE]; v3 §3.3.
+**Veri / kaynak:** [IBM-LSPR-ITRR], [IBM2025-MSU-Exhibit], [Stine2022]; v3 §3.3.
 
 **Tasarım gerekçesi:** Kamuya açık LSPR sayfası 3931-703'te kesiliyor. Eksik veriyi varsayımla değil, IBM'in kendi MSU derecelendirmesinden türetmek ve iki bağımsız testle doğrulamak.
 
@@ -94,7 +94,7 @@
 - **TPS_PER_PCI = 7,939** (iki noktanın ortalaması; %3,1 fark köprünün belirsizliği).
 - `ham_TPS(kademe) = PCI × 7,939 / w / (1 − f)`; n-way ölçeklenme kaybı PCI'nin içinde, ayrıca uygulanmaz.
 
-**Veri / kaynak:** [REDP] IBM Redpaper REDP-5320; [LSPR-z13]; v3 §4.1–4.3; KB-02.
+**Veri / kaynak:** [Burgess2016-REDP5320] IBM Redpaper REDP-5320; [IBM-LSPR-zOS22]; v3 §4.1–4.3; KB-02.
 
 **Tasarım gerekçesi:** Mainframe için kamuya açık tek ölçülmüş yüksek hacimli OLTP benchmark'ı bu rapor. PCI üzerinden taşımak, z13 ölçümünü z16'ya nesil farkıyla birlikte aktarır.
 
@@ -105,11 +105,11 @@
 ### Slayt M2.2 — Köprünün sınırları ve makullük kontrolü
 
 - Köprünün ölçtüğü "1 işlem" çok hafif: 1 STARTBROWSE + 5 READNEXT, bellekteki CICS tablosu, Db2 yok, CPU 85,9 µs (z13).
-- Gerçek CICS-Db2 işleminin yalnızca Db2 CPU'su 1,25–1,32 ms [CATTERALL-2019], ~15 kat ağır.
+- Gerçek CICS-Db2 işleminin yalnızca Db2 CPU'su 1,25–1,32 ms [Catterall2019], ~15 kat ağır.
 - Makullük: IBM z14 "günde 12 milyardan fazla işlem" (~139K TPS) → w ≈ 9; oltp_rw'nin w'si 12,85. Yalnızca büyüklük mertebesi teyidi.
 - Tek kaynaklı köprü; LSPR karışımının CICS/Db2 OLTP'ye benzediği bir varsayım.
 
-**Veri / kaynak:** [REDP-PROFILE] (`data/raw/redp5320_workload_profile.csv`), [CATTERALL-2019], [IBM-Z14-PR]; v3 §4.4.1, §4.5.
+**Veri / kaynak:** [Burgess2016-REDP5320] (`data/raw/redp5320_workload_profile.csv`), [Catterall2019], [AmwalAlGhad2017-z14]; v3 §4.4.1, §4.5.
 
 **Tasarım gerekçesi:** Ham benchmark TPS'iyle hesap yapmak mainframe'i ~9–13 kat ucuz gösterirdi (Değerlendirme #1'in "TPS ortak birim değil" tehdidinin mainframe yarısı). Bu yüzden köprü bir bileşim ağırlığıyla düzeltilir (sonraki katman).
 
@@ -124,7 +124,7 @@
 - I/O bileşimden: senkron okuma = okuma × 4 getpage × (1 − 0,95); + commit log yazımı; IOPS = senkron + yazma × 0,5.
 - Hazır profiller: redp_light (w 1,00), tpcb_like (4,61), **oltp_rw (12,85, varsayılan)**, oltp_heavy (16,37); `--sql-reads/--sql-writes` ile özel bileşim.
 
-**Veri / kaynak:** [REDP-PROFILE], [CATTERALL-2012] (INSERT ~68 µs), [SYSBENCH] bileşimi, F kararı (RANGE_READ_WEIGHT 3,4–3,9, Vonng alt testleri); v3 §4.4.2–4.4.3; `common_model.WORKLOAD_MIXES`.
+**Veri / kaynak:** [Burgess2016-REDP5320], [Catterall2012] (INSERT ~68 µs), [Kopytov-sysbench] bileşimi, F kararı (RANGE_READ_WEIGHT 3,4–3,9, Vonng alt testleri); v3 §4.4.2–4.4.3; `common_model.WORKLOAD_MIXES`.
 
 **Tasarım gerekçesi:** oltp_rw = sysbench oltp_read_write, x86 tarafında en yaygın ölçülen OLTP bileşimi. Böylece TPS iki tarafta aynı işi ifade eder (KB-01). w bir oran olduğu için nesilden bağımsızdır.
 
@@ -186,7 +186,7 @@
 - Topolojiler (SG24-8446 desenleri): M1 tek CPC sysplex · M2 DR CPC (CBU) + Metro Mirror, elle geçiş · M3 GDPS Metro Global + HyperSwap · M4 GDPS Continuous Availability.
 - Sonuçlar (Değ #10, platform kesintisi ve M3 ↔ X3 paritesiyle): M1 %99,962 · M2 %99,994 · M3 %99,9998 · M4 %99,99994.
 
-**Veri / kaynak:** [UPTIME-2025], [UPTIME-2022], [SG24-8446], [SG24-6374], [GDPS-2026], [ITIC-2023]; v3 §6.2–6.5.
+**Veri / kaynak:** [Uptime2025-PR], [DCF2022-Uptime], [IBM-SG24-8446], [IBM-SG24-6374], [Cook2026-GDPS], [ITIC2023-IBMZ]; v3 §6.2–6.5.
 
 **Tasarım gerekçesi:** ITIC'in "9 nine"i sunucu donanımının kesintisidir, hizmetin değil; SG24-8446 desenlere yüzde atamaz. Bu yüzden kesinti, kesinti doğuran olayların sıklığı × topolojinin kurtarma süresi olarak hesaplanır. Aynı denklem x86'ya da uygulanır (KB-07).
 
@@ -202,7 +202,7 @@
 - M3 / M4'e çıkışta: GDPS $50K / $100K/ay, DR frame (CBU, ×0,50), personel ×1,25, 4 storage kopyası; **yazılım değişmez** (CBU kuralı).
 - Sınırlılık: bölgesel felaket ve kesintinin dağılımı (stokastik) modellenmedi; planlı kesinti sıklığı kaynaksız.
 
-**Veri / kaynak:** [CBU] "Software charges for the designated CBU machine are based on its permanent configuration."; [GDPS-PRICE] (yayımlanmıyor); v3 §6.6–6.8.
+**Veri / kaynak:** [IBM-SC28-7025] "Software charges for the designated CBU machine are based on its permanent configuration."; [MLE-GDPS] (yayımlanmıyor); v3 §6.6–6.8.
 
 **Tasarım gerekçesi:** GDPS fiyatı yayımlanmadığı için yazılıma oranlı prim yerine sabit aylık kalem (aralık parametresi); böylece hacim arttıkça payı küçülür, bu gerçek fiyatlama yapısına daha yakın.
 
@@ -218,7 +218,7 @@
 - Faturalanan MSU = R4HA tepesi (sub-capacity); DR (CBU) makinesi faturayı artırmaz.
 - 10K TPS'te yazılım $402.932/ay, toplamın %35'i.
 
-**Veri / kaynak:** [IBM-ZNALC], [CMG-2020], [IBM-2004] örnek fatura, [LONGPELA], [VALUE4IT] (150 MSU'da ~£1M/yıl kontrolü); v3 §7.1.
+**Veri / kaynak:** [IBM-zNALC], [CMG2020], [Adams2005-z9SWPricing] örnek fatura, [Longpela-SWPrice], [Moss2010-Value4IT] (150 MSU'da ~£1M/yıl kontrolü); v3 §7.1.
 
 **Tasarım gerekçesi:** Önceki sürümün doğrusal $40/MSU'su hem yapı (ölçek ekonomisini siliyordu) hem seviye (IBM'in kendi örneğinin ~7'de biri) hatasıydı. Kademeli yapı mainframe'in en belirgin ölçek ekonomisidir.
 
@@ -233,7 +233,7 @@
 - SW_PRICE_LEVEL_FACTOR 0,5 / 1,0 / 1,75 (2004 listesi; üst uç ABD TÜFE ile 2026). Tornado'da 2. sıra: $898K – $1,50M.
 - L4+ kademe fiyatları yayımlanmamış: faturalanan MSU 575'i aştığında (oltp_rw'de ~4,5K TPS) devreye girer; yüksek hacimde en kritik yazılım riski (v3 §7.1.6).
 
-**Veri / kaynak:** [ZIIP], [IBM-PRICE-2026]; v3 §7.1.5–7.1.6; model `--range` tornado.
+**Veri / kaynak:** [IBM-SG24-8950], [Schneider2026-IBMPrice]; v3 §7.1.5–7.1.6; model `--range` tornado.
 
 **Tasarım gerekçesi:** Yüksek bir zIIP payı mainframe lehine yanlılık yaratır; bu yüzden varsayılan düşük, aralık geniş. Mutlak fiyat seviyesi eğrinin şeklini değil yerini değiştirir: crossover'ın varlığı değil konumu bu parametreye duyarlı.
 
@@ -248,7 +248,7 @@
 - Topoloji çarpanı: M2–M4'te DR frame `DR_FRAME_COST_FRACTION` = 0,50 (aralık 0,30–1,00); enerji tam.
 - 10K TPS'te donanım $64.811 + bakım $32.405 + enerji $2.628: toplamın ~%9'u.
 
-**Veri / kaynak:** [PRICE] fiyat rehberleri ($500K – $10M+), [PWR] 20–40 kW; v3 §7.2–7.4.
+**Veri / kaynak:** [Alibaba-MFPrice] fiyat rehberleri ($500K – $10M+), [Alibaba-MFPrice] 20–40 kW; v3 §7.2–7.4.
 
 **Tasarım gerekçesi:** Frame tabanı olmadan en küçük kademeler gerçek dışı ucuz çıkıyordu ($0,17M), bu da crossover'ın beklendiği düşük TPS bölgesinde mainframe lehine yanlılıktı. Fiyat yayımlanmadığı için iki parametre de aralıkta.
 
@@ -263,7 +263,7 @@
 - GDPS sabit aylık kalem: M3 $50K, M4 $100K [ASSUME]; MSU'ya değil kapsamına bağlı, yayımlanmıyor.
 - Sınırlılık: enerji 39 CP üstünde birden fazla drawer/raf için eksik sayılıyor; drawer maliyeti yok.
 
-**Veri / kaynak:** [CBU] SC28-7025, [GDPS-PRICE], [CFCC]; v3 §6.7.
+**Veri / kaynak:** [IBM-SC28-7025] SC28-7025, [MLE-GDPS], [CFCC]; v3 §6.7.
 
 **Tasarım gerekçesi:** CBU, mainframe'in x86'da karşılığı olmayan yapısal avantajı: DR sitesi tam lisans istemez. Bu asimetri eşitlenmez, modellenir (KB-11).
 
@@ -278,7 +278,7 @@
 - Katalog: DS8910F-993 (737 TB, z16 çerçevesine monte), 994 (2.949 TB), DS8950F-996 (5.898 TB, 2,32M IOPS).
 - `ham_TB = veri × 1,15³ × 1,5 / 1,0 / 0,75`; kopya: M1 1, M2 2, M3/M4 4; dizi sayısı = max(kapasite, IOPS / 0,70 tepe).
 
-**Veri / kaynak:** [REDP-5554], [TT-2019], [ITCANDOR], [ITJUNGLE-22] ($8,62/GB liste); `data/ds8900f_models.csv`; v3 §8.1–8.4.
+**Veri / kaynak:** [IBM-REDP-5554], [TechTarget2019-DS8900F], [ITCandor2019-DS8900F], [ITJungle2022-Storage] ($8,62/GB liste); `data/ds8900f_models.csv`; v3 §8.1–8.4.
 
 **Tasarım gerekçesi:** "Tek alternatif" ilkesi (mainframe tarafı tek yığın): rakip diziler kombinasyon sayısını büyütür ama karşılaştırmanın sorusunu değiştirmez. Kopya sayısı kullanıcıya sorulmaz, topolojiden türetilir.
 
@@ -294,7 +294,7 @@
 - Sonuç: 10K TPS'te 20 TB → $7.496; 500 TB → $153.226 (994).
 - Tehdit: indirim oranı (0,50–0,85) mutlak düzeyi ~3 kat oynatır; göreli sonuçlar (hacimle doğrusal büyüme, topolojiyle kopya) bundan bağımsız.
 
-**Veri / kaynak:** [VENDORBENCH], [REDP-5554], [TT-2019]; v3 §8.5–8.6, §8.1.5.
+**Veri / kaynak:** [VendorBenchmark2026-Storage], [IBM-REDP-5554], [TechTarget2019-DS8900F]; v3 §8.5–8.6, §8.1.5.
 
 **Tasarım gerekçesi:** Storage gecikmesi latency modelinin D_io'sunu besler: availability topolojisi senkron kopya üzerinden latency'yi de etkiler. Storage'ın host CPU yükü mainframe'de yok (kanal alt sistemi), x86'da açıkça eklenir: bilinçli asimetri.
 
@@ -309,7 +309,7 @@
 - Kısıtlar: 8 saatlik yedek penceresi; M1'de tam geri yükleme ≤ RTO / 2 = 36 saat; nesne hedeflerinde TCT ≤ 5.000 MB/s.
 - `auto` = kısıtları karşılayanların en ucuzu; `--backup-target` ile zorlanabilir.
 
-**Veri / kaynak:** [TS7700-2024], [TS7700-2006], [SG24-8381], [MINIO-TCO], [AWS-S3-2026], [AWS-DX-2026], [DB2-BACKUP], [IDUG-2024]; v3 §8.10.1–8.10.4.
+**Veri / kaynak:** [IBM-TS7700-541], [ESF2006-TS7700], [IBM-SG24-8381], [MinIO-ObjectTCO], [Nubbo2026-S3], [AWS-DXPricing], [IBM-Db2z12-Backup], [Hendley2024-IDUG]; v3 §8.10.1–8.10.4.
 
 **Tasarım gerekçesi:** Replikasyon ve GDPS mantıksal bozulmayı (fidye yazılımı, hatalı güncelleme) bütün kopyalara taşır; yedek ayrı bir katmandır. M1'in 24 sa RPO / 72 sa RTO iddiası yedeğin başka sitede olmasına dayanır.
 
@@ -341,7 +341,7 @@
 - Topoloji çarpanı M1 1,00 · M2 1,05 · M3 1,15 · M4 1,25.
 - 10K TPS: 41,6 FTE, $561.236/ay, toplamın %48'i (Değ #10: zIIP'e kayan iş de personel girdisine sayılır).
 
-**Veri / kaynak:** [IBM-EAGLE] "5 FTE to start + 1 FTE for every 625 MIPS"; [GARTNER-ITKMD] 152 → 268 MIPS/FTE; [IBM-TPF-2007]; [BLS-OEWS], [BLS-ECEC], [IDC-2016]; v3 §7.7.
+**Veri / kaynak:** [IBM-CPO2014-Skills] "5 FTE to start + 1 FTE for every 625 MIPS"; [CA2016-MFEcosystem] 152 → 268 MIPS/FTE; [Rhoderick2007-TPFUG]; [BLS-OOH], [BLS2026-ECEC], [IDC2016-ConnectedMF]; v3 §7.7.
 
 **Tasarım gerekçesi:** b < 1 → MIPS/FTE kapasiteyle artar (ölçek ekonomisi). Eğriler kaynak çapalarını sarmalayacak şekilde seçildi: high Gartner 2016'yı, low Gartner eğiliminin 2026'ya taşınmasını izler.
 
@@ -373,7 +373,7 @@
 - 10K TPS'te mainframe $102.054/ay (%9); x86 $3.434.
 - Tutucu basitleştirme: mainframe'de dev/test aynı CEC'te LPAR olarak durur ve AWLC'nin düşen marjinal fiyatından yararlanır; model bunu saymaz (mainframe aleyhine).
 
-**Veri / kaynak:** [IBM-EAGLE-2013] "üretim +%20 / dağıtıkta +%200"; v3 §7.9; KB-14.
+**Veri / kaynak:** [IBM2013-TCOLessons] "üretim +%20 / dağıtıkta +%200"; v3 §7.9; KB-14.
 
 **Tasarım gerekçesi:** Kalem dışarıda bırakılırsa, IBM'in iddiası doğruysa karşılaştırma x86 lehine kayar. İki tarafa ayrı çarpan (Emirhan, 2026-11-02); üretici kaynağının yanlılığına karşı aralık geniş.
 
@@ -404,7 +404,7 @@
 - Yazılım aylık R4HA tepesinden: `r4ha[i] = ortalama(profil[i−3 : i+1])`, ayın en büyüğü faturalanır.
 - CSV çıktısı: 8.760 satır saatlik + 12 satır aylık (grafik-hazır).
 
-**Veri / kaynak:** [IBM-ZNALC] sub-capacity / R4HA; v3 §9.1–9.3, §9.9.
+**Veri / kaynak:** [IBM-zNALC] sub-capacity / R4HA; v3 §9.1–9.3, §9.9.
 
 **Tasarım gerekçesi:** Tek bir ortalama TPS, R4HA tepesini ve dolayısıyla yazılım faturasını gizler: bir saatlik patlama bütün ayın faturasını yukarı çeker. Saatlik simülasyon bunun için zorunlu.
 
@@ -420,7 +420,7 @@
 - Resmî sınırlar: geçici kapasite ≤ %100 satın alınan; drawer ekleyemez; alt-kapasite serisi aşağı inemez.
 - Sonuç (Demo Case 8, 10K ort.): steady C $17,87M (A'dan %2,0) · batch C $24,42M (A'dan %4,6) · retail C $30,43M (B'den %0,1).
 
-**Veri / kaynak:** [TFP-HW], [TFP-SW], [COD] SC28-7025; v3 §9.4–9.8.
+**Veri / kaynak:** [IBM-TFP-ContentSolutions], [IBM2021-TFP-Sensible], [IBM-SC28-7025] SC28-7025; v3 §9.4–9.8.
 
 **Tasarım gerekçesi:** CoD mainframe ekonomisinin karakteristik özelliği; modellenmezse mainframe haksız pahalı görünür. Corridor ve CoD fiyatları sözleşmeye özel → parametre + duyarlılık. Gelir-nötr TFP kalibrasyonu.
 
@@ -436,7 +436,7 @@
 - Artışlar: yazılım %3, bakım %3, ücret %3,3, enerji %4; TFP büyüme MSU'su %50 fiyat.
 - Özet ölçüler: NPV, EAC, **seviyelendirilmiş $/TPS/ay** (LCOE karşılığı).
 
-**Veri / kaynak:** [DAMODARAN-2026], [IBM-PRICE-2026], [BLS-ECI-2026], [EIA-EPM], [TFP-SW-2021], [KYNE-2022]; v3 §9.10; KB-16.
+**Veri / kaynak:** [Damodaran2026-WACC], [Schneider2026-IBMPrice], [BLS2026-ECI], [EIA-EPM-5.3], [IBM2021-TFP-Sensible], [Kyne2022-TFP]; v3 §9.10; KB-16.
 
 **Tasarım gerekçesi:** Statik amortisman paranın zaman değerini, büyümeyi ve fiyat artışlarını gizler. İskonto oranı köşe senaryolarına girmez: yüksek r mainframe'i hep ucuz gösterir, "low = mainframe lehine" tanımını bozardı; ayrı taranır.
 

@@ -48,9 +48,9 @@ D_saha(T_rec) = λ_saha × [ (1 − p_uzun) × min(d_kısa, T_rec) + p_uzun × m
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | [UPTIME-2025] |
+| λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | [Uptime2025-PR] |
 | d_kısa (saat) | 1 | 2 | 4 | [ASSUME] |
-| p_uzun | 0,08 | 0,15 | 0,30 | [UPTIME-2022] |
+| p_uzun | 0,08 | 0,15 | 0,30 | [DCF2022-Uptime] |
 | d_uzun (saat) | 24 | 48 | 72 | SG24-8446 GDPS'siz DR aralığının üst ucu |
 | Düzey anahtarı | `SITE_EVENT_LEVEL` (aralık parametresi) | | | |
 
@@ -76,7 +76,7 @@ Toplam, Adım 6'dan önceki M2 kurtarma süresiyle aynıdır; yalnızca iki bile
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| `LOADED_WAGE_USD` (yüklü maliyet, USD/FTE/yıl) | 122.000 | 162.000 | 215.000 | BLS OEWS Mayıs 2025 medyanlarından karma brüt $95K / $120K / $150K × yan hak çarpanı 1,28 / 1,35 / 1,43 [BLS-OEWS, BLS-ECEC, IDC-2016] |
+| `LOADED_WAGE_USD` (yüklü maliyet, USD/FTE/yıl) | 122.000 | 162.000 | 215.000 | BLS OEWS Mayıs 2025 medyanlarından karma brüt $95K / $120K / $150K × yan hak çarpanı 1,28 / 1,35 / 1,43 [BLS-OOH, BLS2026-ECEC, IDC2016-ConnectedMF] |
 | `STAFF_FLOOR_FTE` (7/24 asgari ekip) | 3 | 4 | 5 | [ASSUME]; mainframe v3 §7.7 |
 | Düzey anahtarı | `WAGE_LEVEL` (aralık parametresi) | | | |
 
@@ -102,16 +102,16 @@ Yedek hedeflerinden ikisi platformdan bağımsızdır: kurum içi S3 uyumlu nesn
 
 | Parametre | Değer | Dayanak |
 |---|---|---|
-| `COS_HW_USD_PER_TB` | 100 (aralık 60–200) | [MINIO-TCO] |
-| `COS_MIN_SITE_CAPEX_USD` | 70.000 | [MINIO-TCO] |
+| `COS_HW_USD_PER_TB` | 100 (aralık 60–200) | [MinIO-ObjectTCO] |
+| `COS_MIN_SITE_CAPEX_USD` | 70.000 | [MinIO-ObjectTCO] |
 | `COS_SW_USD_PER_TB_MONTH` | 5 (aralık 0–10) | [MINIO-TCO → ASSUME] |
 | `COS_KW_PER_PB` | 1,5 | [ASSUME] |
-| `S3_USD_PER_GB_MONTH` (Standard-IA) | 0,0125 | [AWS-S3-2026] |
-| `S3_MIN_STORAGE_DAYS` | 30 | [AWS-S3-2026] |
-| `S3_RETRIEVAL_USD_PER_GB` | 0,01 | [AWS-S3-2026] |
-| `S3_PUT_USD_PER_1000` | 0,01 | [AWS-S3-2026] |
-| `DX_PORT_USD_PER_HOUR` (10 Gbps) | 2,25 | [AWS-DX-2026] |
-| `DX_EGRESS_USD_PER_GB` | 0,02 | [AWS-DX-2026] |
+| `S3_USD_PER_GB_MONTH` (Standard-IA) | 0,0125 | [Nubbo2026-S3] |
+| `S3_MIN_STORAGE_DAYS` | 30 | [Nubbo2026-S3] |
+| `S3_RETRIEVAL_USD_PER_GB` | 0,01 | [Nubbo2026-S3] |
+| `S3_PUT_USD_PER_1000` | 0,01 | [Nubbo2026-S3] |
+| `DX_PORT_USD_PER_HOUR` (10 Gbps) | 2,25 | [AWS-DXPricing] |
+| `DX_EGRESS_USD_PER_GB` | 0,02 | [AWS-DXPricing] |
 | `WAN_CIRCUIT_USD_PER_MONTH` | 2.000 | [ASSUME] |
 
 Fonksiyonlar:
@@ -153,8 +153,8 @@ Platformlar arası storage karşılaştırmasındaki en büyük tuzak fiyatın t
 
 | Dönem | DRAM USD/GB (low / mid / high) | Kurumsal NVMe USD/TB (low / mid / high) | Kaynak |
 |---|---|---|---|
-| `2025-mid` (şok öncesi, **ana senaryo**) | 3 / 4 / 5,5 | 80 / 115 / 180 | 64 GB DDR5 RDIMM ~$255 [PCSP-SERVER]; 30 TB sınıfı NVMe ~$115/TB, Q3 2025 [PCSP-SSD]; uçlar [ASSUME] |
-| `2026-Q3` (şok, duyarlılık) | 16 / 35 / 53 | 300 / 753 / 1.172 | 64 GB ~$1.000 sözleşme [PCSP-SERVER]; Ağustos–Ekim 2026 perakende $2.245 / $3.400 [CAPCOMP-RAM, BACLOUD-RAM]; U.2 $300–1.172/TB [PCSP-SSD] |
+| `2025-mid` (şok öncesi, **ana senaryo**) | 3 / 4 / 5,5 | 80 / 115 / 180 | 64 GB DDR5 RDIMM ~$255 [PCSP2026-Server]; 30 TB sınıfı NVMe ~$115/TB, Q3 2025 [PCSP2026-SSD]; uçlar [ASSUME] |
+| `2026-Q3` (şok, duyarlılık) | 16 / 35 / 53 | 300 / 753 / 1.172 | 64 GB ~$1.000 sözleşme [PCSP2026-Server]; Ağustos–Ekim 2026 perakende $2.245 / $3.400 [CapCompute-RAM, Bacloud2026-RAM]; U.2 $300–1.172/TB [PCSP2026-SSD] |
 
 **Kurallar:**
 
@@ -175,12 +175,12 @@ Platformlar arası storage karşılaştırmasındaki en büyük tuzak fiyatın t
 | Parametre | Değer | Aralık | Dayanak |
 |---|---|---|---|
 | `NPV_YEARS` | 5 | | [ASSUME] amortisman süresiyle aynı |
-| `NPV_DISCOUNT_RATE` (nominal) | 0,07 | tarama %5 / %7 / %10, köşelere girmez | [DAMODARAN-2026] |
+| `NPV_DISCOUNT_RATE` (nominal) | 0,07 | tarama %5 / %7 / %10, köşelere girmez | [Damodaran2026-WACC] |
 | `NPV_TPS_GROWTH` | 0,10 | senaryo girdisi | |
 | `SW_PRICE_ESCALATION` | 0,03 | 0–0,06 | [IBM-PRICE-2026 → ASSUME] |
 | `HW_SERVICE_ESCALATION` | 0,03 | 0–0,06 | [IBM-PRICE-2026 → ASSUME] |
-| `WAGE_ESCALATION` | 0,033 | 0,025–0,045 | [BLS-ECI-2026] |
-| `ENERGY_ESCALATION` | 0,04 | 0,015–0,056 | [EIA-EPM] |
+| `WAGE_ESCALATION` | 0,033 | 0,025–0,045 | [BLS2026-ECI] |
+| `ENERGY_ESCALATION` | 0,04 | 0,015–0,056 | [EIA-EPM-5.3] |
 | `NPV_RESIDUAL_FRACTION` | 0 | 0–1 (tarama) | [ASSUME] tutucu |
 
 - **Zamanlama:** satın almalar dönem başında (t = y − 1), işletme giderleri yıl sonunda (t = y).
@@ -192,7 +192,7 @@ Platformlar arası storage karşılaştırmasındaki en büyük tuzak fiyatın t
 
 ## 9. Üretim dışı ortamlar (NONPROD)
 
-Geliştirme, test, QA ve ön-üretim ortamları. Benzer çalışmalar taramasına göre bu kalem iki platformda çok farklı büyüklükte olabilir: IBM Eagle'a göre mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200 [IBM-EAGLE-2013; benzer_calismalar_v1 §3.2]. Emirhan'ın kararı (2026-11-02): iki tarafa ayrı, aralıklı bir çarpan; düşük uç 0, "kapsam dışı" senaryosu.
+Geliştirme, test, QA ve ön-üretim ortamları. Benzer çalışmalar taramasına göre bu kalem iki platformda çok farklı büyüklükte olabilir: IBM Eagle'a göre mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200 [IBM2013-TCOLessons; benzer_calismalar_v1 §3.2]. Emirhan'ın kararı (2026-11-02): iki tarafa ayrı, aralıklı bir çarpan; düşük uç 0, "kapsam dışı" senaryosu.
 
 **Kural (iki tarafta aynı):**
 
@@ -213,8 +213,8 @@ Geliştirme, test, QA ve ön-üretim ortamları. Benzer çalışmalar taramasın
 
 | Platform | low | mid | high |
 |---|---|---|---|
-| Mainframe | 0 | 0,20 [IBM-EAGLE-2013] | 0,50 [ASSUME] |
-| x86 (`NONPROD_FACTOR_X86`, N kararı) | 0 | 0,50 [DERIVED, ASSUME] | 1,00 [ASSUME]; 2,0 [IBM-EAGLE-2013] yalnızca stres senaryosu, aralıkta değil |
+| Mainframe | 0 | 0,20 [IBM2013-TCOLessons] | 0,50 [ASSUME] |
+| x86 (`NONPROD_FACTOR_X86`, N kararı) | 0 | 0,50 [DERIVED, ASSUME] | 1,00 [ASSUME]; 2,0 [IBM2013-TCOLessons] yalnızca stres senaryosu, aralıkta değil |
 
 **Karşılaştırmada kullanım.** İki platformun çarpanı ayrı aralık parametreleridir. Karşılaştırma katmanında "kapsam dışı" senaryosu iki çarpanın birlikte 0 olduğu durumdur. Tez, sonuçları bu senaryo ile mid senaryo yan yana raporlamalıdır.
 
@@ -272,8 +272,8 @@ Crossover TPS başına maliyet üzerinden kurulduğu için "1 işlem" iki taraft
 | Profil | Nokta okuma | Aralık okuma | Yazma | Commit | Kaynak |
 |---|---|---|---|---|---|
 | `tpcb_like` | 1 | 0 | 4 | 1 | TPC-B bileşeni |
-| `oltp_rw` (varsayılan) | 10 | 4 | 4 | 1 | sysbench oltp_read_write [SYSBENCH, TENCENT-METHOD] |
-| `oltp_heavy` | 30 | 0 | 6 | 1 | ~1,3 ms Db2 CPU'luk saha ölçümü [CATTERALL-2019]; bileşim [ASSUME] |
+| `oltp_rw` (varsayılan) | 10 | 4 | 4 | 1 | sysbench oltp_read_write [Kopytov-sysbench, Tencent-PG-TestMethods] |
+| `oltp_heavy` | 30 | 0 | 6 | 1 | ~1,3 ms Db2 CPU'luk saha ölçümü [Catterall2019]; bileşim [ASSUME] |
 
 `redp_light` (IBM REDP-5612'nin hafif CICS-Db2 işlemi) yalnızca mainframe'de tanımlıdır. Bileşimi yayımlanmadığı için x86 modeli onu reddeder.
 
@@ -294,7 +294,7 @@ Crossover TPS başına maliyet üzerinden kurulduğu için "1 işlem" iki taraft
 
 **Storage boyutlandırmasının ortak girdileri.** `DEFAULT_DATA_VOLUME_TB` 20, `DEFAULT_DATA_GROWTH` %15/yıl, `STORAGE_PLANNING_YEARS` 3, `STORAGE_IOPS_CEILING` 0,70 (tepe IOPS'un en çok %70'i); `planned_data_tb()`.
 
-**Yedek hacmi kuralı (KB-10).** `backup_volumes()`: tam kopya = planlanan veri × hafta × (1 tam + 6 artımlı × günlük değişim) [IDUG-2024]; log = ortalama TPS × işlem başına log baytı × 86.400 × 7 × hafta. Saklama (`BACKUP_RETENTION_WEEKS` 2 / 4 / 8), günlük değişim (%3), log baytları (yazma 400 B, commit 200 B), pencere (8 saat), geri yüklemeye ayrılan RTO payı (0,5) ve yıllık geri yükleme testi iki tarafta aynıdır. Platforma özgü olan yalnızca bir log çarpanıdır (PostgreSQL full-page writes) ve yedek yolunun verimidir.
+**Yedek hacmi kuralı (KB-10).** `backup_volumes()`: tam kopya = planlanan veri × hafta × (1 tam + 6 artımlı × günlük değişim) [Hendley2024-IDUG]; log = ortalama TPS × işlem başına log baytı × 86.400 × 7 × hafta. Saklama (`BACKUP_RETENTION_WEEKS` 2 / 4 / 8), günlük değişim (%3), log baytları (yazma 400 B, commit 200 B), pencere (8 saat), geri yüklemeye ayrılan RTO payı (0,5) ve yıllık geri yükleme testi iki tarafta aynıdır. Platforma özgü olan yalnızca bir log çarpanıdır (PostgreSQL full-page writes) ve yedek yolunun verimidir.
 
 **Test:** `test_workload_weights` (x86), mainframe iş yükü testleri.
 
@@ -318,7 +318,7 @@ aylık personel   = FTE × yüklü_ücret(WAGE_LEVEL) / 12
 | mid | 5,5 | 0,70 | 4 |
 | high | 7,0 | 0,80 | 5 |
 
-Topoloji çarpanı (`STAFF_TOPOLOGY_FACTOR`) iki tarafta aynı tablodur: M1/X1 1,00 · M2/X2 1,05 · M3/X3 1,15 · M4/X4 1,25 [ASSUME]. Çapalar ve kalibrasyon mainframe v3 §7.7'dedir [IBM-EAGLE, GARTNER-ITKMD, IBM-TPF-2007].
+Topoloji çarpanı (`STAFF_TOPOLOGY_FACTOR`) iki tarafta aynı tablodur: M1/X1 1,00 · M2/X2 1,05 · M3/X3 1,15 · M4/X4 1,25 [ASSUME]. Çapalar ve kalibrasyon mainframe v3 §7.7'dedir [IBM-CPO2014-Skills, CA2016-MFEcosystem, Rhoderick2007-TPFUG].
 
 - **Girdi iş yüküdür, kurulu kapasite değil.** Latency ya da kullanım tavanı için alınan boş kapasite personel istemez. Böylece x86'nın düşük kullanım oranı (KB-04'teki IBM U_R etkisi) personel üzerinden sonuca girmez.
 - **İş yükünün PCI eşdeğeri mainframe köprüsünden hesaplanır** (`mainframe_model.staff_pci_equivalent`), çünkü eğrinin kaynakları MIPS üzerinden tanımlıdır. Eşleştirilmiş karşılaştırmada bu türetme mainframe CPU ağırlıklarının mid değerlerini kullanır (`CROSS_BRIDGE_WEIGHTS` = "reference", v3 §7.11.5); aksi halde mainframe'e özgü bir parametre x86'nın personelini oynatırdı.
@@ -381,8 +381,10 @@ Adım 6'da bu bölüm bir sözleşmeydi; Adım 7'de x86 modeli (`src/x86_model.p
 
 ## 16. Kaynaklar
 
-Bu modüle taşınan parametrelerin kaynakları değişmedi; tam kaynak listesi `mainframe_model_documentation_v3.md` Bölüm 11'dedir: [UPTIME-2025], [UPTIME-2022], [BLS-OEWS], [BLS-ECEC], [IDC-2016], [MINIO-TCO], [AWS-S3-2026], [AWS-DX-2026], [DAMODARAN-2026], [IBM-PRICE-2026], [BLS-ECI-2026], [EIA-EPM]. Yeni kaynak:
+> Tam künyeler, erişim tarihleri ve yerel kopyalar: [`kaynaklar/KAYNAKCA.md`](../kaynaklar/KAYNAKCA.md). Bu bölümdeki köşeli parantezli anahtarlar oradaki anahtarlardır (2026-11-24 kaynak düzeltmesi).
 
-- **[IBM-EAGLE-2013] —** IBM CPO, "TCO Lessons Learned From Customer Engagements" v4 (2013): üretim dışı ortamlar mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200. https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf [VENDOR]
-- Fiyat dönemi tablosu (üçlüler): [PCSP-SERVER], [PCSP-SSD], [CAPCOMP-RAM], [BACLOUD-RAM]; tam künyeler `x86_model_dokumantasyonu_v1.md` §20 ve `acik_sistem_arastirma_plani_v1.md` §5.2'dedir.
-- İşlem bileşimi ve `RANGE_READ_WEIGHT`: [SYSBENCH], [TENCENT-METHOD], [VONNG-PERF], [CATTERALL-2019], [IDUG-2024]; `kopruler_v1.md` KB-01, KB-09, KB-10.
+Bu modüle taşınan parametrelerin kaynakları değişmedi; tam kaynak listesi `mainframe_model_documentation_v3.md` Bölüm 11'dedir: [Uptime2025-PR], [DCF2022-Uptime], [BLS-OOH], [BLS2026-ECEC], [IDC2016-ConnectedMF], [MinIO-ObjectTCO], [Nubbo2026-S3], [AWS-DXPricing], [Damodaran2026-WACC], [Schneider2026-IBMPrice], [BLS2026-ECI], [EIA-EPM-5.3]. Yeni kaynak:
+
+- **[IBM2013-TCOLessons] —** IBM CPO, "TCO Lessons Learned From Customer Engagements" v4 (2013): üretim dışı ortamlar mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200. https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf [VENDOR]
+- Fiyat dönemi tablosu (üçlüler): [PCSP2026-Server], [PCSP2026-SSD], [CapCompute-RAM], [Bacloud2026-RAM]; tam künyeler `x86_model_dokumantasyonu_v1.md` §20 ve `acik_sistem_arastirma_plani_v1.md` §5.2'dedir.
+- İşlem bileşimi ve `RANGE_READ_WEIGHT`: [Kopytov-sysbench], [Tencent-PG-TestMethods], [Vonng-PGPerf], [Catterall2019], [Hendley2024-IDUG]; `kopruler_v1.md` KB-01, KB-09, KB-10.

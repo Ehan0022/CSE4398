@@ -167,8 +167,8 @@ TPS/çekirdek(profil) = TPS/çekirdek(oltp_rw) / göreli_ağırlık
 | Parametre | Değer | Dayanak |
 |---|---|---|
 | RANGE_READ_WEIGHT | 3,65 (3,4–3,9) | Ortak, F kararı [DERIVED, VONNG-PERF alt testleri] |
-| X86_WRITE_POINT_RATIO | 3,9 | [DERIVED, VONNG-PERF] yazma/nokta 3,65–4,15 aralığının ortası |
-| X86_TXCTL_POINT_RATIO | 1,0 | [DERIVED, VONNG-PERF] BEGIN/COMMIT ≈ bir nokta sorgusu |
+| X86_WRITE_POINT_RATIO | 3,9 | [DERIVED, Vonng-PGPerf] yazma/nokta 3,65–4,15 aralığının ortası |
+| X86_TXCTL_POINT_RATIO | 1,0 | [DERIVED, Vonng-PGPerf] BEGIN/COMMIT ≈ bir nokta sorgusu |
 
 Sonuç: tpcb_like 0,44, oltp_rw 1,00, oltp_heavy 1,31. Aynı bileşimin mainframe profili (`mainframe_profile()`) personel eğrisinin girdisini (KB-13) ve işlem yöneticisi payını (KB-12) verir.
 
@@ -182,8 +182,8 @@ Sonuç: tpcb_like 0,44, oltp_rw 1,00, oltp_heavy 1,31. Aynı bileşimin mainfram
 
 K5 kararı: tek referans sunucu. Üretici farkı fiyat aralıklarında taşınır. K2 kararı: z16 dönemine ait nesil (Xeon 5. nesil) ana senaryodur, Gen12 duyarlılıktır. Kaynaklı tek SKU Xeon Gold 6548Y+'dir:
 
-- SPECrate2017_int_base 628 / 64 çekirdek = 9,81 / çekirdek [SPEC-R760].
-- Intel RCP $4.173 / 32 çekirdek, TDP 250 W [INTEL-ARK-6548Y].
+- SPECrate2017_int_base 628 / 64 çekirdek = 9,81 / çekirdek [SPEC2024-R760-6548Y].
+- Intel RCP $4.173 / 32 çekirdek, TDP 250 W [Intel-Xeon6548Yplus].
 
 Katalogdaki diğer boyutlar (2 × 8, 12, 16, 24 çekirdek) aynı ailenin farklı SKU'larıdır. Çekirdek başına SPECint, fiyat ve güç aynı alınır [ASSUME]. Aynı ailede az çekirdekli SKU'lar daha yüksek frekansta çalışır. Bu yüzden varsayım küçük düğümlerde x86 aleyhine tutucudur.
 
@@ -202,7 +202,7 @@ bellek_GB = max(128, 8 × çekirdek)
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
 | X86_PLATFORM_COST (USD liste) | 8.000 | 12.000 | 18.000 | [ASSUME; R760xs tabanı $15.957, PCSP-SERVER'dan kaba] |
-| X86_CPU_LIST_USD_PER_CORE | — | 130,4 | — | [INTEL-ARK-6548Y] $4.173 / 32 |
+| X86_CPU_LIST_USD_PER_CORE | — | 130,4 | — | [Intel-Xeon6548Yplus] $4.173 / 32 |
 | X86_NIC_HBA_LIST_USD | — | 2.000 | — | [ASSUME] 2 × 25 GbE + FC HBA |
 | X86_HW_DISCOUNT | 0,50 | 0,35 | 0,20 | [ASSUME] storage indirimiyle aynı mantık |
 | DRAM $/GB (2025-mid) | 3,0 | 4,0 | 5,5 | ortak modül `PRICE_EPOCHS` |
@@ -225,7 +225,7 @@ Sonuç (2025-mid, net):
 
 ### 4.3. Kalibrasyon kontrolü (KB-15): yapılamadı
 
-KB-15, bileşen fonksiyonunun tanımlı bir R760 yapılandırmasının Dell yapılandırıcı fiyatına ±%20 yaklaşmasını istiyordu. Tek kaynak [PCSP-SERVER] "amiral" bir R760 için $53.250 liste fiyatı veriyor, ama **yapılandırmayı vermiyor**. Bu yüzden ±%20 kontrolü yapılamadı. Yapılabilen, büyüklük mertebesi kontrolüdür: 2 × 32 çekirdek, 1 TB bellek, 8 × 3,84 TB NVMe için liste eşdeğeri 2025-mid'de $29.975, 2026-Q3'te $81.318'dir. $53.250 bu bandın içindedir. Kamu ihale kayıtları (yapılandırması belli R760 alımları) bulunursa kontrol tamamlanmalıdır (Bölüm 18).
+KB-15, bileşen fonksiyonunun tanımlı bir R760 yapılandırmasının Dell yapılandırıcı fiyatına ±%20 yaklaşmasını istiyordu. Tek kaynak [PCSP2026-Server] "amiral" bir R760 için $53.250 liste fiyatı veriyor, ama **yapılandırmayı vermiyor**. Bu yüzden ±%20 kontrolü yapılamadı. Yapılabilen, büyüklük mertebesi kontrolüdür: 2 × 32 çekirdek, 1 TB bellek, 8 × 3,84 TB NVMe için liste eşdeğeri 2025-mid'de $29.975, 2026-Q3'te $81.318'dir. $53.250 bu bandın içindedir. Kamu ihale kayıtları (yapılandırması belli R760 alımları) bulunursa kontrol tamamlanmalıdır (Bölüm 18).
 
 ### 4.4. Güç (KB-17)
 
@@ -233,7 +233,7 @@ KB-15, bileşen fonksiyonunun tanımlı bir R760 yapılandırmasının Dell yap�
 düğüm_kW = (X86_PLATFORM_W + çekirdek × TDP/çekirdek) × X86_POWER_CONFIG_UPLIFT / 1000
 ```
 
-`X86_PLATFORM_W` = 220 W: DL380 Gen12'nin boşta SPECpower değeri, platform tabanı [SPECPOWER-2025Q1]. `X86_POWER_CONFIG_UPLIFT` 1,1 / 1,25 / 1,4 [ASSUME]: SPECpower sistemleri az bellek ve az diskle ölçülür. Mainframe tepe güç kullandığı için simetri gereği %100 yük değeri alınır.
+`X86_PLATFORM_W` = 220 W: DL380 Gen12'nin boşta SPECpower değeri, platform tabanı [SPECpower-2025Q1]. `X86_POWER_CONFIG_UPLIFT` 1,1 / 1,25 / 1,4 [ASSUME]: SPECpower sistemleri az bellek ve az diskle ölçülür. Mainframe tepe güç kullandığı için simetri gereği %100 yük değeri alınır.
 
 ---
 
@@ -241,7 +241,7 @@ düğüm_kW = (X86_PLATFORM_W + çekirdek × TDP/çekirdek) × X86_POWER_CONFIG_
 
 ### 5.1. Çapa
 
-[VONNG-PERF]: AWS c5d.metal (2 × Xeon Platinum 8275CL, 48 fiziksel çekirdek), "16 x 10M" tablo, oltp_read_write 519.069 QPS. Cascade Lake'in çekirdek başına SPECint değeri 309 / 52 = 5,94 [SPEC-8270].
+[Vonng-PGPerf]: AWS c5d.metal (2 × Xeon Platinum 8275CL, 48 fiziksel çekirdek), "16 x 10M" tablo, oltp_read_write 519.069 QPS. Cascade Lake'in çekirdek başına SPECint değeri 309 / 52 = 5,94 [SPEC2019-M640-8270].
 
 ```
 519.069 QPS / 20 ifade = 25.953 TPS
@@ -271,7 +271,7 @@ S(n) = (n / 48)^(B_X86 − 1),   B_X86 = 0,90 (aralık 0,80 – 1,00)     [ASSUM
 
 ### 5.4. Ölçekleme mimarisi (KB-06)
 
-**PostgreSQL + Patroni: tek yazıcı.** oltp_rw'nin her işlemi yazma içerdiği için bütün yük birincil düğümdedir. Replikalar yazma kapasitesi eklemez [PATRONI-REPL]. Kapasite yalnızca düğüm büyütülerek artar. Ana katalogda tavan 2 × 32 çekirdek × 807 TPS × 0,70 ≈ **35.900 TPS**'tir. Ekstrapolasyonla (2 × 64 çekirdek) ≈ 67.100 TPS'e çıkar.
+**PostgreSQL + Patroni: tek yazıcı.** oltp_rw'nin her işlemi yazma içerdiği için bütün yük birincil düğümdedir. Replikalar yazma kapasitesi eklemez [Patroni-ReplModes]. Kapasite yalnızca düğüm büyütülerek artar. Ana katalogda tavan 2 × 32 çekirdek × 807 TPS × 0,70 ≈ **35.900 TPS**'tir. Ekstrapolasyonla (2 × 64 çekirdek) ≈ 67.100 TPS'e çıkar.
 
 **Oracle RAC: düğüm ekleyerek.**
 
@@ -280,7 +280,7 @@ ham_TPS(k düğüm) = düğüm_TPS × [1 + (k − 1) × RAC_SCALING_EFFICIENCY]
 N+1: k düğümlük kümede k − 1 düğüm bütün yükü taşımalı (en az 1)
 ```
 
-`RAC_SCALING_EFFICIENCY` 0,95 / 0,90 / 0,80 [ASSUME]. Alt uç Oracle'ın "uygulama ölçeklenmesi %80'in altındaysa çekişme işaretidir" eşiğidir [ORACLE-RAC-2024]. k ≤ 8 (`RAC_MAX_NODES`). Bu formda toplam verimlilik `(1 + (k−1)·e)/k` 8 düğümde bile 0,8'in üstünde kalır, yani Oracle'ın eşiğiyle tutarlıdır. Ana katalogda RAC tavanı ≈ **231.000 TPS**'tir.
+`RAC_SCALING_EFFICIENCY` 0,95 / 0,90 / 0,80 [ASSUME]. Alt uç Oracle'ın "uygulama ölçeklenmesi %80'in altındaysa çekişme işaretidir" eşiğidir [Oracle2024-RAC]. k ≤ 8 (`RAC_MAX_NODES`). Bu formda toplam verimlilik `(1 + (k−1)·e)/k` 8 düğümde bile 0,8'in üstünde kalır, yani Oracle'ın eşiğiyle tutarlıdır. Ana katalogda RAC tavanı ≈ **231.000 TPS**'tir.
 
 **Mainframe tavanı.** F kararıyla (w 9,15 → 12,85) tek z16 CEC'in oltp_rw tavanı ~187K'dan **~132.700 TPS**'e indi. KB-06'nın "F ile yeniden hesaplanacak" notu bu değerle kapanır.
 
@@ -330,7 +330,7 @@ Toplam sabit gecikme: PostgreSQL X1/X2 3,67 ms, X3 3,87 ms; Oracle X1/X4 3,85 ms
 |---|---|---|---|---|
 | X86_NET_RTT_MS | 0,05 | 0,15 | 0,5 | [ASSUME] aynı veri merkezi |
 | X86_STORED_PROCEDURES (gidiş-dönüş/işlem) | 1 | ifade sayısı (20) | ifade sayısı | KB-05 |
-| T_NVME_READ_S | — | 141 µs | — | [STORAGEREVIEW-P5520, VENDOR sponsorlu] |
+| T_NVME_READ_S | — | 141 µs | — | [StorageReview2022-P5520, VENDOR sponsorlu] |
 | T_NVME_WAL_FSYNC_S | — | 60 µs | — | [ASSUME] PLP'li kurumsal NVMe; K6 ile ölçülecek |
 | T_SAN_READ_S | 150 µs | 250 µs | 400 µs | [ASSUME] |
 | T_SAN_WRITE_S | — | 150 µs | — | [ASSUME] dizi NVRAM onayı + fabric |
@@ -358,9 +358,9 @@ Oracle yalnızca VM yerleşimindedir: RAC'ın üretimde konteynerde çalıştır
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| VIRT_OVERHEAD vSphere | 0,03 | 0,07 | 0,15 | [PT-VSPHERE-OCPV-2024] ile [REDHAT-OCPV-2025] arasından [ASSUME] |
+| VIRT_OVERHEAD vSphere | 0,03 | 0,07 | 0,15 | [VMware2024-vSphereOCPV] ile [RedHat2025-OCPVDB] arasından [ASSUME] |
 | VIRT_OVERHEAD OCP-V | 0,05 | 0,12 | 0,25 | Aynı |
-| CONTAINER_OVERHEAD | 0 | 0,02 | 0,05 | [EDB-LOCALPV] + [ASSUME]; yerel kalıcı birimle |
+| CONTAINER_OVERHEAD | 0 | 0,02 | 0,05 | [EDB-LocalPV] + [ASSUME]; yerel kalıcı birimle |
 | ORACLE_THROUGHPUT_FACTOR | 1,30 | 1,00 | 0,80 | Kalibre edilemez (OTN benchmark yasağı) |
 
 Çekirdek başına verim (TPS, oltp_rw, mid):
@@ -372,7 +372,7 @@ Oracle yalnızca VM yerleşimindedir: RAC'ın üretimde konteynerde çalıştır
 | OCP-V / VM | 877 | 842 | 818 | 786 | 763 |
 | OCP-V / K8s ya da OpenShift | 859 | 825 | 802 | 770 | 748 |
 
-**Oracle çarpanı neden 1,0.** Oracle'ın OTN lisansı "disclose results of any Program benchmark tests without Oracle's prior consent"i yasaklar [ORACLE-OTN]. Aynı donanımda Oracle ile PostgreSQL'i karşılaştıran bağımsız ölçüm yoktur. Orta değer kayıtsızlık ilkesidir. Oracle çekirdek başına lisanslandığı için çarpan maliyeti iki kez etkiler (daha az çekirdek = daha az lisans); tornado'da 50K TPS'te $34,79–35,66 salınım verir.
+**Oracle çarpanı neden 1,0.** Oracle'ın OTN lisansı "disclose results of any Program benchmark tests without Oracle's prior consent"i yasaklar [Oracle-OTNLicense]. Aynı donanımda Oracle ile PostgreSQL'i karşılaştıran bağımsız ölçüm yoktur. Orta değer kayıtsızlık ilkesidir. Oracle çekirdek başına lisanslandığı için çarpan maliyeti iki kez etkiler (daha az çekirdek = daha az lisans); tornado'da 50K TPS'te $34,79–35,66 salınım verir.
 
 ---
 
@@ -387,11 +387,11 @@ Oracle yalnızca VM yerleşimindedir: RAC'ın üretimde konteynerde çalıştır
 | X3 | M3 | Gold: iki sitede RAC + Active Data Guard + Fast-Start Failover, gözlemci 3. sitede | İki sitede 2 + 2 düğüm, `synchronous_mode`, en az bir uzak senkron kopya, DCS 3 sitede | PG 2 / 2 ; Oracle k / k (+ tanık) |
 | X4 | M4 | Platinum: iki sitede aktif-aktif RAC + GoldenGate (asenkron) | **Infeasible** (K4) | Oracle k / k (+ tanık) |
 
-X3 ve X4'te üçüncü sitede tek bir küçük tanık düğümü (2×8c) fiyatlanır: Patroni için DCS'in üçüncü üyesi ("To have a multi DC cluster that can automatically tolerate a zone drop, a minimum of 3 is required." [PATRONI-MULTIDC]), Oracle için FSFO gözlemcisi.
+X3 ve X4'te üçüncü sitede tek bir küçük tanık düğümü (2×8c) fiyatlanır: Patroni için DCS'in üçüncü üyesi ("To have a multi DC cluster that can automatically tolerate a zone drop, a minimum of 3 is required." [Patroni-MultiDC]), Oracle için FSFO gözlemcisi.
 
 ### 8.2. Düzeltme: Patroni X2'nin RPO'su sıfır değil (KB-08)
 
-KB-08 X2 için iki veritabanında da RPO 0 yazıyordu. Bu, Oracle için doğrudur (Data Guard Maximum Availability, SYNC). Patroni için doğru değildir. Patroni belgeleri iki veri merkezi için standby kümeyi "Asynchronous Replication" başlığı altında önerir: "With only two data centers it would be better to have two independent etcd clusters and run Patroni standby cluster in the second data center." [PATRONI-MULTIDC]. Standby küme birincil kümeden akışla (asenkron) beslenir. Bu yüzden X2-PG'nin RPO'su 0 değildir; model `X2_PG_ASYNC_RPO_SECONDS` = 5 sn alır [ASSUME, M4 ile aynı büyüklük]. Sonuç: RPO = 0 isteyen bir PostgreSQL kurulumu X3'e (uzak senkron kopya) gitmek zorundadır. Test: `test_topologies_and_availability`. Köprüler dokümanı (KB-08) bu düzeltmeyle güncellenmelidir.
+KB-08 X2 için iki veritabanında da RPO 0 yazıyordu. Bu, Oracle için doğrudur (Data Guard Maximum Availability, SYNC). Patroni için doğru değildir. Patroni belgeleri iki veri merkezi için standby kümeyi "Asynchronous Replication" başlığı altında önerir: "With only two data centers it would be better to have two independent etcd clusters and run Patroni standby cluster in the second data center." [Patroni-MultiDC]. Standby küme birincil kümeden akışla (asenkron) beslenir. Bu yüzden X2-PG'nin RPO'su 0 değildir; model `X2_PG_ASYNC_RPO_SECONDS` = 5 sn alır [ASSUME, M4 ile aynı büyüklük]. Sonuç: RPO = 0 isteyen bir PostgreSQL kurulumu X3'e (uzak senkron kopya) gitmek zorundadır. Test: `test_topologies_and_availability`. Köprüler dokümanı (KB-08) bu düzeltmeyle güncellenmelidir.
 
 ### 8.3. Availability denklemi
 
@@ -406,9 +406,9 @@ D(yıl) = D_saha(T_kurtarma)                                         ← ortak
 A = 1 − D / 8.760
 ```
 
-**Platform kesintisi (Değerlendirme #10, A kararı, Emirhan 2026-11-24).** Mainframe tarafı CPC kesintisini ITIC'ten alıyordu; x86 tarafı ise yalnızca donanım arızası × failover süresini sayıyor ve sunucunun kendi (donanım + işletim sistemi) kesintisini, ayrıca geçişin başarısız olduğu durumları hiç saymıyordu. Bu, x86'yı en yüksek hedeflerde iyimser gösteriyordu: X3 Patroni yılda 4,4 dk ile %99,999'u tutturuyordu. Artık iki taraf aynı formülü (`common_model.platform_downtime_hours`) aynı kaynakla kullanır: sunucu başına ITIC yıllık plansız kesintisi × geçişin maskeleyemediği pay u (`PLATFORM_UNMASKED_SHARE`, ortak parametre). Tek CPC'de u = 1, kümede u, aktif-aktif iki sitede (M4 / X4) u². x86 ITIC değerleri [ITIC-2023]: Lenovo ThinkSystem Linux 31,5 sn (low), Dell PowerEdge Linux 24 dk (mid; katalogdaki sunucu R760 sınıfıdır), white box Linux 59 dk (high); düzey `NODE_EVENT_LEVEL` ile birlikte seçilir. z16 için aynı terim yılda 0,03–3 saniyedir.
+**Platform kesintisi (Değerlendirme #10, A kararı, Emirhan 2026-11-24).** Mainframe tarafı CPC kesintisini ITIC'ten alıyordu; x86 tarafı ise yalnızca donanım arızası × failover süresini sayıyor ve sunucunun kendi (donanım + işletim sistemi) kesintisini, ayrıca geçişin başarısız olduğu durumları hiç saymıyordu. Bu, x86'yı en yüksek hedeflerde iyimser gösteriyordu: X3 Patroni yılda 4,4 dk ile %99,999'u tutturuyordu. Artık iki taraf aynı formülü (`common_model.platform_downtime_hours`) aynı kaynakla kullanır: sunucu başına ITIC yıllık plansız kesintisi × geçişin maskeleyemediği pay u (`PLATFORM_UNMASKED_SHARE`, ortak parametre). Tek CPC'de u = 1, kümede u, aktif-aktif iki sitede (M4 / X4) u². x86 ITIC değerleri [ITIC2023-IBMZ]: Lenovo ThinkSystem Linux 31,5 sn (low), Dell PowerEdge Linux 24 dk (mid; katalogdaki sunucu R760 sınıfıdır), white box Linux 59 dk (high); düzey `NODE_EVENT_LEVEL` ile birlikte seçilir. z16 için aynı terim yılda 0,03–3 saniyedir.
 
-u kaynakla daraltılamadı [ASSUME]: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [YUAN-2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [GUNAWI-2016]; Uptime 2025'e göre büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon ya da değişiklik yönetimi vardır [UPTIME-2025]. Bu kaynaklar yönü destekler, sayıyı vermez. Sonuç u'ya hassastır (§16.5).
+u kaynakla daraltılamadı [ASSUME]: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [Yuan2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [Gunawi2016]; Uptime 2025'e göre büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon ya da değişiklik yönetimi vardır [Uptime2025-PR]. Bu kaynaklar yönü destekler, sayıyı vermez. Sonuç u'ya hassastır (§16.5).
 
 **Desteksiz PostgreSQL (B kararı).** Ticari desteği olmayan bir PostgreSQL yığınında (`PG_SUPPORT_USD_PER_CORE_YEAR` = 0) platform kesintisi ITIC'in high ucundan (59 dk) sayılır [ASSUME]: sürüm hatasında üretici eskalasyonu yoktur. Desteğin SLA'ya bağlı zorunluluğu §9.2'dedir.
 
@@ -416,11 +416,11 @@ N_kesen: arızası hizmeti kesen düğüm sayısı. Patroni'de yalnızca birinci
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| NODE_EVENTS_PER_YEAR | 0,03 | 0,10 | 0,30 | [VISHWANATH-2010] aşağı; high [ASSUME] |
-| X86_ITIC_DOWNTIME_MINUTES (sunucu başına, dk/yıl) | 0,525 | 24 | 59 | [ITIC-2023] Lenovo / Dell / white box Linux |
-| PLATFORM_UNMASKED_SHARE u (ortak) | 0,05 | 0,10 | 0,20 | [ASSUME]; nitel dayanak [YUAN-2014], [GUNAWI-2016] |
-| T_FAILOVER PostgreSQL (sn) | 15 | 35 | 90 | [PIGSTY-RTO] 27–41 sn |
-| T_FAILOVER Oracle (sn) | 5 | 15 | 300 | [ORACLE-RAC-2024], [ORACLE-MAA-2026] |
+| NODE_EVENTS_PER_YEAR | 0,03 | 0,10 | 0,30 | [Vishwanath2010] aşağı; high [ASSUME] |
+| X86_ITIC_DOWNTIME_MINUTES (sunucu başına, dk/yıl) | 0,525 | 24 | 59 | [ITIC2023-IBMZ] Lenovo / Dell / white box Linux |
+| PLATFORM_UNMASKED_SHARE u (ortak) | 0,05 | 0,10 | 0,20 | [ASSUME]; nitel dayanak [Yuan2014], [Gunawi2016] |
+| T_FAILOVER PostgreSQL (sn) | 15 | 35 | 90 | [Pigsty-RTO] 27–41 sn |
+| T_FAILOVER Oracle (sn) | 5 | 15 | 300 | [Oracle2024-RAC], [Oracle2026-MAA] |
 | X86_PLANNED_EVENTS_PER_YEAR | 0,25 | 0,5 | 1,0 | mainframe ile aynı aralık [ASSUME] |
 | X86_PLANNED_OUTAGE_MINUTES tek site (X1–X2) | 5 | 15 | 60 | [ASSUME] |
 | X86_PLANNED_OUTAGE_MINUTES çok site (X3–X4) | 0,5 | 2 | 10 | [ASSUME]; Oracle Gold < 30 sn |
@@ -456,24 +456,24 @@ Mainframe yazılımı tüketilen MSU'nun aylık R4HA tepesinden faturalanır ve 
 
 | Kalem | Kural | low | mid | high | Dayanak |
 |---|---|---|---|---|---|
-| vSphere Foundation | çekirdek başına yıllık; CPU başına en az 16, sipariş başına en az 72 çekirdek | $100 | $150 | $350 | [ACEMQ-VVF], [ACEMQ-RENEW] |
+| vSphere Foundation | çekirdek başına yıllık; CPU başına en az 16, sipariş başına en az 72 çekirdek | $100 | $150 | $350 | [AceMQ-VVFvsVCF], [AceMQ2026-Renewals] |
 | OpenShift Virtualization Engine | düğüm başına yıllık (1–2 soket, ≤ 128 çekirdek) | $6.000 | $8.000 | $10.000 | [CDW-OVE] premium $9.880 |
-| RHEL for Virtual Datacenters | düğüm başına yıllık; sınırsız misafir | — | $2.904 | — | [CCSP-RH] hizmet sağlayıcı listesi |
-| OpenShift Container Platform | sanal düğümde 2 çekirdek başına yıllık; RHEL dahil; kontrol düzlemi sayılmaz | $2.000 | $3.000 | $4.200 | [RH-OCP-GUIDE], [SWEXPRESS-OCP], [VENDORBENCH-OCP] |
-| Oracle EE + seçenekler | işlemci = çekirdek × 0,5 (yukarı yuvarlanır); net = liste × (1 − indirim); destek net lisansın yıllık %22'si | indirim 0,60 | 0,45 | 0,20 | [ORACLE-CORE], [REDRESS-PL2026], [OLE-NET2026] |
-| PostgreSQL ticari destek | çekirdek başına yıllık; SLA tabanı aşağıda | $0 | $500 | $1.500 | [ASSUME]; EDB mağaza fiyatlarıyla aynı mertebe [EDB-STORE-2026] |
+| RHEL for Virtual Datacenters | düğüm başına yıllık; sınırsız misafir | — | $2.904 | — | [CloudIngenuity2025-RHPL] hizmet sağlayıcı listesi |
+| OpenShift Container Platform | sanal düğümde 2 çekirdek başına yıllık; RHEL dahil; kontrol düzlemi sayılmaz | $2.000 | $3.000 | $4.200 | [RedHat2024-OCPSubGuide], [SWExpress-OCP], [VendorBenchmark2026-OCP] |
+| Oracle EE + seçenekler | işlemci = çekirdek × 0,5 (yukarı yuvarlanır); net = liste × (1 − indirim); destek net lisansın yıllık %22'si | indirim 0,60 | 0,45 | 0,20 | [Oracle2026-CoreFactor], [Redress2026-OraclePL], [OLE2026-OracleNet] |
+| PostgreSQL ticari destek | çekirdek başına yıllık; SLA tabanı aşağıda | $0 | $500 | $1.500 | [ASSUME]; EDB mağaza fiyatlarıyla aynı mertebe [EDB-Store] |
 
-**SLA'ya bağlı zorunlu PostgreSQL desteği (Değerlendirme #10, B kararı).** EDB mağaza fiyatları (çekirdek/yıl, en az 8 çekirdek, 1 yıl): Community $400, Business $1.600, Enterprise $2.400 [EDB-STORE-2026]. Destek seviyeleri: Basic 10x5 (yalnız geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO [EDB-PLANS-2026]. Kural (`pg_support_rate`; eşikler [ASSUME]): hedef < %99,99 ve RPO > 0 ise destek isteğe bağlıdır (aralık parametresi); hedef ≥ %99,99 ya da RPO 0 ise en az $1.600 (7/24 üretim desteği); hedef ≥ %99,999 ise $2.400 (Enterprise). Maliyet etkisi küçüktür (10K TPS'te ayda $5–13K); asıl etkisi, desteksiz yığının yalnız düşük hedeflerde seçilebilmesi ve availability'sinin ITIC'in high ucundan sayılmasıdır (§8.3). Düzenleyici boyut (ör. AB DORA'nın kritik fonksiyonlarda sözleşmeli ICT tedarikçisi beklentisi) modele girmez, tezde nitel olarak yazılır.
+**SLA'ya bağlı zorunlu PostgreSQL desteği (Değerlendirme #10, B kararı).** EDB mağaza fiyatları (çekirdek/yıl, en az 8 çekirdek, 1 yıl): Community $400, Business $1.600, Enterprise $2.400 [EDB-Store]. Destek seviyeleri: Basic 10x5 (yalnız geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO [EDB-Plans]. Kural (`pg_support_rate`; eşikler [ASSUME]): hedef < %99,99 ve RPO > 0 ise destek isteğe bağlıdır (aralık parametresi); hedef ≥ %99,99 ya da RPO 0 ise en az $1.600 (7/24 üretim desteği); hedef ≥ %99,999 ise $2.400 (Enterprise). Maliyet etkisi küçüktür (10K TPS'te ayda $5–13K); asıl etkisi, desteksiz yığının yalnız düşük hedeflerde seçilebilmesi ve availability'sinin ITIC'in high ucundan sayılmasıdır (§8.3). Düzenleyici boyut (ör. AB DORA'nın kritik fonksiyonlarda sözleşmeli ICT tedarikçisi beklentisi) modele girmez, tezde nitel olarak yazılır.
 
 vSphere'in asgarileri küçük düğümlerde belirleyicidir: 2 × 8 çekirdekli bir sunucu 32 çekirdek olarak lisanslanır ve tek düğümlük bir sipariş 72 çekirdeğe tamamlanır. Model sipariş asgarisini grupların lisanslı çekirdeklerine oranla dağıtır. Test: `test_platform_subscriptions`.
 
-Oracle seçenekleri topolojiye bağlıdır: her düğümde EE + Diagnostics Pack + Tuning Pack (operasyon için fiilen zorunlu), birden çok düğümlü sitede RAC, X3'te Active Data Guard, X4'te GoldenGate. Liste fiyatları (işlemci başına): EE $47.500, RAC $23.000, Diagnostics $7.500, Tuning $5.000 [REDRESS-PL2026] (doğrulanmalı); ADG $11.500 ([ORACLE-PL2009]'daki $10.000'den yaygın kabul; doğrulanmalı); GoldenGate $17.500: "GoldenGate costs $17,500 per processor on every server that runs it, source and target alike" [REDRESS-GG]. GoldenGate lisansı ADG'yi içerir: "A GoldenGate license includes Oracle Active Data Guard and Oracle XStream, with Database Enterprise Edition as the prerequisite." [REDRESS-GG]. Bu yüzden X4'te ADG ayrıca sayılmaz. VM'in çalışabileceği bütün fiziksel çekirdekler lisanslanır [ORACLE-PART]; model Oracle'ı adanmış düğümlerde varsayar. Test: `test_oracle_license_math`.
+Oracle seçenekleri topolojiye bağlıdır: her düğümde EE + Diagnostics Pack + Tuning Pack (operasyon için fiilen zorunlu), birden çok düğümlü sitede RAC, X3'te Active Data Guard, X4'te GoldenGate. Liste fiyatları (işlemci başına): EE $47.500, RAC $23.000, Diagnostics $7.500, Tuning $5.000 [Redress2026-OraclePL] (doğrulanmalı); ADG $11.500 ([Oracle2009-TechPriceList]'daki $10.000'den yaygın kabul; doğrulanmalı); GoldenGate $17.500: "GoldenGate costs $17,500 per processor on every server that runs it, source and target alike" [Redress-GoldenGate]. GoldenGate lisansı ADG'yi içerir: "A GoldenGate license includes Oracle Active Data Guard and Oracle XStream, with Database Enterprise Edition as the prerequisite." [Redress-GoldenGate]. Bu yüzden X4'te ADG ayrıca sayılmaz. VM'in çalışabileceği bütün fiziksel çekirdekler lisanslanır [Oracle-Partitioning]; model Oracle'ı adanmış düğümlerde varsayar. Test: `test_oracle_license_math`.
 
 Oracle lisansı kalıcıdır (perpetual). Statik modda 5 yıla amortismanlanır ve buna yıllık %22 destek eklenir. NPV'de alım yılında nakit olarak girer (Bölüm 15).
 
 ### 9.3. Düzeltme: OpenShift sayım kuralı (KB-11)
 
-KB-11 OpenShift'i soket çifti başına (`OCP_USD_PER_SOCKETPAIR_YEAR` 6K / 11K / 15K) fiyatlıyordu. Red Hat'in abonelik kılavuzu soket çifti aboneliğinin yalnızca bare-metal düğüm için olduğunu söyler: "Each physical, bare-metal server using socket-based entitlements can only be used as a single OpenShift node." Hipervizör üzerindeki sanal düğümler çekirdek tabanlı abonelik ister: "entitling the virtual compute nodes using core-based subscriptions." [RH-OCP-GUIDE]. v4 kuralı bare-metal Kubernetes'i dışladığı için bu modelde OpenShift düğümleri her zaman sanaldır. Bu yüzden soket çifti fiyatı kullanılmaz; yerine `OCP_USD_PER_COREPAIR_YEAR` (2 çekirdek / 4 vCPU başına) gelir. Orta değer: Premium 2 çekirdek 1 yıl 3.872 € ([SWEXPRESS-OCP], "Red Hat OpenShift Container Platform; Premium (2 Cores or 4 vCPUs); Subscription; 1 Jahr", KDV hariç) ≈ $4.200; Standard ~%25–35 aşağı [VENDORBENCH-OCP] ≈ $3.000. Köprüler dokümanı (KB-11) bu düzeltmeyle güncellenmelidir.
+KB-11 OpenShift'i soket çifti başına (`OCP_USD_PER_SOCKETPAIR_YEAR` 6K / 11K / 15K) fiyatlıyordu. Red Hat'in abonelik kılavuzu soket çifti aboneliğinin yalnızca bare-metal düğüm için olduğunu söyler: "Each physical, bare-metal server using socket-based entitlements can only be used as a single OpenShift node." Hipervizör üzerindeki sanal düğümler çekirdek tabanlı abonelik ister: "entitling the virtual compute nodes using core-based subscriptions." [RedHat2024-OCPSubGuide]. v4 kuralı bare-metal Kubernetes'i dışladığı için bu modelde OpenShift düğümleri her zaman sanaldır. Bu yüzden soket çifti fiyatı kullanılmaz; yerine `OCP_USD_PER_COREPAIR_YEAR` (2 çekirdek / 4 vCPU başına) gelir. Orta değer: Premium 2 çekirdek 1 yıl 3.872 € ([SWExpress-OCP], "Red Hat OpenShift Container Platform; Premium (2 Cores or 4 vCPUs); Subscription; 1 Jahr", KDV hariç) ≈ $4.200; Standard ~%25–35 aşağı [VendorBenchmark2026-OCP] ≈ $3.000. Köprüler dokümanı (KB-11) bu düzeltmeyle güncellenmelidir.
 
 ---
 
@@ -491,7 +491,7 @@ host sayısı (site başına) = max(2, ⌈uygulama_meşgul / (SKU_çekirdek × X
 - Linux VM olarak fiyatlanır: donanım + hipervizör + RHEL (ya da OpenShift). Açık kaynak uygulama sunucusu olduğu için ek lisans yoktur.
 - Her veritabanı sitesinde bir kopya bulunur (DR sitesinde de).
 - Kendi bulgumuz: ilk sürümde tavan (`X86_UTIL_CEILING`) ve sanallaştırma ek yükü uygulama çekirdeğine iki kez uygulanıyordu (DB çekirdek ihtiyacı zaten tavana bölünmüştü). Düzeltildi; tavan yalnızca host boyutlamasında, bir kez uygulanır. Test: `test_app_tier`.
-- [SHEDLETSKY-2008]'in uygulama katmanında 4,9 kat komut farkı iddiası yalnızca üst uç duyarlılığıdır (`X86_APP_TM_MULTIPLIER`).
+- [Shedletsky2008]'in uygulama katmanında 4,9 kat komut farkı iddiası yalnızca üst uç duyarlılığıdır (`X86_APP_TM_MULTIPLIER`).
 
 10K TPS'te uygulama katmanı 0,9 meşgul çekirdektir ve N+1 kuralı gereği 2 × 2×8c host ister. Toplam maliyetin %0,3'üdür (personel hariç maliyetin %12'si).
 
@@ -503,7 +503,7 @@ host sayısı (site başına) = max(2, ⌈uygulama_meşgul / (SKU_çekirdek × X
 
 | DB mimarisi | Storage | Gerekçe | Kopya |
 |---|---|---|---|
-| PostgreSQL + Patroni (paylaşımsız) | Her düğümde yerel NVMe | Kubernetes'te yerel kalıcı birim bare-metal'e yakın (okuma −%3,6, yazma −%0,8), ağ tabanlı paylaşımlı birim −%89–95 [EDB-LOCALPV] | Düğüm sayısı kadar tam kopya |
+| PostgreSQL + Patroni (paylaşımsız) | Her düğümde yerel NVMe | Kubernetes'te yerel kalıcı birim bare-metal'e yakın (okuma −%3,6, yazma −%0,8), ağ tabanlı paylaşımlı birim −%89–95 [EDB-LocalPV] | Düğüm sayısı kadar tam kopya |
 | Oracle RAC (paylaşımlı disk) | Site başına all-flash dizi (ASM) | RAC'ın paylaşımlı disk mimarisi | Site başına bir dizi |
 
 ### 11.2. Boyutlandırma
@@ -534,12 +534,12 @@ Boyutlandırmada veri azaltımı sayılmaz (1,0); mainframe'deki `HOST_COMPRESSI
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
 | PG_BLOAT_FACTOR | 1,1 | 1,3 | 1,6 | [ASSUME] |
-| AFA_LIST_USD_PER_EFF_TB | 140 | 270 | 400 | [VENDORBENCH-AFA] liste aralığı |
-| AFA_DISCOUNT | — | 0,50 | — | [DERIVED, VENDORBENCH-AFA] indirimli / liste |
+| AFA_LIST_USD_PER_EFF_TB | 140 | 270 | 400 | [VendorBenchmark2026-Storage] liste aralığı |
+| AFA_DISCOUNT | — | 0,50 | — | [DERIVED, VendorBenchmark2026-Storage] indirimli / liste |
 | AFA_DATA_REDUCTION (geri çevirme) | 1,5 | 2,5 | 4,0 | [ASSUME] |
 | AFA_RAID_USABLE | — | 0,75 | — | mainframe ile aynı |
 | AFA_MIN_LIST_USD | — | 100.000 | — | [ASSUME] çift kontrolcülü giriş dizisi |
-| AFA_MAINT_RATE_ANNUAL | — | %15, ilk yıldan | — | [VENDORBENCH-AFA] |
+| AFA_MAINT_RATE_ANNUAL | — | %15, ilk yıldan | — | [VendorBenchmark2026-Storage] |
 
 ### 11.4. Yedek (KB-10)
 
@@ -574,7 +574,7 @@ FTE_x86 = FTE_ortak(TPS) × STAFF_RATIO_X86                                     
 nonprod = NONPROD_FACTOR_X86 × birincil sitenin {yazılım + compute donanımı (amortisman + bakım) + enerji + birincil storage}
 ```
 
-`NONPROD_FACTOR_X86` 0 / 0,50 / 1,00, stres 2,0 [IBM-EAGLE-2013]. Orta değerin türetmesi: X1'de birincil sitede 3 düğüm var; üretim boyutunda tek düğümlük staging ≈ 0,33, küçük dev/test ≈ 0,1–0,2 [DERIVED, ASSUME]. Oracle'da üretim dışı ortamlar da çekirdek lisansı ister (OTN geliştirme lisansı yalnızca saf geliştirme içindir); bu yüzden yazılım tabana girer. DR, yedek ve personel tabana girmez. Test: `test_nonprod_x86`.
+`NONPROD_FACTOR_X86` 0 / 0,50 / 1,00, stres 2,0 [IBM2013-TCOLessons]. Orta değerin türetmesi: X1'de birincil sitede 3 düğüm var; üretim boyutunda tek düğümlük staging ≈ 0,33, küçük dev/test ≈ 0,1–0,2 [DERIVED, ASSUME]. Oracle'da üretim dışı ortamlar da çekirdek lisansı ister (OTN geliştirme lisansı yalnızca saf geliştirme içindir); bu yüzden yazılım tabana girer. DR, yedek ve personel tabana girmez. Test: `test_nonprod_x86`.
 
 ---
 
@@ -773,7 +773,7 @@ Sonuçlar (%99,9; $/TPS/ay; BE = başabaş personel oranı; PH = personel hariç
 
 (Bu alt bölümdeki rakamlar Değerlendirme #10 öncesine aittir; yön ve sonuç değişmedi.)
 
-- **Konsolide edilmemiş park** (`X86_UNCONSOLIDATED_CEILING` = 0,175; [SHEDLETSKY-2008] ve `benzer_calismalar_v1` B1'deki %15–20 dağıtık kullanım). IBM'in U_R iddiasıyla uzlaştırma içindir. 10K TPS'te x86 $65,19/TPS'e çıkar ve Oracle RAC'a (2×12c, k = 4) geçer, çünkü Patroni düğümü bu kullanımda yükü taşıyamaz. Personel hariç $130.536'dır, mainframe'in $617.961'inin hâlâ beşte biri. 50K'da $44,99; 100K'da infeasible. Yani IBM'in kullanım oranı etkisi bile tek başına sıralamayı çevirmez; çeviren personel oranıdır.
+- **Konsolide edilmemiş park** (`X86_UNCONSOLIDATED_CEILING` = 0,175; [Shedletsky2008] ve `benzer_calismalar_v1` B1'deki %15–20 dağıtık kullanım). IBM'in U_R iddiasıyla uzlaştırma içindir. 10K TPS'te x86 $65,19/TPS'e çıkar ve Oracle RAC'a (2×12c, k = 4) geçer, çünkü Patroni düğümü bu kullanımda yükü taşıyamaz. Personel hariç $130.536'dır, mainframe'in $617.961'inin hâlâ beşte biri. 50K'da $44,99; 100K'da infeasible. Yani IBM'in kullanım oranı etkisi bile tek başına sıralamayı çevirmez; çeviren personel oranıdır.
 - **Üretim dışı stres** (`NONPROD_FACTOR_X86` = 2,0; IBM'in "dağıtıkta +%200" iddiası): 10K TPS'te $54,69 (+%1,9). x86'nın üretim dışı tabanı küçük olduğu için etkisi de küçüktür.
 
 ---
@@ -801,8 +801,8 @@ Kodlama sırasında köprüler dokümanının dört noktası x86'nın çalışma
 
 | # | Köprü | Kopruler v1'de | Modelde | Gerekçe |
 |---|---|---|---|---|
-| 1 | KB-08 | X2 RPO 0 (iki DB) | X2-PG RPO 5 sn [ASSUME]; Oracle 0 | Patroni'nin iki DC önerisi asenkron standby kümedir [PATRONI-MULTIDC] (Bölüm 8.2) |
-| 2 | KB-11 | `OCP_USD_PER_SOCKETPAIR_YEAR` 6K / 11K / 15K | `OCP_USD_PER_COREPAIR_YEAR` 2.000 / 3.000 / 4.200 | Sanal düğümler çekirdek tabanlı abonelik ister [RH-OCP-GUIDE] (Bölüm 9.3) |
+| 1 | KB-08 | X2 RPO 0 (iki DB) | X2-PG RPO 5 sn [ASSUME]; Oracle 0 | Patroni'nin iki DC önerisi asenkron standby kümedir [Patroni-MultiDC] (Bölüm 8.2) |
+| 2 | KB-11 | `OCP_USD_PER_SOCKETPAIR_YEAR` 6K / 11K / 15K | `OCP_USD_PER_COREPAIR_YEAR` 2.000 / 3.000 / 4.200 | Sanal düğümler çekirdek tabanlı abonelik ister [RedHat2024-OCPSubGuide] (Bölüm 9.3) |
 | 3 | KB-15 | Bileşen fonksiyonu Dell fiyatına ±%20 | Kontrol yapılamadı; yalnızca dönem bandı | Kaynak yapılandırmayı vermiyor (Bölüm 4.3) |
 | 4 | KB-06 | B_X86 low 1,00 / high 0,80 | Yön tutarlı düzey anahtarı (`X86_SCALING_LEVEL`) | n < 48'de köşelerin yönü tersine dönüyordu (Bölüm 5.3) |
 
@@ -856,61 +856,63 @@ Mainframe testleri (30) F ve P ile birlikte geçer; altın sonuç kümesi eski k
 
 ## 20. Kaynaklar
 
+> Tam künyeler, erişim tarihleri ve yerel kopyalar: [`kaynaklar/KAYNAKCA.md`](../kaynaklar/KAYNAKCA.md). Bu bölümdeki köşeli parantezli anahtarlar oradaki anahtarlardır (2026-11-24 kaynak düzeltmesi).
+
 Kaynakların tamamı ve modeldeki yerleri `acik_sistem_arastirma_plani_v1.md` §15 ile `kopruler_v1.md`'dedir. Bu modelde doğrudan kullanılanlar:
 
 **Kapasite ve ölçekleme**
-- [VONNG-PERF] Feng Ruohang (Vonng), "How Powerful is PostgreSQL Really?" — http://blog.vonng.com/en/pg/pg-performence/
-- [SPEC-8270] SPEC CPU2017, Dell M640, Xeon Platinum 8270 — https://spec.org/cpu2017/results/res2019q3/cpu2017-20190708-15958.html
-- [SPEC-R760] SPEC CPU2017, Dell R760, Xeon Gold 6548Y+ — https://open.spec.org/cpu2017/results/res2024q2/cpu2017-20240422-43001.html
-- [SPEC-DL380G12] SPEC CPU2017, HPE DL380 Gen12 — https://open.spec.org/cpu2017/results/res2025q1/cpu2017-20250210-46265.html
-- [INTEL-ARK-6548Y] Intel Xeon Gold 6548Y+ — https://www.intel.com/content/www/us/en/products/sku/237564/intel-xeon-gold-6548y-processor-60m-cache-2-50-ghz/specifications.html
-- [REDHAT-OCPV-2025] [VENDOR] — https://developers.redhat.com/blog/2025/02/25/scalable-database-performance-openshift-virtualization-out-box
-- [PT-VSPHERE-OCPV-2024] [VENDOR] — https://blogs.vmware.com/cloud-foundation/2024/12/03/vmware-vsphere-8-supports-1-5-times-more-vms-and-delivers-62-more-data-transactions-than-red-hat-openshift-virtualization/
-- [EDB-LOCALPV] — https://www.enterprisedb.com/index.php/blog/local-persistent-volumes-and-postgresql-usage-kubernetes
-- [ORACLE-OTN] — https://www.oracle.com/downloads/licenses/standard-license.html
-- [ORACLE-RAC-2024] [VENDOR] — https://oracle.com/a/otn/docs/database/the-new-generation-oracle-rac.pdf
-- [PGCON-2016] — https://www.pgcon.org/2016/schedule/attachments/399_postgresql-96-scalability-perf-improvements.pdf
+- [Vonng-PGPerf] Feng Ruohang (Vonng), "How Powerful is PostgreSQL Really?" — http://blog.vonng.com/en/pg/pg-performence/
+- [SPEC2019-M640-8270] SPEC CPU2017, Dell M640, Xeon Platinum 8270 — https://spec.org/cpu2017/results/res2019q3/cpu2017-20190708-15958.html
+- [SPEC2024-R760-6548Y] SPEC CPU2017, Dell R760, Xeon Gold 6548Y+ — https://open.spec.org/cpu2017/results/res2024q2/cpu2017-20240422-43001.html
+- [SPEC2025-DL380G12] SPEC CPU2017, HPE DL380 Gen12 — https://open.spec.org/cpu2017/results/res2025q1/cpu2017-20250210-46265.html
+- [Intel-Xeon6548Yplus] Intel Xeon Gold 6548Y+ — https://www.intel.com/content/www/us/en/products/sku/237564/intel-xeon-gold-6548y-processor-60m-cache-2-50-ghz/specifications.html
+- [RedHat2025-OCPVDB] [VENDOR] — https://developers.redhat.com/blog/2025/02/25/scalable-database-performance-openshift-virtualization-out-box
+- [VMware2024-vSphereOCPV] [VENDOR] — https://blogs.vmware.com/cloud-foundation/2024/12/03/vmware-vsphere-8-supports-1-5-times-more-vms-and-delivers-62-more-data-transactions-than-red-hat-openshift-virtualization/
+- [EDB-LocalPV] — https://www.enterprisedb.com/index.php/blog/local-persistent-volumes-and-postgresql-usage-kubernetes
+- [Oracle-OTNLicense] — https://www.oracle.com/downloads/licenses/standard-license.html
+- [Oracle2024-RAC] [VENDOR] — https://oracle.com/a/otn/docs/database/the-new-generation-oracle-rac.pdf
+- [Kapila2016-PGCon] — https://www.pgcon.org/2016/schedule/attachments/399_postgresql-96-scalability-perf-improvements.pdf
 
 **Availability ve topoloji**
-- [ITIC-2023] ITIC 2023 Global Server Hardware, Server OS Reliability (IT Jungle özeti): sunucu başına yıllık plansız kesinti, Lenovo ThinkSystem Linux 31,5 sn, Dell PowerEdge Linux 24 dk, HPE ProLiant Linux 39 dk, white box Linux 59 dk; z16 31,56 ms. Kendi seçilen katılımcılarla web anketi. — https://itic-corp.com/?p=3107 · https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
-- [YUAN-2014] D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures", OSDI 2014 (katastrofik hataların %92'si hata işleme yolunda).
-- [GUNAWI-2016] H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", SoCC 2016.
-- [UPTIME-2025] Uptime Institute Annual Outage Analysis 2025: BT ve ağ kaynaklı kesintiler etkili kesintilerin %23'ü; büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon / değişiklik yönetimi (Network World özeti). — https://www.businesswire.com/news/home/20250506733553/en/Uptime-Announces-Annual-Outage-Analysis-Report-2025 · https://www.networkworld.com/article/3980366/networking-errors-pose-threat-to-data-center-reliability.html
-- [EDB-STORE-2026] EDB mağazası: Community $400, Business $1.600, Enterprise $2.400 / çekirdek / yıl; 8 çekirdek alt sınır, 1 yıl. — https://enterprisedb.com/store
-- [EDB-PLANS-2026] EDB plan karşılaştırması: Basic 10x5 (geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO. — https://enterprisedb.com/products/plans-comparison
-- [PATRONI-REPL] — https://patroni.readthedocs.io/en/latest/replication_modes.html
-- [PATRONI-MULTIDC] Patroni, "Multi DC HA" — https://patroni.readthedocs.io/en/latest/ha_multi_dc.html · "Asynchronous Replication" başlığı; "With only two data centers it would be better to have two independent etcd clusters and run Patroni standby cluster in the second data center."; "To have a multi DC cluster that can automatically tolerate a zone drop, a minimum of 3 is required."
-- [PIGSTY-RTO] — https://doc.pigsty.io/docs/concept/ha/rto/
-- [ORACLE-MAA-2026] [VENDOR] — https://oracle.com/a/tech/docs/maa-onpremises-overview.pdf
-- [VISHWANATH-2010] ACM SoCC 2010 — https://www.microsoft.com/en-us/research/wp-content/uploads/2010/06/socc088-vishwanath.pdf
-- [EDB-SYNCREP] — https://enterprisedb.com/blog/the-varying-cost-synchronous-replication
+- [ITIC2023-IBMZ] ITIC 2023 Global Server Hardware, Server OS Reliability (IT Jungle özeti): sunucu başına yıllık plansız kesinti, Lenovo ThinkSystem Linux 31,5 sn, Dell PowerEdge Linux 24 dk, HPE ProLiant Linux 39 dk, white box Linux 59 dk; z16 31,56 ms. Kendi seçilen katılımcılarla web anketi. — https://itic-corp.com/?p=3107 · https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
+- [Yuan2014] D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures", OSDI 2014 (katastrofik hataların %92'si hata işleme yolunda).
+- [Gunawi2016] H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", SoCC 2016.
+- [Uptime2025-PR] Uptime Institute Annual Outage Analysis 2025: BT ve ağ kaynaklı kesintiler etkili kesintilerin %23'ü; büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon / değişiklik yönetimi (Network World özeti). — https://www.businesswire.com/news/home/20250506733553/en/Uptime-Announces-Annual-Outage-Analysis-Report-2025 · https://www.networkworld.com/article/3980366/networking-errors-pose-threat-to-data-center-reliability.html
+- [EDB-Store] EDB mağazası: Community $400, Business $1.600, Enterprise $2.400 / çekirdek / yıl; 8 çekirdek alt sınır, 1 yıl. — https://enterprisedb.com/store
+- [EDB-Plans] EDB plan karşılaştırması: Basic 10x5 (geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO. — https://enterprisedb.com/products/plans-comparison
+- [Patroni-ReplModes] — https://patroni.readthedocs.io/en/latest/replication_modes.html
+- [Patroni-MultiDC] Patroni, "Multi DC HA" — https://patroni.readthedocs.io/en/latest/ha_multi_dc.html · "Asynchronous Replication" başlığı; "With only two data centers it would be better to have two independent etcd clusters and run Patroni standby cluster in the second data center."; "To have a multi DC cluster that can automatically tolerate a zone drop, a minimum of 3 is required."
+- [Pigsty-RTO] — https://doc.pigsty.io/docs/concept/ha/rto/
+- [Oracle2026-MAA] [VENDOR] — https://oracle.com/a/tech/docs/maa-onpremises-overview.pdf
+- [Vishwanath2010] ACM SoCC 2010 — https://www.microsoft.com/en-us/research/wp-content/uploads/2010/06/socc088-vishwanath.pdf
+- [EDB-SyncRep] — https://enterprisedb.com/blog/the-varying-cost-synchronous-replication
 
 **Donanım ve fiyat**
-- [SPECPOWER-2025Q1] — https://spec.cs.miami.edu/power_ssj2008/results/res2025q1
-- [PCSP-SERVER] [satıcı] — https://pcserverandparts.com/news/how-much-does-a-server-cost-2026/
-- [PCSP-SSD] [satıcı] — https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/
-- [CAPCOMP-RAM] — https://capitalandcompute.net/memory-prices/server/
-- [BACLOUD-RAM] — https://www.bacloud.com/en/blog/307/when-will-ram-prices-drop-still-no-good-news--august-2026-update.html
-- [VENDORBENCH-AFA] — https://vendorbenchmark.com/blog/enterprise-storage-per-tb-pricing-benchmark
-- [STORAGEREVIEW-P5520] [VENDOR sponsorlu] — https://storagereview.com/wp-content/uploads/2022/07/solidigm-d7-p5520-1.pdf
+- [SPECpower-2025Q1] — https://spec.cs.miami.edu/power_ssj2008/results/res2025q1
+- [PCSP2026-Server] [satıcı] — https://pcserverandparts.com/news/how-much-does-a-server-cost-2026/
+- [PCSP2026-SSD] [satıcı] — https://pcserverandparts.com/news/enterprise-ssd-prices-2026-server-storage-buying-guide/
+- [CapCompute-RAM] — https://capitalandcompute.net/memory-prices/server/
+- [Bacloud2026-RAM] — https://www.bacloud.com/en/blog/307/when-will-ram-prices-drop-still-no-good-news--august-2026-update.html
+- [VendorBenchmark2026-Storage] — https://vendorbenchmark.com/blog/enterprise-storage-per-tb-pricing-benchmark
+- [StorageReview2022-P5520] [VENDOR sponsorlu] — https://storagereview.com/wp-content/uploads/2022/07/solidigm-d7-p5520-1.pdf
 
 **Yazılım**
-- [ACEMQ-VVF] [iş ortağı] — https://acemq.com/blogs/vmware-cloud-foundation-vs-vsphere-foundation/
-- [ACEMQ-RENEW] [iş ortağı] — https://acemq.com/research/state-of-vmware-renewals-2026/
+- [AceMQ-VVFvsVCF] [iş ortağı] — https://acemq.com/blogs/vmware-cloud-foundation-vs-vsphere-foundation/
+- [AceMQ2026-Renewals] [iş ortağı] — https://acemq.com/research/state-of-vmware-renewals-2026/
 - [CDW-OVE] — https://www.cdw.com/product/red-hat-openshift-virtualization-engine-premium-subscription-1-year-1/8238645
-- [CCSP-RH] — https://www.cloudingenuity.com/contracts/5272/5272_Red_Hat.pdf
-- [RH-OCP-GUIDE] Red Hat, "Self-managed Red Hat OpenShift subscription guide" (2024-10) — https://redhat.com/rhdc/managed-files/cl-self-managed-openshift-subscription-guide-1434155pr-202410-en.pdf · "Each physical, bare-metal server using socket-based entitlements can only be used as a single OpenShift node."; "entitling the virtual compute nodes using core-based subscriptions."
-- [SWEXPRESS-OCP] software-express.de, Red Hat fiyat listesi — https://www.software-express.de/preislisten/red-hat/red-hat-21746/ · "Red Hat OpenShift Container Platform; Premium (2 Cores or 4 vCPUs); Subscription; 1 Jahr" 3.872,00 € (KDV hariç) [bayi]
-- [VENDORBENCH-OCP] — https://vendorbenchmark.com/vendors/red-hat-openshift-pricing
-- [REDRESS-PL2026] [danışman] — https://redresscompliance.com/oracle-price-list-2026-key-changes-and-analysis.html
-- [REDRESS-GG] [danışman] Redress Compliance, "Oracle GoldenGate licensing guide" — https://redresscompliance.com/oracle-goldengate-licensing-guide · "GoldenGate costs $17,500 per processor on every server that runs it, source and target alike"; "A GoldenGate license includes Oracle Active Data Guard and Oracle XStream, with Database Enterprise Edition as the prerequisite."
-- [ORACLE-PL2009] — https://public.dhe.ibm.com/software/websphere/oracle/technology-price-list.pdf
-- [ORACLE-CORE] — https://www.oracle.com/contracts/docs/processor-core-factor-table-070634.pdf
-- [ORACLE-PART] — https://oracle.com/a/ocom/docs/it-infrastructure/partitioning-070609.pdf
-- [OLE-NET2026] [danışman] — https://oraclelicensingexperts.com/blog/oracle-database-net-price-benchmarks-2026/
+- [CloudIngenuity2025-RHPL] — https://www.cloudingenuity.com/contracts/5272/5272_Red_Hat.pdf
+- [RedHat2024-OCPSubGuide] Red Hat, "Self-managed Red Hat OpenShift subscription guide" (2024-10) — https://redhat.com/rhdc/managed-files/cl-self-managed-openshift-subscription-guide-1434155pr-202410-en.pdf · "Each physical, bare-metal server using socket-based entitlements can only be used as a single OpenShift node."; "entitling the virtual compute nodes using core-based subscriptions."
+- [SWExpress-OCP] software-express.de, Red Hat fiyat listesi — https://www.software-express.de/preislisten/red-hat/red-hat-21746/ · "Red Hat OpenShift Container Platform; Premium (2 Cores or 4 vCPUs); Subscription; 1 Jahr" 3.872,00 € (KDV hariç) [bayi]
+- [VendorBenchmark2026-OCP] — https://vendorbenchmark.com/vendors/red-hat-openshift-pricing
+- [Redress2026-OraclePL] [danışman] — https://redresscompliance.com/oracle-price-list-2026-key-changes-and-analysis.html
+- [Redress-GoldenGate] [danışman] Redress Compliance, "Oracle GoldenGate licensing guide" — https://redresscompliance.com/oracle-goldengate-licensing-guide · "GoldenGate costs $17,500 per processor on every server that runs it, source and target alike"; "A GoldenGate license includes Oracle Active Data Guard and Oracle XStream, with Database Enterprise Edition as the prerequisite."
+- [Oracle2009-TechPriceList] — https://public.dhe.ibm.com/software/websphere/oracle/technology-price-list.pdf
+- [Oracle2026-CoreFactor] — https://www.oracle.com/contracts/docs/processor-core-factor-table-070634.pdf
+- [Oracle-Partitioning] — https://oracle.com/a/ocom/docs/it-infrastructure/partitioning-070609.pdf
+- [OLE2026-OracleNet] [danışman] — https://oraclelicensingexperts.com/blog/oracle-database-net-price-benchmarks-2026/
 
 **Personel ve üretim dışı** (KB-13, KB-14)
-- [IBM-EAGLE], [GARTNER-ITKMD], [IBM-TPF-2007], [IBM-EAGLE-LABOR], [SHEDLETSKY-2008], [IBM-EAGLE-2013] — tam künyeler `kopruler_v1.md` KB-13 / KB-14 ve mainframe v3 §7.7'de.
+- [IBM-CPO2014-Skills], [CA2016-MFEcosystem], [Rhoderick2007-TPFUG], [Calderon2011-Labor], [Shedletsky2008], [IBM2013-TCOLessons] — tam künyeler `kopruler_v1.md` KB-13 / KB-14 ve mainframe v3 §7.7'de.
 
 ---
 

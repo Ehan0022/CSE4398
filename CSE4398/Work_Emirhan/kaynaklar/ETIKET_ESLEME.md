@@ -1,0 +1,171 @@
+# Eski etiket → kaynak anahtarı eşlemesi
+
+Değerlendirmeler, PROJECT_LOG ve kod yorumları eski etiketleri tarihsel kayıt olarak korur; karşılıkları burada.
+
+| Eski etiket | Yeni anahtar |
+|---|---|
+| `[ACEMQ-RENEW]` | `[AceMQ2026-Renewals]` |
+| `[ACEMQ-VVF]` | `[AceMQ-VVFvsVCF]` |
+| `[ALIBABA-PG16]` | `[Alibaba-PolarDB-PG16]` |
+| `[ANON-1985]` | `[Anon1985]` |
+| `[APPUSWAMY-2013]` | `[Appuswamy2013]` |
+| `[ASTADIA-ROI]` | `[Astadia2024-ROI]` |
+| `[AVASANT-2008]` | `[Avasant2008-Headcount]` |
+| `[AVASANT-2020]` | `[Avasant2020-Staffing]` |
+| `[AWLC]` | `[IBM-zNALC]` |
+| `[AWS-DX-2026]` | `[AWS-DXPricing]` |
+| `[AWS-S3-2026]` | `[Nubbo2026-S3]` |
+| `[BACLOUD-RAM]` | `[Bacloud2026-RAM]` |
+| `[BARROSO]` | `[Barroso2018]` |
+| `[BLS-ECEC]` | `[BLS2026-ECEC]` |
+| `[BLS-ECI-2026]` | `[BLS2026-ECI]` |
+| `[BLS-OEWS]` | `[BLS-OOH]` |
+| `[BMC-2024]` | `[BMC2024-MFSurvey]` |
+| `[BRUNE-2025]` | `[Brune2025]` |
+| `[CAPCOMP-RAM]` | `[CapCompute-RAM]` |
+| `[CATTERALL-2012]` | `[Catterall2012]` |
+| `[CATTERALL-2019]` | `[Catterall2019]` |
+| `[CBU]` | `[IBM-SC28-7025]` |
+| `[CCSP-RH]` | `[CloudIngenuity2025-RHPL]` |
+| `[CDW-OVE]` | `[CDW-OVE]` |
+| `[CMG-2020]` | `[CMG2020]` |
+| `[CNCF Infosys]` | `[CNCF-Infosys]` |
+| `[COD]` | `[IBM-SC28-7025]` |
+| `[Capgemini 2024]` | `[Capgemini2024-MFFS]` |
+| `[DAMODARAN-2026]` | `[Damodaran2026-WACC]` |
+| `[DB2-BACKUP]` | `[IBM-Db2z12-Backup]` |
+| `[DZONE-SE2]` | `[DZone-OracleSE2-PG]` |
+| `[EAGLE-TCO-2013]` | `[IBM2012-TCOLessons-zEC]` |
+| `[EDB-LOCALPV]` | `[EDB-LocalPV]` |
+| `[EDB-PLANS-2026]` | `[EDB-Plans]` |
+| `[EDB-STORE-2026]` | `[EDB-Store]` |
+| `[EDB-SYNCREP]` | `[EDB-SyncRep]` |
+| `[EIA-EPM]` | `[EIA-EPM-5.3]` |
+| `[EPS]` | `[Chapman-EPS-CPU]` |
+| `[EPS Chapman]` | `[Chapman-EPS-CPU]` |
+| `[EXHIBIT]` | `[IBM2025-MSU-Exhibit]` |
+| `[FLASHDBA-2012]` | `[FlashDBA2012-TPCC]` |
+| `[GARTNER-ITKMD]` | `[CA2016-MFEcosystem]` |
+| `[GDPS]` | `[IBM-SG24-6374]` |
+| `[GDPS-2026]` | `[Cook2026-GDPS]` |
+| `[GDPS-CA-2021]` | `[Aubert2021-GDPSCA]` |
+| `[GDPS-PRICE]` | `[MLE-GDPS]` |
+| `[GRAY-2005]` | `[Gray2005]` |
+| `[GUNAWI-2016]` | `[Gunawi2016]` |
+| `[GUNTHER-USL]` | `[Gunther2012-PGUSL]` |
+| `[HAYRETCI-2021]` | `[Hayretci2021]` |
+| `[IBM SC28-7025 CoD]` | `[IBM-SC28-7025]` |
+| `[IBM-122-037]` | `[IBM2022-ENUS122-037]` |
+| `[IBM-2004]` | `[Adams2005-z9SWPricing]` |
+| `[IBM-EAGLE]` | `[IBM-CPO2014-Skills]` |
+| `[IBM-EAGLE-2012]` | `[IBM2012-EagleTales]` |
+| `[IBM-EAGLE-2013]` | `[IBM2013-TCOLessons]` |
+| `[IBM-EAGLE-LABOR]` | `[Calderon2011-Labor]` |
+| `[IBM-PRICE-2026]` | `[Schneider2026-IBMPrice]` |
+| `[IBM-SHEDLETSKY-2008]` | `[Shedletsky2008]` |
+| `[IBM-SKILLS]` | `[IBM-CPO2014-Skills]` |
+| `[IBM-TPF-2007]` | `[Rhoderick2007-TPFUG]` |
+| `[IBM-Z14-PR]` | `[AmwalAlGhad2017-z14]` |
+| `[IBM-ZNALC]` | `[IBM-zNALC]` |
+| `[IDC-2007]` | `[Computerworld-IDC2007]` |
+| `[IDC-2016]` | `[IDC2016-ConnectedMF]` |
+| `[IDC-2020]` | `[IDC2020-IBMZUpgrades]` |
+| `[IDUG-2024]` | `[Hendley2024-IDUG]` |
+| `[INTEL-ARK-6548Y]` | `[Intel-Xeon6548Yplus]` |
+| `[ITCANDOR]` | `[ITCandor2019-DS8900F]` |
+| `[ITIC]` | `[ITIC-Home]` |
+| `[ITIC-2023]` | `[ITIC2023-IBMZ]` |
+| `[ITIC-2024]` | `[TechChannel2024-ITIC]` |
+| `[ITJUNGLE-22]` | `[ITJungle2022-Storage]` |
+| `[KHADKA-2014]` | `[Khadka2014]` |
+| `[KHAJEH-2011]` | `[KhajehHosseini2011]` |
+| `[KOSSMANN-2010]` | `[Kossmann2010]` |
+| `[KYNDRYL-2025]` | `[Kyndryl2025-MFModernization]` |
+| `[KYNE-2022]` | `[Kyne2022-TFP]` |
+| `[LIC]` | `[Atonement-MLC]` |
+| `[LICENSEWARE-OCP]` | `[Licenseware-OCP]` |
+| `[LONGPELA]` | `[Longpela-SWPrice]` |
+| `[LSPR]` | `[IBM-LSPR-ITRR]` |
+| `[LSPR-z13]` | `[IBM-LSPR-zOS22]` |
+| `[MF-PAY]` | `[MF-Payscale]` |
+| `[MINIO-TCO]` | `[MinIO-ObjectTCO]` |
+| `[MODINTEL-2025]` | `[ModIntel2025]` |
+| `[Modernization Intel 2025]` | `[ModIntel2025]` |
+| `[OLE-NET2026]` | `[OLE2026-OracleNet]` |
+| `[ORACLE-CORE]` | `[Oracle2026-CoreFactor]` |
+| `[ORACLE-MAA-2026]` | `[Oracle2026-MAA]` |
+| `[ORACLE-OTN]` | `[Oracle-OTNLicense]` |
+| `[ORACLE-PART]` | `[Oracle-Partitioning]` |
+| `[ORACLE-PL2009]` | `[Oracle2009-TechPriceList]` |
+| `[ORACLE-RAC-2024]` | `[Oracle2024-RAC]` |
+| `[PATRONI-MULTIDC]` | `[Patroni-MultiDC]` |
+| `[PATRONI-REPL]` | `[Patroni-ReplModes]` |
+| `[PCSP-SERVER]` | `[PCSP2026-Server]` |
+| `[PCSP-SSD]` | `[PCSP2026-SSD]` |
+| `[PGCON-2016]` | `[Kapila2016-PGCon]` |
+| `[PIGSTY-RTO]` | `[Pigsty-RTO]` |
+| `[POESS-2008]` | `[Poess2008]` |
+| `[PRECISELY]` | `[Precisely-HA]` |
+| `[PRICE]` | `[Alibaba-MFPrice]` |
+| `[PT-VSPHERE-OCPV-2024]` | `[VMware2024-vSphereOCPV]` |
+| `[PWR]` | `[Alibaba-MFPrice]` |
+| `[Precisely HA]` | `[Precisely-HA]` |
+| `[RAY-JONES-2007]` | `[Jones2007-TCO]` |
+| `[REDBOOK]` | `[IBM-SG24-8446]` |
+| `[REDHAT-OCPV-2025]` | `[RedHat2025-OCPVDB]` |
+| `[REDP]` | `[Burgess2016-REDP5320]` |
+| `[REDP-5320]` | `[Burgess2016-REDP5320]` |
+| `[REDP-5554]` | `[IBM-REDP-5554]` |
+| `[REDP-PROFILE]` | `[Burgess2016-REDP5320]` |
+| `[REDRESS-GG]` | `[Redress-GoldenGate]` |
+| `[REDRESS-PL2026]` | `[Redress2026-OraclePL]` |
+| `[RH-OCP-GUIDE]` | `[RedHat2024-OCPSubGuide]` |
+| `[ROCKDATA-2026]` | `[Rockdata2026]` |
+| `[RUBIN-2012]` | `[Rubin2012]` |
+| `[SG24-6374]` | `[IBM-SG24-6374]` |
+| `[SG24-8381]` | `[IBM-SG24-8381]` |
+| `[SG24-8446]` | `[IBM-SG24-8446]` |
+| `[SG24-8950]` | `[IBM-SG24-8950]` |
+| `[SG24-8952]` | `[IBM-SG24-8952]` |
+| `[SHEDLETSKY-2008]` | `[Shedletsky2008]` |
+| `[SNIA]` | `[SNIA2010-Benchmarking]` |
+| `[SPEC-8270]` | `[SPEC2019-M640-8270]` |
+| `[SPEC-DL380G12]` | `[SPEC2025-DL380G12]` |
+| `[SPEC-R760]` | `[SPEC2024-R760-6548Y]` |
+| `[SPECPOWER-2025Q1]` | `[SPECpower-2025Q1]` |
+| `[STINE]` | `[Stine2022]` |
+| `[STONEBRAKER-1986]` | `[Stonebraker1986]` |
+| `[STORAGEREVIEW-P5520]` | `[StorageReview2022-P5520]` |
+| `[SWEXPRESS-OCP]` | `[SWExpress-OCP]` |
+| `[SYSBENCH]` | `[Kopytov-sysbench]` |
+| `[Simplyblock OLTP vs OLAP]` | `[Simplyblock-OLTP]` |
+| `[TENCENT-METHOD]` | `[Tencent-PG-TestMethods]` |
+| `[TENCENT-RESULT]` | `[Tencent-PG-TestResults]` |
+| `[TFP-HW]` | `[IBM-TFP-ContentSolutions]` |
+| `[TFP-SW]` | `[IBM2021-TFP-Sensible]` |
+| `[TFP-SW-2021]` | `[IBM2021-TFP-Sensible]` |
+| `[TFP-TCO]` | `[IBM2021-TFP-HW-Cloud]` |
+| `[TPC-B]` | `[TPC1994-TPCB]` |
+| `[TPC-PRICING]` | `[TPC-Pricing]` |
+| `[TRENDFORCE-2026-08]` | `[TrendForce2026-DDR5]` |
+| `[TS7700-2006]` | `[ESF2006-TS7700]` |
+| `[TS7700-2024]` | `[IBM-TS7700-541]` |
+| `[TSB-2018]` | `[PRA2022-TSB]` |
+| `[TT-2019]` | `[TechTarget2019-DS8900F]` |
+| `[TU11]` | `[IBM-AWLC-TU11]` |
+| `[UPTIME-2022]` | `[DCF2022-Uptime]` |
+| `[UPTIME-2025]` | `[Uptime2025-PR]` |
+| `[VALUE4IT]` | `[Moss2010-Value4IT]` |
+| `[VENDORBENCH]` | `[VendorBenchmark2026-Storage]` |
+| `[VENDORBENCH-AFA]` | `[VendorBenchmark2026-Storage]` |
+| `[VENDORBENCH-OCP]` | `[VendorBenchmark2026-OCP]` |
+| `[VISHWANATH-2010]` | `[Vishwanath2010]` |
+| `[VMW-249212]` | `[VMware2019-OracleSupport]` |
+| `[VONNG-PERF]` | `[Vonng-PGPerf]` |
+| `[Veeam RTO/RPO]` | `[Veeam-RTORPO]` |
+| `[WALKER-2009]` | `[Walker2009]` |
+| `[YELLOWBRICKS-HA]` | `[YellowBricks2021]` |
+| `[YUAN-2014]` | `[Yuan2014]` |
+| `[ZIIP]` | `[IBM-SG24-8950]` |
+| `[CFCC]` | — (IBM Coupling Facility Configuration Options (D. Raften). URL kaydedilmemis; belg…) |
+| `[QUEUE]` | — (Kaynak degil: klasik M/M/1 kuyruk teorisi (yontem etiketi).…) |

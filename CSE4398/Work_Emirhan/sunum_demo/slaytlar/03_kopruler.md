@@ -14,7 +14,7 @@
 - x86: sysbench oltp_read_write'ın kendisi ölçülür; aralık/nokta oranı çapanın içinde.
 - `RANGE_READ_WEIGHT` iki tarafta ortak parametre (3,4 / 3,65 / 3,9).
 
-**Veri / kaynak:** [SYSBENCH], [TENCENT-METHOD] (bileşim), [REDP-PROFILE], [CATTERALL-2012/2019].
+**Veri / kaynak:** [Kopytov-sysbench], [Tencent-PG-TestMethods] (bileşim), [Burgess2016-REDP5320], [Catterall2012, Catterall2019].
 
 **Tasarım gerekçesi:** Crossover "TPS başına maliyet" üzerinden kurulduğu için birim eşitliği bütün sonuçların ön koşulu. x86'da en yaygın ölçülen bileşimi seçmek, x86 tarafının kendi ölçümüyle karşılanabilmesini sağlar.
 
@@ -30,7 +30,7 @@
 - Etki: w 9,15 → 12,85; 10K TPS kademe 3931-516 → 524; mainframe $/TPS +%23 (F mainframe lehine bir yanlılığı düzeltti).
 - Açık kalan: K6'da oranın ölçülmesi; Db2'ye özgü aralık sorgusu maliyeti için IBM kaynağı (IRWW).
 
-**Veri / kaynak:** [VONNG-PERF]; kopruler_v1 KB-01 "Etkisi".
+**Veri / kaynak:** [Vonng-PGPerf]; kopruler_v1 KB-01 "Etkisi".
 
 **Tasarım gerekçesi:** PostgreSQL'deki göreli maliyetin Db2'ye taşınması bir varsayım; açıkça yazıldı ve ortak parametre olarak aralıkta taşınıyor.
 
@@ -45,7 +45,7 @@
 - n-way ölçekleme kaybı her kademenin PCI'sinde; köprüde ayrıca uygulanmaz.
 - %3,1'lik iki nokta farkı = köprünün belirsizliği.
 
-**Veri / kaynak:** [REDP], [LSPR-z13], [LSPR].
+**Veri / kaynak:** [Burgess2016-REDP5320], [IBM-LSPR-zOS22], [IBM-LSPR-ITRR].
 
 **Tasarım gerekçesi:** LSPR bütün nesilleri System z9 2094-701 = 1,00 bazında verir; PCI bu ölçeğin sabit katı. Böylece z13 ölçümü z16 kademelerine nesil farkıyla birlikte taşınır.
 
@@ -59,7 +59,7 @@
 - Açık kalan: köprünün tek kaynağı REDP-5320; LSPR karışımının CICS/Db2 OLTP'ye benzediği bir varsayım.
 - Durum: kuruldu (v3 §4); x86 karşılığı KB-03, ikisinin çapraz kontrolü KB-04.
 
-**Veri / kaynak:** [IBM-Z14-PR]; v3 §4.4.3, §4.5.
+**Veri / kaynak:** [AmwalAlGhad2017-z14]; v3 §4.4.3, §4.5.
 
 **Tasarım gerekçesi:** Tek kaynaklı bir köprü, bağımsız bir büyüklük kontrolü ve platformlar arası tutarlılık kontrolüyle desteklenir.
 
@@ -74,7 +74,7 @@
 - R760: 91 × 9,81 ≈ 893 TPS/çekirdek (ham).
 - Bu katsayı çekirdek sayısını, dolayısıyla çekirdek başına lisansı (Oracle, vSphere), düğüm sayısını ve Patroni tavanını belirler.
 
-**Veri / kaynak:** [VONNG-PERF], [SPEC-8270], [SPEC-R760], [SPEC-DL380G12]; bağlam: [ROCKDATA-2026], [TENCENT-RESULT], [ALIBABA-PG16] (normalize edilemiyor).
+**Veri / kaynak:** [Vonng-PGPerf], [SPEC2019-M640-8270], [SPEC2024-R760-6548Y], [SPEC2025-DL380G12]; bağlam: [Rockdata2026], [Tencent-PG-TestResults], [Alibaba-PolarDB-PG16] (normalize edilemiyor).
 
 **Tasarım gerekçesi:** PCI köprüsünün simetriği: üretici bağımsız bir performans ölçeği (SPECrate2017) üzerinden ölçümü hedef SKU'ya taşımak.
 
@@ -119,7 +119,7 @@
 - Bizim köprümüz yalnızca P_R'yi ölçer; U_R'nin karşılığı KB-05'te (kullanım tavanı), dev/test KB-14'te.
 - Uzlaştırma: U_R'yi en uç haliyle (%17,5 tavan) koşturmak bile sıralamayı çevirmiyor (Demo Case 1).
 
-**Veri / kaynak:** [SHEDLETSKY-2008] [VENDOR]; `benzer_calismalar_v1.md` §3.3.
+**Veri / kaynak:** [Shedletsky2008] [VENDOR]; `benzer_calismalar_v1.md` §3.3.
 
 **Tasarım gerekçesi:** Üretici iddiasını reddetmek yerine bileşenlerine ayırıp her bileşeni ayrı, kaynaklı bir katmanda modellemek.
 
@@ -134,7 +134,7 @@
 - x86 (U kararı): `ρ_max = min(ρ_latency, X86_UTIL_CEILING)`; R = D_ağ + D_io + D_repl + R_cpu.
 - D_repl: senkron replikasyonda commit başına gidiş-dönüş (mesafe × 10 µs/km, ortak fizik sabiti).
 
-**Veri / kaynak:** v3 §5.3; [EDB-SYNCREP] (10 ms'de `remote_write` +6,5 ms, verim −%40), [STORAGEREVIEW-P5520].
+**Veri / kaynak:** v3 §5.3; [EDB-SyncRep] (10 ms'de `remote_write` +6,5 ms, verim −%40), [StorageReview2022-P5520].
 
 **Tasarım gerekçesi:** Kurulu kapasite donanımı ve çekirdek başına lisansı belirler; iki taraf aynı kurala bağlanmazsa U_R etkisi kontrolsüz biçimde sonuca girer.
 
@@ -173,7 +173,7 @@
 - Düğüm içi ölçeklenme `S(n) = (n / 48)^(b − 1)`, b 1,00 / 0,90 / 0,80; ana katalog 64 çekirdek, 96–128 ekstrapolasyon.
 - `RAC_SCALING_EFFICIENCY` 0,95 / 0,90 / 0,80 (Oracle'ın %80 çekişme eşiği alt uç).
 
-**Veri / kaynak:** [PATRONI-REPL], [ORACLE-RAC-2024], [PGCON-2016]; x86 dokümanı §5.4.
+**Veri / kaynak:** [Patroni-ReplModes], [Oracle2024-RAC], [Kapila2016-PGCon]; x86 dokümanı §5.4.
 
 **Tasarım gerekçesi:** Yüksek TPS'te crossover'ın yeri iki tarafın tek sistem tavanına bağlı; iki tavan aynı statüde (modellenmeyen ölçekleme seçeneği) yazılmalı.
 
@@ -208,7 +208,7 @@ A = 1 − D / 8.760
 - Elle geçişte `T_rec = MANUAL_FAILOVER_DECISION_MINUTES (ortak) + teknik geçiş (platforma özgü)`.
 - Ortak: λ_saha 0,05 / 0,15 / 0,25; d_kısa 1 / 2 / 4 sa; p_uzun 0,08 / 0,15 / 0,30; d_uzun 24 / 48 / 72 sa; karar süresi 45 / 90 / 180 dk.
 
-**Veri / kaynak:** [UPTIME-2025], [UPTIME-2022], [SG24-8446], [ITIC-2023/2024], [VISHWANATH-2010].
+**Veri / kaynak:** [Uptime2025-PR], [DCF2022-Uptime], [IBM-SG24-8446], [ITIC2023-IBMZ, TechChannel2024-ITIC], [Vishwanath2010].
 
 **Tasarım gerekçesi:** "Nine" değerleri farklı kaynaklardan gelirse karşılaştırılamaz. İki taraf aynı veri merkezi olaylarına maruz kalır; fark yalnızca kurtarma ve planlı işlemlerden.
 
@@ -223,7 +223,7 @@ A = 1 − D / 8.760
 - Sonuç: X1 %99,982 vs M1 %99,962 (fark planlı kesintiden); X3 (PG) %99,9987 vs M3 %99,9998 (fark platform kesintisinden: x86 kümesi daha çok ve daha sık kesilen sunucudan oluşur).
 - Açık kalan: planlı kesinti sıklığı iki tarafta da kaynaksız (en etkili availability varsayımı); bölgesel felaket ayrıca modellenmedi.
 
-**Veri / kaynak:** [PIGSTY-RTO], [ORACLE-MAA-2026], [YELLOWBRICKS-HA]; v3 §6.4; x86 dokümanı §8.3.
+**Veri / kaynak:** [Pigsty-RTO], [Oracle2026-MAA], [YellowBricks2021]; v3 §6.4; x86 dokümanı §8.3.
 
 **Tasarım gerekçesi:** Ortak modülde duran parametreler bir tarafın lehine ayrı ayarlanamaz; platforma özgü olanlar kendi kaynaklarıyla.
 
@@ -243,7 +243,7 @@ A = 1 − D / 8.760
 - RPO ve RTO kullanıcı girdisi iki tarafta aynı biçimde topolojiyi seçer.
 - Topoloji personel çarpanı ortak: 1,00 / 1,05 / 1,15 / 1,25.
 
-**Veri / kaynak:** [SG24-8446], [GDPS-2026], [ORACLE-MAA-2026], [PIGSTY-RTO].
+**Veri / kaynak:** [IBM-SG24-8446], [Cook2026-GDPS], [Oracle2026-MAA], [Pigsty-RTO].
 
 **Tasarım gerekçesi:** Desen düzeyinde eşleme: iki taraf aynı dayanıklılık sınıfında karşılaştırılır, aynı ada sahip ama farklı güvence veren yapılar değil.
 
@@ -258,7 +258,7 @@ A = 1 − D / 8.760
 - **Düzeltme (x86 §17, #1):** KB-08'de X2 RPO 0 (iki DB). Patroni'nin iki veri merkezi önerisi asenkron standby küme → X2-PG RPO 5 sn [ASSUME]; Oracle Data Guard Max Availability SYNC ile 0.
 - Sonuç: RPO 0 isteyen PG X3'e gider; %99,99 + RPO 0 + elle geçişte Oracle seçilir (Demo Case 4).
 
-**Veri / kaynak:** [PATRONI-MULTIDC]; x86 dokümanı §8.2; `test_topologies_and_availability`.
+**Veri / kaynak:** [Patroni-MultiDC]; x86 dokümanı §8.2; `test_topologies_and_availability`.
 
 **Tasarım gerekçesi:** Topolojinin RPO'su ürünün kendi belgesinden okunur, köprü dokümanındaki genelleme ürüne uymadığında ürün belgesi kazanır.
 
@@ -273,7 +273,7 @@ A = 1 − D / 8.760
 - x86 (K1): Oracle RAC → paylaşımlı all-flash SAN (site başına 1 + DR kopyası); Patroni → yerel NVMe × düğüm sayısı.
 - Fiyat sözleşmesi: aynı sırayla ham TB; her teklif önce **ham TB başına listeye** çevrilir; indirim bir kez; veri azaltımı yalnızca boyutlandırmada bir kez.
 
-**Veri / kaynak:** [ITJUNGLE-22] ($8,62/GB), [VENDORBENCH-AFA] ($65–215 indirimli / $140–400 liste etkin TB); `common_model.py` §6.
+**Veri / kaynak:** [ITJungle2022-Storage] ($8,62/GB), [VendorBenchmark2026-Storage] ($65–215 indirimli / $140–400 liste etkin TB); `common_model.py` §6.
 
 **Tasarım gerekçesi:** Storage veri hacmiyle büyüdüğü için ikinci crossover ekseni; iki taraf aynı girdilerle ve aynı fiyat tanımıyla boyutlanmazsa eksen anlamsızlaşır.
 
@@ -307,7 +307,7 @@ log baytı  = yazma × 400 B + commit × 200 B         (x86'da × WAL_FPW_FACTOR
 - Kısıtlar: 8 saatlik pencere; M1/X1'de tam geri yükleme ≤ RTO / 2.
 - Hedefler: mainframe TS7770 / nesne / S3; x86 nesne / S3 (TS7770 uygulanmaz). Fiyat fonksiyonları ortak (`cm.onprem_object_store`, `cm.s3_hybrid`).
 
-**Veri / kaynak:** [DB2-BACKUP] "Make two copies of each level of image copy data sets", [IDUG-2024], [MINIO-TCO], [AWS-S3-2026], [AWS-DX-2026].
+**Veri / kaynak:** [IBM-Db2z12-Backup] "Make two copies of each level of image copy data sets", [Hendley2024-IDUG], [MinIO-ObjectTCO], [Nubbo2026-S3], [AWS-DXPricing].
 
 **Tasarım gerekçesi:** Hacim kuralı iki tarafta aynı, böylece yedek farkı yalnızca platformun gerçek özelliklerinden (WAL FPW, sıkıştırma, TCT verimi) gelir.
 
@@ -345,7 +345,7 @@ log baytı  = yazma × 400 B + commit × 200 B         (x86'da × WAL_FPW_FACTOR
 
 - Kural: bu fark **eşitlenmez, modellenir**.
 
-**Veri / kaynak:** [CBU], [ORACLE-CORE] (çekirdek faktörü 0,5), [ORACLE-PART], [REDRESS-PL2026], [ACEMQ-VVF], [ACEMQ-RENEW].
+**Veri / kaynak:** [IBM-SC28-7025], [Oracle2026-CoreFactor] (çekirdek faktörü 0,5), [Oracle-Partitioning], [Redress2026-OraclePL], [AceMQ-VVFvsVCF], [AceMQ2026-Renewals].
 
 **Tasarım gerekçesi:** Lisans modeli farkı platformların gerçek bir özelliği; eşitlemek karşılaştırmanın konusunu silmek olurdu.
 
@@ -365,7 +365,7 @@ log baytı  = yazma × 400 B + commit × 200 B         (x86'da × WAL_FPW_FACTOR
 - **Düzeltme (x86 §17, #2):** KB-11 OpenShift'i soket çifti başına (6K / 11K / 15K) fiyatlıyordu; sanal düğümler çekirdek tabanlı abonelik ister → çekirdek çifti başına.
 - REDRESS fiyat listesi ikincil kaynak (doğrulanmalı).
 
-**Veri / kaynak:** [RH-OCP-GUIDE] "entitling the virtual compute nodes using core-based subscriptions."; [SWEXPRESS-OCP], [VENDORBENCH-OCP].
+**Veri / kaynak:** [RedHat2024-OCPSubGuide] "entitling the virtual compute nodes using core-based subscriptions."; [SWExpress-OCP], [VendorBenchmark2026-OCP].
 
 **Tasarım gerekçesi:** Abonelik kuralı ürün belgesinden okunur; v4'ün "bare-metal Kubernetes yok" kuralıyla birlikte OpenShift düğümleri hep sanal.
 
@@ -380,7 +380,7 @@ log baytı  = yazma × 400 B + commit × 200 B         (x86'da × WAL_FPW_FACTOR
 - Linux VM olarak fiyatlanır; ek lisans yok; sitede N+1, DR'da kopya.
 - Mainframe tarafında değişiklik yok.
 
-**Veri / kaynak:** [REDP-PROFILE] 85,9 µs; [SHEDLETSKY-2008] 4,9 kat (yalnızca üst uç duyarlılık).
+**Veri / kaynak:** [Burgess2016-REDP5320] 85,9 µs; [Shedletsky2008] 4,9 kat (yalnızca üst uç duyarlılık).
 
 **Tasarım gerekçesi:** İki tarafın kapsam sınırı aynı olmalı; aksi halde mainframe faturasındaki CICS'in x86'da karşılığı eksik kalır.
 
@@ -411,7 +411,7 @@ log baytı  = yazma × 400 B + commit × 200 B         (x86'da × WAL_FPW_FACTOR
 - Aynı iş yükü vakaları (x86 / mainframe, hepsi IBM kaynaklı): 3,28 · 3,00 · 1,23 · 1,32 · 3,10 · 1,50 · 15,4. Geometrik ortalama: FTE vakaları 2,0; konsolide 1,25; hepsi 2,7.
 - Bağımsız (Gartner, Avasant, IDC) aynı iş yükü karşılaştırması bulunamadı; göç satıcıları sayı vermiyor.
 
-**Veri / kaynak:** [IBM-EAGLE], [GARTNER-ITKMD], [IBM-TPF-2007], [IBM-EAGLE-LABOR], [SHEDLETSKY-2008], [RAY-JONES-2007], [ASTADIA-ROI].
+**Veri / kaynak:** [IBM-CPO2014-Skills], [CA2016-MFEcosystem], [Rhoderick2007-TPFUG], [Calderon2011-Labor], [Shedletsky2008], [Jones2007-TCO], [Astadia2024-ROI].
 
 **Tasarım gerekçesi:** Personel 10K TPS'te maliyetin ~%45'i; iki tarafın personeli farklı sürücülerle ölçülürse crossover'ı teknoloji değil ölçüm farkı belirler.
 
@@ -446,7 +446,7 @@ FTE_x86          = FTE_ortak × STAFF_RATIO_X86    (ana senaryo 1,0)
 - Mainframe 0 / 0,20 / 0,50; x86 0 / 0,50 / 1,00; stres 2,0.
 - x86 orta değeri: X1'de 3 düğüm → staging ≈ 0,33 + dev/test ≈ 0,1–0,2 ≈ 0,5 [DERIVED, ASSUME].
 
-**Veri / kaynak:** [IBM-EAGLE-2013] "+%20 / +%200", HA kopyası üretimin 2–2,5 katı.
+**Veri / kaynak:** [IBM2013-TCOLessons] "+%20 / +%200", HA kopyası üretimin 2–2,5 katı.
 
 **Tasarım gerekçesi:** Aynı kural, ayrı çarpan: yapı farklı (mainframe'de LPAR, x86'da ayrı düğüm ve Oracle'da ayrı çekirdek lisansı).
 
@@ -476,7 +476,7 @@ FTE_x86          = FTE_ortak × STAFF_RATIO_X86    (ana senaryo 1,0)
 - Bellek ve NVMe her dönemde kendi low/mid/high üçlüsüyle; ayrı aralık parametresi yok (tornado'da çift sayım olmasın).
 - Fiyat tabanı kuralı: bileşen önce liste karşılığına çevrilir, indirim bir kez; perakende spot fiyatı OEM indirimiyle birleştirilmez.
 
-**Veri / kaynak:** [PCSP-SERVER], [PCSP-SSD], [CAPCOMP-RAM], [BACLOUD-RAM], [TRENDFORCE-2026-08], [GRAY-2005] (fiyat/performans yılda ~%68).
+**Veri / kaynak:** [PCSP2026-Server], [PCSP2026-SSD], [CapCompute-RAM], [Bacloud2026-RAM], [TrendForce2026-DDR5], [Gray2005] (fiyat/performans yılda ~%68).
 
 **Tasarım gerekçesi:** İki tarafın fiyatları farklı dönemlerden gelirse sonuç fiyat döneminin eseri olur.
 
@@ -511,7 +511,7 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 - Teknoloji yenilemesi (z17 / yeni sunucu nesli) iki tarafta birlikte dışarıda.
 - **r köşe senaryolarına girmez**, ayrı taranır (%5 / %7 / %10).
 
-**Veri / kaynak:** [DAMODARAN-2026] (piyasa %6,96, bilgisayar hizmetleri %7,83, bankalar %4,98).
+**Veri / kaynak:** [Damodaran2026-WACC] (piyasa %6,96, bilgisayar hizmetleri %7,83, bankalar %4,98).
 
 **Tasarım gerekçesi:** Yüksek r mainframe'i hep ucuz gösterir (capex'i önde, opex'i büyük); köşe senaryosuna girseydi "low = mainframe lehine" tanımını bozardı.
 
@@ -524,12 +524,12 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 | Parametre | Değer | Aralık | Dayanak |
 |---|---|---|---|
 | NPV_TPS_GROWTH | 0,10 | 0 / 0,05 / 0,10 / 0,20 | senaryo girdisi |
-| SW_PRICE_ESCALATION | 0,03 | 0–0,06 | [IBM-PRICE-2026] IBM Z yazılımı 2026 +%6 |
+| SW_PRICE_ESCALATION | 0,03 | 0–0,06 | [Schneider2026-IBMPrice] IBM Z yazılımı 2026 +%6 |
 | HW_SERVICE_ESCALATION | 0,03 | 0–0,06 | IBM TLS +%4–6 |
-| WAGE_ESCALATION | 0,033 | 0,025–0,045 | [BLS-ECI-2026] |
-| ENERGY_ESCALATION | 0,04 | 0,015–0,056 | [EIA-EPM] |
+| WAGE_ESCALATION | 0,033 | 0,025–0,045 | [BLS2026-ECI] |
+| ENERGY_ESCALATION | 0,04 | 0,015–0,056 | [EIA-EPM-5.3] |
 
-- Mainframe'e özgü: TFP büyüme fiyatı 0,5 ("IBM mentions 50% discount for growth MSUs" [KYNE-2022]).
+- Mainframe'e özgü: TFP büyüme fiyatı 0,5 ("IBM mentions 50% discount for growth MSUs" [Kyne2022-TFP]).
 - Tutarlılık testi iki modelde: r = 0, büyüme 0 → NPV = 60 × statik aylık.
 - Etki (Demo Case 10): 10K TPS 5 yıl MF $71,01M / x86 $34,45M.
 
@@ -548,7 +548,7 @@ seviyelendirilmiş $/TPS-ay = NPV / Σ_y [12 × TPS_y / (1 + r)^y]
 - x86: SPECpower %100 yük değeri × `X86_POWER_CONFIG_UPLIFT` 1,1 / 1,25 / 1,4 (SPECpower sistemleri az bellek ve diskle ölçülür).
 - PUE, raf alanı ve storage ağı iki tarafta da dışarıda; AWS S3 hattı istisna (seçenek onsuz var olamaz).
 
-**Veri / kaynak:** [PWR], [SPECPOWER-2025Q1] (DL380 Gen12 924 / 220 W; SR650 V4 782 / 218 W; R770 943–960 W).
+**Veri / kaynak:** [Alibaba-MFPrice], [SPECpower-2025Q1] (DL380 Gen12 924 / 220 W; SR650 V4 782 / 218 W; R770 943–960 W).
 
 **Tasarım gerekçesi:** Simetri: mainframe tepe güç kullandığı için x86'da da %100 yük değeri.
 

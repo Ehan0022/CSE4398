@@ -951,3 +951,28 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 ### 4. Açık kalanlar
 - `DEMO_SENARYOLARI.md`'de Case 3, 5, 6, 7, 8'in ayrıntı tabloları Değ #10 öncesi değerleri taşıyor (case özetleri güncel).
 - Oturum 12'nin açık kalanları sürüyor (u kalibrasyonu, `kopruler_v2.md`, K6 ölçümü vb.).
+
+## 2026-11-24 — Oturum 14: kaynak dokümanların tam kopyaları ve kaynakça
+
+### 1. Aksiyon
+- **Envanter:** `docs/`, `evaluations/`, `src/` yorumları, `data/raw/` başlıkları ve `sunum_demo/slaytlar/` tarandı: 151 farklı kaynak etiketi, 120 farklı URL ve URL'si hiç kaydedilmemiş ~35 kaynak (Yuan 2014, Gunawi 2016, Stonebraker 1986, Kyndryl 2025, TSB bildirimleri vb.). URL'siz olanların çoğu aranıp bulundu.
+- **İndirme:** 163 kaynaktan 141'inin tam metni saklandı (217 dosya, ~250 MB): PDF'ler olduğu gibi; web sayfaları HTML olarak ve tarayıcıda basılmış PDF anlık görüntüsü (`.snapshot.pdf`) olarak. Kaydedilemeyen 22 kaynak için URL, erişim tarihi ve neden (bot koruması, paywall, sayfa kaldırılmış, TLS hatası, URL hiç kaydedilmemiş) katalogda.
+- **Yeni klasör `kaynaklar/`:** `KAYNAKCA.md` (türe göre gruplu akademik kaynakça), `kaynaklar.bib` (BibTeX), `kaynak_katalogu.csv` (anahtar, eski etiketler, durum, dosya, bayt, SHA-256), `ETIKET_ESLEME.md` (eski etiket → yeni anahtar), `README.md`.
+- **Anahtarlar:** kendi uydurduğumuz etiketler (`[IBM-EAGLE-2013]`, `[REDP]`, `[GDPS-2026]` …) `YazarYıl-kısaAd` anahtarlarıyla değiştirildi (`[IBM2013-TCOLessons]`, `[Burgess2016-REDP5320]`, `[Cook2026-GDPS]`; IBM form numaralı yayınlarda `[IBM-SG24-8446]` gibi). Güncel dokümanlarda ve slaytlarda 878 atıf (v3, x86 v1, köprüler v1, ortak modül v1, açık sistem planı, benzer çalışmalar, slayt 01–03). Her dokümanın kaynak bölümüne `kaynaklar/KAYNAKCA.md` göstergesi eklendi.
+- **Künye düzeltmeleri** (indirilen dokümanın kendisinden): SG24-8446'nın güncel baskısının adı "Getting Started with Business Continuity on IBM Z" (2. baskı, Ağustos 2026); `[IBM-2004]` aslında K. E. Adams, "IBM z9xx Software Pricing Overview" (zExpo 2005, fiyatlar 7 Mayıs 2004; Db2 PSLC kademeleri metinde doğrulandı); "Mainframe Skills" belgesi IBM Competitive Project Office imzalı (Eagle değil, 2014); `[EAGLE-TCO-2013]` PDF'i 2012 tarihli; `[IBM-EAGLE-LABOR]` R. Calderon 2011; `[IBM-TPF-2007]` D. Rhoderick; `[GDPS-CA-2021]` D. Aubert; `[PGCON-2016]` A. Kapila; project_justification'daki LSPR URL'si (node/6953823) z/VM 7.2 tablosu; SNIA URL'sinin başlığı "Storage Performance Benchmarking Guidelines – Part 1". Bulunamayan / eşleşmeyen atıflar işaretlendi: Rubin 2012 başlığı, Longpela "L7 %20" ve Value-4IT "150 MSU ≈ £1M" ifadeleri, CMG 2020, CFCC (Raften).
+- **Saklama yeri:** repo public olduğu için telifli dokümanlar git'e girmedi (`.gitignore: kaynaklar/dosyalar/`). Kopyalar proje dosyalarında (`/mnt/project-files/kaynaklar/`) ve Emirhan'ın bilgisayarında `Work_Emirhan\kaynaklar\dosyalar\` altında (SHA-256 doğrulandı).
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-24): veriyi aldığımız dokümanların yalnızca ilgili kısımları değil tamamı saklansın (yeniden okumak için) ve kendi isimlendirmemiz yerine doğru akademik atıf verilsin.
+
+### 3. Sonuç
+- Model, kod ve çıktılar değişmedi (kod yorumlarındaki ve `PRICE_REGISTRY`'deki etiketler çıktıya yazıldığı için bu oturumda korunuyor; karşılıkları `ETIKET_ESLEME.md`'de).
+- Spot doğrulamalar metinde tuttu: Eagle "97 çalışma, 2,2×, 4'ünde dağıtık ucuz"; "5 FTE + 625 MIPS başına 1 FTE" ve "17 müşteri"; IT Jungle 15,36 TB flash $2,12M; Svoboda IDUG aktarımı.
+- **Yan bulgu:** tam LSPR ITRR sayfası 3931-7xx'in tüm 200 satırını içeriyor (v3 §3.2 "sayfa 3931-703'te kesiliyor" diyordu). MSU'dan türettiğimiz 99 satırın PCI'si resmî değerle karşılaştırıldı: ortalama fark %0,005, en büyük %0,13 (3931-704). MSU değerlerinin hepsi aynı.
+
+### 4. Açık kalanlar
+- Elle indirilecekler (tarayıcıda açılıyor, bu ortamdan engelli): IBM SC28-7025 (CoD User's Guide), IBM Docs sayfaları (Db2 yedek, TS7700 5.4.1), BLS (ECI, ECEC, OOH), Adams 2005 (vm.ibm.com), Stonebraker 1986 (dsf.berkeley.edu), Uptime 2025 basın bülteni, Tales from the Eagle 2012, Khadka 2014, Hayretci 2021, Modernization Intel, EDB Store.
+- Paywall: Walker 2009 (IEEE), Amdahl 1967 (ACM), Gartner ITKMD, ITIC ve Avasant tam raporları, Barroso kitabı.
+- Kodda (`src/`, kompakt `kod/`) etiketlerin yeni anahtarlara geçirilmesi (çıktı metnini değiştirir; demo çıktıları yeniden üretilmeli).
+- `z16_a01_capacity.csv`'nin 7xx satırlarını resmî LSPR PCI'siyle değiştirmek (sonuçları en fazla %0,13 oynatır).
+- Değerlendirmeler ve log eski etiketleri tarihsel kayıt olarak koruyor.

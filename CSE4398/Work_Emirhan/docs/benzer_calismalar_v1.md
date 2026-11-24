@@ -13,7 +13,7 @@ Etiketler önceki dokümanlarla aynıdır: **[VENDOR]** üretici ya da üreticin
 ## 0. Kısa Cevap
 
 1. **Doğrudan paralel, bağımsız bir akademik çalışma bulunamadı.** Mainframe ile kümelenmiş x86'yı OLTP için tam yığın TCO'yla, ortak bir işlem birimiyle ve belirsizlik aralıklarıyla karşılaştıran hakemli bir yayın, tez ya da açık bir araç yok. Geniş kapsamlı ek bir arama da (2022–2025 tezleri dahil) sonuç vermedi.
-2. **En yakın paralel üretici kaynaklı.** IBM'in Eagle TCO ekibi 2007'den beri 300'ü aşkın müşteri çalışması yapmış. Yayımlanan özetlere göre karşılaştırılan 97 çalışmada dağıtık alternatif ortalama **2,2 kat** pahalı çıkmış, yalnız 4'ünde dağıtık taraf ucuzmuş [IBM-EAGLE-2013]. Yöntem bizimkine çok benziyor (eşdeğer konfigürasyon → edinme maliyeti → personel ve tesis), ama varsayımlar ve girdiler yayımlanmıyor ve sonuç her zaman yayımlayan üreticinin lehine.
+2. **En yakın paralel üretici kaynaklı.** IBM'in Eagle TCO ekibi 2007'den beri 300'ü aşkın müşteri çalışması yapmış. Yayımlanan özetlere göre karşılaştırılan 97 çalışmada dağıtık alternatif ortalama **2,2 kat** pahalı çıkmış, yalnız 4'ünde dağıtık taraf ucuzmuş [IBM2013-TCOLessons]. Yöntem bizimkine çok benziyor (eşdeğer konfigürasyon → edinme maliyeti → personel ve tesis), ama varsayımlar ve girdiler yayımlanmıyor ve sonuç her zaman yayımlayan üreticinin lehine.
 3. **Akademik literatür parçaları ayrı ayrı inceliyor.** $/TPS metriğinin kökeni (Anon et al. 1985; TPC), ölçek-büyütme ile ölçek-yaymanın fiyat/performansı (Barroso & Hölzle; Appuswamy 2013), kiralama/satın alma NPV'si (Walker 2009), işlem işleme maliyetinin ölçülmesi (Kossmann 2010) ve göç vakaları (Khadka 2014; Hayretci 2021; Brune & Helbig 2025). Hiçbiri personel, availability/DR, lisans ve storage'ı birlikte almıyor.
 4. **Bu durum projenin boşluk iddiasını destekliyor, ama dikkatli söylenmeli.** "Kimse yapmadı" değil, "yayımlanmış, bağımsız ve tekrarlanabilir biçimde yapılmadı" demek doğru (bkz. §7).
 5. **Taramanın modele en önemli katkısı bir uyarı.** IBM çalışmalarında bir mainframe işlemcisine karşılık 24–80 x86 çekirdeği gerekiyor; bizim köprümüz ise 1 z16 CP ≈ 2,2 R760 çekirdeği diyor. Farkın büyük kısmı **kullanım oranından** ve **üretim dışı ortamlardan** geliyor, saf işlemci hızından değil. Modelimiz bu iki şeyi açık parametre olarak taşımazsa sonuç, kaynak seçimine göre on kat oynayabilir (bkz. §3.3 ve §8).
@@ -268,31 +268,33 @@ Taramanın amacı yalnız kayıt değil; aşağıdakiler model ve tez için öne
 
 ## 10. Kaynaklar
 
+> Tam künyeler, erişim tarihleri ve yerel kopyalar: [`kaynaklar/KAYNAKCA.md`](../kaynaklar/KAYNAKCA.md). Bu bölümdeki köşeli parantezli anahtarlar oradaki anahtarlardır (2026-11-24 kaynak düzeltmesi).
+
 ### 10.1. Kullanılan kaynaklar ve bu dokümandaki yerleri
 
-- [ANON-1985] Anon et al. (J. Gray ve diğerleri), "A Measure of Transaction Processing Power", *Datamation*, 1985; Microsoft Research teknik raporu olarak yeniden yayımlandı. (§2.1) [PEER]
-- [GRAY-2005] J. Gray, "A Measure of Transaction Processing Power" üzerine 20 yıl sonrası değerlendirmesi, Microsoft Research, 2005. (§2.2) (yıllık %68 rakamı ikincil özetten; doğrulanmalı)
-- [TPC-PRICING] TPC Pricing Specification v2.9.0 — https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp (§2.3)
-- [POESS-2008] M. Poess, R. Nambiar, "Energy Cost, the Key Challenge of Today's Data Centers: A Power Consumption Analysis of TPC-C Results", PVLDB 1(2), 2008 — https://bibtex.github.io/VLDB-2008-PoessN.html (§2.4) [PEER]
-- [IBM-SHEDLETSKY-2008] J. Shedletsky, IBM, "Mainframe versus Distributed TCO Studies and Experiences" — https://public.dhe.ibm.com/software/zseries/pdf/sandiego/Mainframe_versus_Distributed_TCO_Studies_and_Experiences_-_John_Shedletsky.pdf (§3.1, §3.3) [VENDOR]
-- [IBM-EAGLE-2013] IBM CPO, "TCO Lessons Learned From Customer Engagements" v4, 2013 — https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf (§3.2, §3.3) [VENDOR]
-- [IBM-EAGLE-2012] IBM, "Tales from the Eagle TCO team", 2012 (x86 planında zaten kaynak; DR testi saatleri) [VENDOR]
-- [RUBIN-2012] Rubin Worldwide, "The Real Cost of Mainframe vs Distributed", 2012 (§3.4) [ANKET, üretici bağlantılı]
-- [IDC-2020] IDC, IBM z14 yükseltmesi iş değeri çalışması, 2020 (§3.5) [ANKET, IBM sponsorlu]
-- [KYNDRYL-2025] Kyndryl, State of Mainframe Modernization Survey, 2025 (§3.6) [ANKET]
-- [BMC-2024] BMC, Mainframe Survey, 2024 (§3.6) [ANKET]
-- [STONEBRAKER-1986] M. Stonebraker, "The Case for Shared Nothing", *IEEE Database Engineering Bulletin* 9(1), 1986 (§4.1) [PEER]
-- [BARROSO] L. A. Barroso, J. Clidaras, U. Hölzle, *The Datacenter as a Computer*, Morgan & Claypool, 2. baskı 2013 / 3. baskı 2018, Bölüm 3 ve 6 — özet: https://dirtysalt.github.io/html/the-datacenter-as-a-computer.html (§4.2) [PEER, kitap; sayılar ikincil özetten, birincil metinle doğrulanmalı]
-- [APPUSWAMY-2013] R. Appuswamy et al., "Scale-up vs Scale-out for Hadoop: Time to Rethink?", ACM SoCC 2013 (§4.3) [PEER]
-- [GUNTHER-USL] N. Gunther, Universal Scalability Law; PostgreSQL 9.1 uygulaması (§4.4)
-- [WALKER-2009] E. Walker, "The Real Cost of a CPU Hour", *IEEE Computer* 42(4):35–41, 2009, doi:10.1109/MC.2009.135 (§5.1) [PEER]
-- [KOSSMANN-2010] D. Kossmann, T. Kraska, S. Loesing, "An Evaluation of Alternative Architectures for Transaction Processing in the Cloud", ACM SIGMOD 2010 — https://cs.brown.edu/people/tkraska/pub/sigmod10-cloudbench.pdf (§5.2) [PEER]
-- [KHAJEH-2011] A. Khajeh-Hosseini et al., bulut göçü maliyet modelleme, arXiv:1105.0149 (§5.3) [PEER ön baskı]
-- [KHADKA-2014] R. Khadka et al., "How Do Professionals Perceive Legacy Systems and Software Modernization?", ICSE 2014 (§6.1) [PEER]
-- [HAYRETCI-2021] H. E. Hayretci, "Comparative Analysis of Case Studies on Legacy System Migration in Banking Industry", Yüksek Lisans Tezi, Boğaziçi Üniversitesi, 2021 — https://digitalarchive.library.bogazici.edu.tr/items/79e70d59-3bf7-4b36-8be2-a029880a191b (§6.2) [TEZ]
-- [BRUNE-2025] P. Brune, K. Helbig, "Managed Evolution of a Legacy Core Banking System: Case Study from a European Bank", itAIS 2025 — https://publications.hnu.de/5954/ (§6.3) [PEER]
-- [TSB-2018] PRA ve FCA, TSB Bank plc nihai bildirimleri, 2022 (2018 göç olayı) (§6.4) [RESMİ]
-- [MODINTEL-2025] Modernization Intel, Mainframe Migration Challenges, 2025 — `project_justification.md` kaynak listesinde (§6.5) [ANKET]
+- [Anon1985] Anon et al. (J. Gray ve diğerleri), "A Measure of Transaction Processing Power", *Datamation*, 1985; Microsoft Research teknik raporu olarak yeniden yayımlandı. (§2.1) [PEER]
+- [Gray2005] J. Gray, "A Measure of Transaction Processing Power" üzerine 20 yıl sonrası değerlendirmesi, Microsoft Research, 2005. (§2.2) (yıllık %68 rakamı ikincil özetten; doğrulanmalı)
+- [TPC-Pricing] TPC Pricing Specification v2.9.0 — https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp (§2.3)
+- [Poess2008] M. Poess, R. Nambiar, "Energy Cost, the Key Challenge of Today's Data Centers: A Power Consumption Analysis of TPC-C Results", PVLDB 1(2), 2008 — https://bibtex.github.io/VLDB-2008-PoessN.html (§2.4) [PEER]
+- [Shedletsky2008] J. Shedletsky, IBM, "Mainframe versus Distributed TCO Studies and Experiences" — https://public.dhe.ibm.com/software/zseries/pdf/sandiego/Mainframe_versus_Distributed_TCO_Studies_and_Experiences_-_John_Shedletsky.pdf (§3.1, §3.3) [VENDOR]
+- [IBM2013-TCOLessons] IBM CPO, "TCO Lessons Learned From Customer Engagements" v4, 2013 — https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf (§3.2, §3.3) [VENDOR]
+- [IBM2012-EagleTales] IBM, "Tales from the Eagle TCO team", 2012 (x86 planında zaten kaynak; DR testi saatleri) [VENDOR]
+- [Rubin2012] Rubin Worldwide, "The Real Cost of Mainframe vs Distributed", 2012 (§3.4) [ANKET, üretici bağlantılı]
+- [IDC2020-IBMZUpgrades] IDC, IBM z14 yükseltmesi iş değeri çalışması, 2020 (§3.5) [ANKET, IBM sponsorlu]
+- [Kyndryl2025-MFModernization] Kyndryl, State of Mainframe Modernization Survey, 2025 (§3.6) [ANKET]
+- [BMC2024-MFSurvey] BMC, Mainframe Survey, 2024 (§3.6) [ANKET]
+- [Stonebraker1986] M. Stonebraker, "The Case for Shared Nothing", *IEEE Database Engineering Bulletin* 9(1), 1986 (§4.1) [PEER]
+- [Barroso2018] L. A. Barroso, J. Clidaras, U. Hölzle, *The Datacenter as a Computer*, Morgan & Claypool, 2. baskı 2013 / 3. baskı 2018, Bölüm 3 ve 6 — özet: https://dirtysalt.github.io/html/the-datacenter-as-a-computer.html (§4.2) [PEER, kitap; sayılar ikincil özetten, birincil metinle doğrulanmalı]
+- [Appuswamy2013] R. Appuswamy et al., "Scale-up vs Scale-out for Hadoop: Time to Rethink?", ACM SoCC 2013 (§4.3) [PEER]
+- [Gunther2012-PGUSL] N. Gunther, Universal Scalability Law; PostgreSQL 9.1 uygulaması (§4.4)
+- [Walker2009] E. Walker, "The Real Cost of a CPU Hour", *IEEE Computer* 42(4):35–41, 2009, doi:10.1109/MC.2009.135 (§5.1) [PEER]
+- [Kossmann2010] D. Kossmann, T. Kraska, S. Loesing, "An Evaluation of Alternative Architectures for Transaction Processing in the Cloud", ACM SIGMOD 2010 — https://cs.brown.edu/people/tkraska/pub/sigmod10-cloudbench.pdf (§5.2) [PEER]
+- [KhajehHosseini2011] A. Khajeh-Hosseini et al., bulut göçü maliyet modelleme, arXiv:1105.0149 (§5.3) [PEER ön baskı]
+- [Khadka2014] R. Khadka et al., "How Do Professionals Perceive Legacy Systems and Software Modernization?", ICSE 2014 (§6.1) [PEER]
+- [Hayretci2021] H. E. Hayretci, "Comparative Analysis of Case Studies on Legacy System Migration in Banking Industry", Yüksek Lisans Tezi, Boğaziçi Üniversitesi, 2021 — https://digitalarchive.library.bogazici.edu.tr/items/79e70d59-3bf7-4b36-8be2-a029880a191b (§6.2) [TEZ]
+- [Brune2025] P. Brune, K. Helbig, "Managed Evolution of a Legacy Core Banking System: Case Study from a European Bank", itAIS 2025 — https://publications.hnu.de/5954/ (§6.3) [PEER]
+- [PRA2022-TSB] PRA ve FCA, TSB Bank plc nihai bildirimleri, 2022 (2018 göç olayı) (§6.4) [RESMİ]
+- [ModIntel2025] Modernization Intel, Mainframe Migration Challenges, 2025 — `project_justification.md` kaynak listesinde (§6.5) [ANKET]
 
 ### 10.2. İncelenip alınmayan kaynaklar
 

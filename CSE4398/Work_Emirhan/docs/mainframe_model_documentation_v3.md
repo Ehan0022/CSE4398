@@ -155,19 +155,19 @@ Yıllık mod (workload simülasyonu):
 
 ### 3.1. Yapı
 
-IBM z16 A01 317 kapasite seviyesi sunar: 7xx serisinde 1–200 tam-hız CP (200 seviye) ve ilk 39 CP için üç alt-kapasite serisi (4xx, 5xx, 6xx; 3 × 39 = 117 seviye) [SG24-8950]. 99'un üzerindeki CP sayıları iki karakterli kodla yazılır: A0 = 100, B0 = 110, …, I0 = 180, J0 = 190, K0 = 200 [EXHIBIT]. Fiziksel özellikler Max39, Max82, Max125, Max168 ve Max200'dür.
+IBM z16 A01 317 kapasite seviyesi sunar: 7xx serisinde 1–200 tam-hız CP (200 seviye) ve ilk 39 CP için üç alt-kapasite serisi (4xx, 5xx, 6xx; 3 × 39 = 117 seviye) [IBM-SG24-8950]. 99'un üzerindeki CP sayıları iki karakterli kodla yazılır: A0 = 100, B0 = 110, …, I0 = 180, J0 = 190, K0 = 200 [IBM2025-MSU-Exhibit]. Fiziksel özellikler Max39, Max82, Max125, Max168 ve Max200'dür.
 
 Kademe tablosu kodun içinde değil, ayrı bir veri dosyasındadır: `data/z16_a01_capacity.csv`. Her satır: model, seri, CP sayısı, PCI, MSU, LSPR Low/Average/High ve PCI ile MSU'nun kaynağı. Tablo, ham IBM verilerinden `src/tools/build_z16_capacity_table.py` ile üretilir; ham dosyalar `data/raw/` altındadır. Böylece her değer kaynağıyla satır satır karşılaştırılabilir ve tablo yeniden üretilebilir.
 
 ### 3.2. Doğrudan Resmî Kaynaktan Gelen Değerler (120 kademe)
 
-4xx, 5xx ve 6xx serilerinin 1–39 CP'lik tüm satırları ile 3931-701, 702, 703 satırları IBM'in LSPR ITRR tablosundan alındı [LSPR]: PCI, MSU ve Low/Average/High RNI oranları (System z9 2094-701 = 1,00 bazlı, çok imajlı ölçüm; sayfa notu "current as of July 2026").
+4xx, 5xx ve 6xx serilerinin 1–39 CP'lik tüm satırları ile 3931-701, 702, 703 satırları IBM'in LSPR ITRR tablosundan alındı [IBM-LSPR-ITRR]: PCI, MSU ve Low/Average/High RNI oranları (System z9 2094-701 = 1,00 bazlı, çok imajlı ölçüm; sayfa notu "current as of July 2026").
 
 PCI ("Processor Capacity Index"), IBM'in "MIPS" için kullandığı addır ve LSPR oranının sabit bir katıdır: bilinen satırlarda ortalama **559,8 PCI / LSPR birimi**.
 
 ### 3.3. Türetilen Değerler: 7xx, 4–200 CP (197 kademe) [DERIVED]
 
-Bu kademeler için IBM'in resmî MSU değerleri mevcut [EXHIBIT], ancak PCI değerlerine kamuya açık LSPR sayfasından erişilemedi (sayfa erişimde 3931-703 satırında kesiliyor). PCI bu yüzden MSU'dan türetildi:
+Bu kademeler için IBM'in resmî MSU değerleri mevcut [IBM2025-MSU-Exhibit], ancak PCI değerlerine kamuya açık LSPR sayfasından erişilemedi (sayfa erişimde 3931-703 satırında kesiliyor). PCI bu yüzden MSU'dan türetildi:
 
 - Bilinen 120 satırda **MSU/PCI oranı PCI'nin düzgün, azalan bir fonksiyonu**: küçük kademelerde ~0,125'ten başlayıp ~33.000 PCI'dan itibaren **0,11723**'te sabitleniyor (3931-632: 0,117222; 3931-639: 0,117228).
 - Bu oran eğrisi bilinen satırlardan kurulur (5 noktalı hareketli ortalama + doğrusal ara değerleme; 33.000 PCI üstünde sabit) ve PCI = MSU / oran(PCI) sabit nokta iterasyonuyla çözülür.
@@ -177,7 +177,7 @@ Bu kademeler için IBM'in resmî MSU değerleri mevcut [EXHIBIT], ancak PCI değ
 | Test | Sonuç |
 |---|---|
 | Birini dışarıda bırak (bilinen 120 satır) | maks. hata %1,07, ortalama %0,09 |
-| 3931-7K0 (200-way), bağımsız kaynak [STINE]: 215.089 PCI | Türetilen 215.099 PCI, fark **%0,004** |
+| 3931-7K0 (200-way), bağımsız kaynak [Stine2022]: 215.089 PCI | Türetilen 215.099 PCI, fark **%0,004** |
 | Önceki sürümdeki (z/VM LSPR tablosundan alınmış) 7xx oranları | 704: 14,73 / 14,71 · 718: 54,02 / 54,06 · 726: 72,88 / 72,88 · 732: 86,89 / 86,89 |
 
 Yöntem, IBM'in MSU derecelendirmesinin büyük kademelerde kapasiteyle orantılı olmasına dayanır. 7K0 doğrulaması bunun 200-way'e kadar geçerli olduğunu gösteriyor. 7xx 4–200 için LSPR Low/High oranları türetilmedi (tabloda boş).
@@ -195,7 +195,7 @@ LSPR bütün nesilleri aynı baza (System z9 2094-701 = 1,00) göre ölçer ve P
 
 ### 4.2. Benchmark Veri Noktaları
 
-IBM Redpaper REDP-5320 (CICS TS V5.3, z13) [REDP] ve aynı sistemlerin PCI'si [LSPR-z13]:
+IBM Redpaper REDP-5320 (CICS TS V5.3, z13) [Burgess2016-REDP5320] ve aynı sistemlerin PCI'si [IBM-LSPR-zOS22]:
 
 | Sistem | CP | TPS | PCI | LSPR (avg) | TPS / PCI |
 |---|---|---|---|---|---|
@@ -228,7 +228,7 @@ Tam-hız CP eşdeğeri (bilgi amaçlı) = PCI / 2.253 (3931-701).
 
 #### 4.4.1. Sorun: benchmark işlemi çok hafif
 
-REDP-5320 benchmark'ının işlem profili raporun kendi sayaçlarından çıkarıldı (`data/raw/redp5320_workload_profile.csv`) [REDP-PROFILE]:
+REDP-5320 benchmark'ının işlem profili raporun kendi sayaçlarından çıkarıldı (`data/raw/redp5320_workload_profile.csv`) [Burgess2016-REDP5320]:
 
 | Ölçü (18 CP, 174.624 TPS) | Değer | İşlem başına |
 |---|---|---|
@@ -239,7 +239,7 @@ REDP-5320 benchmark'ının işlem profili raporun kendi sayaçlarından çıkar�
 
 26 CP noktası aynı profili verir (4,81 okuma, 0,038 güncelleme, 93,3 µs). İşlem 1 STARTBROWSE + 5 READNEXT'tir. Veri, bellekte tutulan bir CICS shared data table'dadır (arkasında VSAM KSDS). Db2, DRDA, Java ve zIIP yoktur. DASD I/O'su neredeyse sıfırdır ve yanıt süresi raporlanmamıştır.
 
-Bu yüzden köprünün ölçtüğü "1 işlem", gerçekçi bir Db2 OLTP işleminden çok daha hafiftir. Gerçek bir CICS-Db2 işleminin yalnızca Db2 içindeki CPU süresi bir sahada 1,25–1,32 ms ölçülmüştür [CATTERALL-2019], yani REDP işleminin ~15 katı. Önceki sürüm bu farkı görmüyordu: kapasiteyi bu hafif işlemle hesaplarken latency ve storage için işlem başına 10 disk I/O varsayıyordu. Bu iki varsayım birbiriyle tutarsızdı ve mainframe kapasitesini olduğundan yüksek gösteriyordu. Değerlendirme #1'deki "TPS iki tarafta ortak bir birim değil" tehdidinin mainframe yarısı budur.
+Bu yüzden köprünün ölçtüğü "1 işlem", gerçekçi bir Db2 OLTP işleminden çok daha hafiftir. Gerçek bir CICS-Db2 işleminin yalnızca Db2 içindeki CPU süresi bir sahada 1,25–1,32 ms ölçülmüştür [Catterall2019], yani REDP işleminin ~15 katı. Önceki sürüm bu farkı görmüyordu: kapasiteyi bu hafif işlemle hesaplarken latency ve storage için işlem başına 10 disk I/O varsayıyordu. Bu iki varsayım birbiriyle tutarsızdı ve mainframe kapasitesini olduğundan yüksek gösteriyordu. Değerlendirme #1'deki "TPS iki tarafta ortak bir birim değil" tehdidinin mainframe yarısı budur.
 
 #### 4.4.2. Çözüm: bileşimli profil
 
@@ -254,10 +254,10 @@ IOPS    = sync_io + yazma × 0,5                   (deferred write'lar storage'a
 
 | Parametre | Değer | Dayanak |
 |---|---|---|
-| CPU_US_TM_BASE | 85,9 µs | REDP işleminin kendisi; transaction yöneticisi + küçük bellek okumaları [REDP-PROFILE] |
+| CPU_US_TM_BASE | 85,9 µs | REDP işleminin kendisi; transaction yöneticisi + küçük bellek okumaları [Burgess2016-REDP5320] |
 | CPU_US_PER_SQL_READ | 30 µs | [ASSUME] tekil/indeksli (nokta) SELECT; 15–60 taranır |
 | RANGE_READ_WEIGHT | 3,65 | F kararı (Emirhan, 2026-11-16): aralık SELECT'i nokta SELECT'inin 3,4–3,9 katı [DERIVED, VONNG-PERF alt testleri; Değ. #8]; ortak parametre, aralıkta 3,4–3,9 |
-| CPU_US_PER_SQL_WRITE | 70 µs | CICS programında tek INSERT ~68 µs [CATTERALL-2012] |
+| CPU_US_PER_SQL_WRITE | 70 µs | CICS programında tek INSERT ~68 µs [Catterall2012] |
 | GETPAGES_PER_SQL_READ | 4 | [ASSUME] indeks seviyeleri + veri sayfası |
 | BP_HIT_RATIO | 0,95 | [ASSUME] OLTP buffer pool isabeti; 0,90–0,99 taranır |
 | LOG_SYNC_IO_PER_COMMIT | 1 | [ASSUME] commit'te senkron log yazımı (dual log paralel) |
@@ -269,14 +269,14 @@ Bütün CPU değerleri z13 dönemine aittir. w bir **oran** olduğu için nesild
 
 | Profil | Bileşim | w | sync I/O | IOPS | Tek z16 (7K0) tavanı | Kaynak |
 |---|---|---|---|---|---|---|
-| redp_light | Benchmark işlemi (Db2 yok, zIIP yok) | 1,00 | 0,047 | 0,109 | 1.536.908 TPS | [REDP-PROFILE], ölçülmüş |
+| redp_light | Benchmark işlemi (Db2 yok, zIIP yok) | 1,00 | 0,047 | 0,109 | 1.536.908 TPS | [Burgess2016-REDP5320], ölçülmüş |
 | tpcb_like | 1 SELECT + 4 yazma (debit-credit) | 4,61 | 1,20 | 3,20 | 370.521 TPS | TPC-B bileşimi |
 | **oltp_rw** (varsayılan) | 10 nokta + 4 aralık SELECT + 4 yazma + 1 commit | 12,85 | 3,80 | 5,80 | ~132.700 TPS | sysbench oltp_read_write bileşimi (F öncesi 14 eşit okuma: w 9,15, 186.651 TPS) |
-| oltp_heavy | 30 SELECT + 6 yazma | 16,37 | 7,00 | 10,00 | 104.338 TPS | ~1,3 ms CPU'luk saha ölçümünün büyüklüğü [CATTERALL-2019] |
+| oltp_heavy | 30 SELECT + 6 yazma | 16,37 | 7,00 | 10,00 | 104.338 TPS | ~1,3 ms CPU'luk saha ölçümünün büyüklüğü [Catterall2019] |
 
 Varsayılan profil olarak oltp_rw seçildi, çünkü sysbench oltp_read_write x86 tarafında (MySQL, PostgreSQL) en yaygın ölçülen OLTP bileşimidir. Clustered taraf aynı bileşimi kendi ölçümleriyle karşılayabilir ve böylece TPS iki tarafta aynı işi ifade eder. Kullanıcı `--sql-reads` ve `--sql-writes` ile kendi bileşimini tanımlayabilir.
 
-**Makullük kontrolü:** IBM, 2017'de z14 için "günde 12 milyardan fazla şifreli işlem" (~139K TPS) duyurdu [IBM-Z14-PR]. z14'ün en büyük yapılandırması yaklaşık 160K PCI kabul edilirse (z16 200-way'in z15'e göre +%17 olmasından geriye doğru kaba tahmin, doğrulanmalı), bu kapasite REDP işleminden ~1,27M ham TPS eder. Bu durumda IBM'in işlemi w ≈ 9'a karşılık gelir; varsayılan oltp_rw'nin F öncesi değerine (9,15) yakın, F sonrası değerinin (12,85) biraz altındadır. İşlem tanımı açıklanmadığı ve z14 PCI'si tahmin olduğu için bu yalnızca büyüklük mertebesi teyididir.
+**Makullük kontrolü:** IBM, 2017'de z14 için "günde 12 milyardan fazla şifreli işlem" (~139K TPS) duyurdu [AmwalAlGhad2017-z14]. z14'ün en büyük yapılandırması yaklaşık 160K PCI kabul edilirse (z16 200-way'in z15'e göre +%17 olmasından geriye doğru kaba tahmin, doğrulanmalı), bu kapasite REDP işleminden ~1,27M ham TPS eder. Bu durumda IBM'in işlemi w ≈ 9'a karşılık gelir; varsayılan oltp_rw'nin F öncesi değerine (9,15) yakın, F sonrası değerinin (12,85) biraz altındadır. İşlem tanımı açıklanmadığı ve z14 PCI'si tahmin olduğu için bu yalnızca büyüklük mertebesi teyididir.
 
 #### 4.4.4. Etkisi ve sınırlamalar
 
@@ -351,8 +351,8 @@ Availability, mainframe'de tek bir sayı değil, katmanlı bir mimari karardır:
 
 Önceki sürüm her topolojiye iki "nine" değeri atıyordu: ITIC anketinden bir alt sınır ve IBM Redbook SG24-8446'dan bir tasarım hedefi. Planlı kesinti için ×10 çarpanı uyguluyordu. Bu yaklaşım iki nedenle bırakıldı:
 
-- **ITIC rakamları sunucunun kesintisini ölçer, hizmetin değil.** ITIC 2023'e göre z16 kullanıcılarının %96'sı 9 nine, yani sunucu başına yılda 31,56 ms plansız kesinti bildiriyor. Bu rakamın kapsamı sunucu donanımının kendi arızalarıdır [ITIC-2023]. Lenovo'nun güncel x86 sunucuları da aynı ankette 8 nine alıyor [ITIC-2024]. Hizmeti asıl kesen olaylar ise veri merkezi düzeyindedir: güç, ağ, insan hatası ve planlı bakım [UPTIME-2025]. Topolojiler de tam bu olaylara karşı kurulur.
-- **SG24-8446 topolojilere "nine" değeri atamaz.** Güncel baskı dört deseni (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıklarını tanımlar; desen başına availability yüzdesi vermez [SG24-8446]. Önceki sürümdeki "M1 ~6 nine … M4 ~10 nine" değerleri kaynakla desteklenmiyordu.
+- **ITIC rakamları sunucunun kesintisini ölçer, hizmetin değil.** ITIC 2023'e göre z16 kullanıcılarının %96'sı 9 nine, yani sunucu başına yılda 31,56 ms plansız kesinti bildiriyor. Bu rakamın kapsamı sunucu donanımının kendi arızalarıdır [ITIC2023-IBMZ]. Lenovo'nun güncel x86 sunucuları da aynı ankette 8 nine alıyor [TechChannel2024-ITIC]. Hizmeti asıl kesen olaylar ise veri merkezi düzeyindedir: güç, ağ, insan hatası ve planlı bakım [Uptime2025-PR]. Topolojiler de tam bu olaylara karşı kurulur.
+- **SG24-8446 topolojilere "nine" değeri atamaz.** Güncel baskı dört deseni (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıklarını tanımlar; desen başına availability yüzdesi vermez [IBM-SG24-8446]. Önceki sürümdeki "M1 ~6 nine … M4 ~10 nine" değerleri kaynakla desteklenmiyordu.
 
 Yeni yöntem kesintiyi, **kesinti doğuran olayların sıklığı ile topolojinin bu olaylardan kurtarma süresinin çarpımı** olarak hesaplar. Bu yöntemin üç avantajı var. Kurtarma süreleri yayımlanmış GDPS değerlerinden gelir. Kullanıcının RTO girdisi doğrudan aynı parametreye bağlanır. Aynı denklem, kendi kurtarma süreleriyle clustered tarafa da uygulanabilir; bu, iki tarafın aynı ölçüyle karşılaştırılmasını sağlar.
 
@@ -361,13 +361,13 @@ Yeni yöntem kesintiyi, **kesinti doğuran olayların sıklığı ile topolojini
 | Kod | SG24-8446 deseni | Yapı | GDPS | Frame (birincil + DR) | Storage kopyası | RPO (tek site kaybı) | Kurtarma süresi (mid, aralık) |
 |---|---|---|---|---|---|---|---|
 | M1 | Reliable base | Tek CPC üzerinde sysplex (ICF); tek site | yok | 1 | 1 | 24 saat (günlük yedek) [ASSUME] | Alternatif site yok: hizmet olay süresince durur |
-| M2 | Failover capable | Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; geçiş otomasyonsuz | yok | 1 + 1 | 2 | 0 (senkron) | 2 saat (1–4 saat) [SG24-6374, SG24-8446] |
-| M3 | Fault tolerant | M2 + GDPS Metro Global otomasyonu ve HyperSwap; sysplex iki siteye yayılır (çok siteli iş yükü); uzak bölgede Global Mirror kopyası | Metro Global | 1 + 1 | 4 | 0 (Metro Mirror); bölgesel felakette 2–5 sn [GDPS-2026] | 2 dk (1–5 dk) [GDPS-2026] |
-| M4 | Adaptive continuity | İki coğrafi site, GDPS Continuous Availability, yazılım replikasyonu | CA | 1 + 1 | 4 | 0–5 sn, model 5 sn (yazılım replikasyonu) [GDPS-2026] | 30 sn (20–60 sn) [GDPS-2026] |
+| M2 | Failover capable | Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; geçiş otomasyonsuz | yok | 1 + 1 | 2 | 0 (senkron) | 2 saat (1–4 saat) [IBM-SG24-6374, IBM-SG24-8446] |
+| M3 | Fault tolerant | M2 + GDPS Metro Global otomasyonu ve HyperSwap; sysplex iki siteye yayılır (çok siteli iş yükü); uzak bölgede Global Mirror kopyası | Metro Global | 1 + 1 | 4 | 0 (Metro Mirror); bölgesel felakette 2–5 sn [Cook2026-GDPS] | 2 dk (1–5 dk) [Cook2026-GDPS] |
+| M4 | Adaptive continuity | İki coğrafi site, GDPS Continuous Availability, yazılım replikasyonu | CA | 1 + 1 | 4 | 0–5 sn, model 5 sn (yazılım replikasyonu) [Cook2026-GDPS] | 30 sn (20–60 sn) [Cook2026-GDPS] |
 
 RPO, tek bir sitenin (veri merkezinin) kaybı için tanımlıdır; bu, saha olayı parametrelerinin de tanımıdır. Bölgesel felaket (metro mesafedeki iki sitenin birlikte kaybı) ayrı bir senaryodur: M2 buna karşı korumaz (RPO son yedek kadar), M3 Global Mirror bacağıyla 2–5 sn, M4 0–5 sn kaybeder. Model bölgesel felaketi ayrıca hesaplamaz (Bölüm 6.8).
 
-Saf tek-imaj (sysplex'siz) kurulum production'da temsil edici olmadığı için dışarıda bırakıldı. Kurtarma süreleri IBM GDPS geliştirme ekibinin 2026 sunumundan alındı: GDPS Metro'da RTO çok-siteli iş yükünde ~2 dakika, tek siteli iş yükünde 1 saatin altında; M3 çok siteli iş yükü olarak modellenir, çünkü karşılığı olan x86 X3 de iki sitede etkin bir kümedir ve otomatik geçişle 1 / 2 / 5 dk alır (Değerlendirme #10 eşitlik düzeltmesi; önceki sürüm tek siteli iş yükünün 2 / 30 / 60 dk değerini kullanıyordu ve bu, %99,999 + RPO 0 + RTO ≤ 30 dk hedefinde mainframe'i x86 kurulabilirken kurulamaz gösteriyordu). Çok siteli iş yükü ikinci sitede düşük kapasiteli etkin z/OS imajları gerektirir; bunların küçük kalıcı MSU faturası, CBU kuralındaki DR faturası gibi ihmal edilir (Bölüm 6.7). GDPS CA'da 20–30 saniye (portföy slaytında 60 saniyenin altı) [GDPS-2026]. GDPS'siz kurtarma için SG24-8446 "2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister" der; SG24-6374 depolama replikasyonlu uzak sitede RTO'yu "bir veya daha fazla saat" olarak verir.
+Saf tek-imaj (sysplex'siz) kurulum production'da temsil edici olmadığı için dışarıda bırakıldı. Kurtarma süreleri IBM GDPS geliştirme ekibinin 2026 sunumundan alındı: GDPS Metro'da RTO çok-siteli iş yükünde ~2 dakika, tek siteli iş yükünde 1 saatin altında; M3 çok siteli iş yükü olarak modellenir, çünkü karşılığı olan x86 X3 de iki sitede etkin bir kümedir ve otomatik geçişle 1 / 2 / 5 dk alır (Değerlendirme #10 eşitlik düzeltmesi; önceki sürüm tek siteli iş yükünün 2 / 30 / 60 dk değerini kullanıyordu ve bu, %99,999 + RPO 0 + RTO ≤ 30 dk hedefinde mainframe'i x86 kurulabilirken kurulamaz gösteriyordu). Çok siteli iş yükü ikinci sitede düşük kapasiteli etkin z/OS imajları gerektirir; bunların küçük kalıcı MSU faturası, CBU kuralındaki DR faturası gibi ihmal edilir (Bölüm 6.7). GDPS CA'da 20–30 saniye (portföy slaytında 60 saniyenin altı) [Cook2026-GDPS]. GDPS'siz kurtarma için SG24-8446 "2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister" der; SG24-6374 depolama replikasyonlu uzak sitede RTO'yu "bir veya daha fazla saat" olarak verir.
 
 ### 6.3. Formül
 
@@ -392,20 +392,20 @@ Her parametre low / mid / high aralığıdır. **low** mainframe lehine uçtur, 
 
 | Grup | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|---|
-| Saha olayı | λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | Operatörlerin %53'ü son 3 yılda kesinti bildirdi; bu, yılda ~0,25 olaya karşılık gelir (üst uç). Olayların %9'u ciddi veya ağır (alt uç) [UPTIME-2025] |
+| Saha olayı | λ_saha (olay/yıl) | 0,05 | 0,15 | 0,25 | Operatörlerin %53'ü son 3 yılda kesinti bildirdi; bu, yılda ~0,25 olaya karşılık gelir (üst uç). Olayların %9'u ciddi veya ağır (alt uç) [Uptime2025-PR] |
 | | d_kısa (saat) | 1 | 2 | 4 | [ASSUME] |
-| | p_uzun | 0,08 | 0,15 | 0,30 | Kamuya yansıyan kesintilerin 24 saatten uzun süren payı: 2017'de %8, 2021'de ~%30 [UPTIME-2022] |
+| | p_uzun | 0,08 | 0,15 | 0,30 | Kamuya yansıyan kesintilerin 24 saatten uzun süren payı: 2017'de %8, 2021'de ~%30 [DCF2022-Uptime] |
 | | d_uzun (saat) | 24 | 48 | 72 | Üst uç SG24-8446'nın GDPS'siz DR aralığının (2–72 saat) üst sınırı |
-| | D_cpc (sn/yıl) | 0,03 | 0,32 | 3,15 | z16 9 nine / IBM ortalaması 8 nine / z13–z15 7 nine [ITIC-2023] |
-| Kurtarma süresi | T_rec, M2 = elle geçiş karar süresi + teknik geçiş | 1 saat (45 + 15 dk) | 2 saat (90 + 30 dk) | 4 saat (180 + 60 dk) | Toplam: [SG24-6374] "bir veya daha fazla saat"; [SG24-8446] GDPS'siz < 2 saat yok. Ayrıştırma [ASSUME]: karar süresi (felaketin ilanı, onay zinciri, uygulama yönlendirme) iki tarafta ortak parametredir (`MANUAL_FAILOVER_DECISION_MINUTES`, ortak modül); teknik süre platforma özgüdür |
-| | T_rec, M3 | 1 dk | 2 dk | 5 dk | [GDPS-2026] çok siteli iş yükü ~2 dk; x86 X3 ile aynı aralık (Değ. #10) |
-| | T_rec, M4 | 20 sn | 30 sn | 60 sn | [GDPS-2026] |
+| | D_cpc (sn/yıl) | 0,03 | 0,32 | 3,15 | z16 9 nine / IBM ortalaması 8 nine / z13–z15 7 nine [ITIC2023-IBMZ] |
+| Kurtarma süresi | T_rec, M2 = elle geçiş karar süresi + teknik geçiş | 1 saat (45 + 15 dk) | 2 saat (90 + 30 dk) | 4 saat (180 + 60 dk) | Toplam: [IBM-SG24-6374] "bir veya daha fazla saat"; [IBM-SG24-8446] GDPS'siz < 2 saat yok. Ayrıştırma [ASSUME]: karar süresi (felaketin ilanı, onay zinciri, uygulama yönlendirme) iki tarafta ortak parametredir (`MANUAL_FAILOVER_DECISION_MINUTES`, ortak modül); teknik süre platforma özgüdür |
+| | T_rec, M3 | 1 dk | 2 dk | 5 dk | [Cook2026-GDPS] çok siteli iş yükü ~2 dk; x86 X3 ile aynı aralık (Değ. #10) |
+| | T_rec, M4 | 20 sn | 30 sn | 60 sn | [Cook2026-GDPS] |
 | Planlı kesinti | λ_planlı (olay/yıl) | 0,25 | 0,5 | 1 | [ASSUME] 4 yılda bir nesil geçişi ile yılda bir kesintili işlem arası |
 | | T_planlı, M1 | 2 saat | 4 saat | 8 saat | [ASSUME] tek CPC durur |
 | | T_planlı, M2 | 15 dk | 30 dk | 60 dk | [ASSUME] planlı, elle geçiş |
 | | T_planlı, M3 | 30 sn | 2 dk | 10 dk | [ASSUME] GDPS ile planlı site geçişi, çok siteli iş yükü; x86 X3–X4 ile aynı aralık (Değ. #10) |
-| | T_planlı, M4 | 20 sn | 30 sn | 60 sn | Bir banka örneğinde planlı kesinti "4 saatten 30 saniyenin altına" indi [GDPS-CA-2021] |
-| Platform | u (geçişin maskeleyemediği pay, ortak) | 0,05 | 0,10 | 0,20 | [ASSUME] Nitel dayanak: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [YUAN-2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [GUNAWI-2016]. Sayısal kaynak yok; %99,999 sınırı bu parametreye hassastır (Bölüm 7.12) |
+| | T_planlı, M4 | 20 sn | 30 sn | 60 sn | Bir banka örneğinde planlı kesinti "4 saatten 30 saniyenin altına" indi [Aubert2021-GDPSCA] |
+| Platform | u (geçişin maskeleyemediği pay, ortak) | 0,05 | 0,10 | 0,20 | [ASSUME] Nitel dayanak: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [Yuan2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [Gunawi2016]. Sayısal kaynak yok; %99,999 sınırı bu parametreye hassastır (Bölüm 7.12) |
 
 Saha olayı parametreleri (λ_saha, d_kısa, d_uzun, p_uzun) ortak modüldedir ve x86 tarafında aynı değerlerle kullanılır: iki platform aynı veri merkezinde durur. Uptime verisi veri merkezi operatörleri genelindedir; mainframe'e özgü değildir. Mainframe veri merkezlerinin ortalamadan daha iyi işletildiği düşünülebilir. Bu yüzden düşük uç (yalnızca ciddi olaylar) ayrıca taranır.
 
@@ -431,7 +431,7 @@ Tek grup salınımı (diğerleri mid):
 Yorum:
 
 - **Topolojiler arasındaki fark mertebe düzeyindedir.** Yıllık kesinti M1'den M2'ye ~6 kat, M2'den M3'e ~25 kat (çok siteli iş yükü, Değ. #10), M3'ten M4'e ~4 kat azalır. M1'de 3,3 saat olan kesinti M4'te ~20 saniyeye iner.
-- **M1'de kesintinin çoğu planlıdır** (mid'de 3,3 saatin 2 saati). Bu, Precisely'nin "kesintinin büyük kısmı planlıdır" gözlemiyle aynı yöndedir [PRECISELY]; ancak model bu payı bir çarpanla vermez, olaylardan türetir. M1'in availability'sini en çok planlı kesinti varsayımı oynatır.
+- **M1'de kesintinin çoğu planlıdır** (mid'de 3,3 saatin 2 saati). Bu, Precisely'nin "kesintinin büyük kısmı planlıdır" gözlemiyle aynı yöndedir [Precisely-HA]; ancak model bu payı bir çarpanla vermez, olaylardan türetir. M1'in availability'sini en çok planlı kesinti varsayımı oynatır.
 - **CPC donanım arızası hiçbir topolojide belirleyici değildir.** Yılda 0,3 saniye, M1'in toplam kesintisinin on binde birinden azdır. Mainframe'in "9 nine" donanım güvenilirliği, hizmet availability'sinin belirleyicisi değildir; belirleyici olan site ve kurtarma mimarisidir.
 - **Kurtarma süresi M1'i etkilemez** (alternatif site yok). M2–M4'te etkisi, saha olayı ve planlı kesinti gruplarından küçüktür.
 
@@ -454,7 +454,7 @@ Bir topoloji üç koşulu da sağlıyorsa aday olur:
 | RTO ≤ 1 dk | M4 | $1.489.591 |
 | RPO = 0 ve RTO ≤ 1 dk | infeasible | — |
 
-Son satır gerçek bir sınırı gösterir: saniye düzeyinde kurtarma yalnızca GDPS CA'nın yazılım replikasyonuyla elde edilir ve o da asenkron olduğu için RPO 0 vermez [GDPS-2026].
+Son satır gerçek bir sınırı gösterir: saniye düzeyinde kurtarma yalnızca GDPS CA'nın yazılım replikasyonuyla elde edilir ve o da asenkron olduğu için RPO 0 vermez [Cook2026-GDPS].
 
 ### 6.7. Topolojinin maliyete etkisi
 
@@ -469,11 +469,11 @@ Topoloji beş maliyet kalemini etkiler:
 
 Yedekleme topolojiden bağımsızdır: her topolojide yedeğin iki kopyası iki ayrı sitededir (Bölüm 8.10).
 
-**DR frame'i ve CBU.** DR CPC'si Capacity BackUp (CBU) ile alınır. CBU kaydı, kurulu ama kapalı işlemcileri yalnızca mikrokod (LICCC) ile açar; donanımın (drawer, bellek, I/O) önceden kurulu olması gerekir. Kayıt 1–5 yıllıktır, yıl başına bir ücretsiz 10 günlük test içerir (en fazla 15 test) ve tek bir 90 günlük gerçek aktivasyon hakkı verir [CBU]. Yazılım açısından en önemli kural şudur: *"Software charges for the designated CBU machine are based on its permanent configuration."* DR makinesinin IBM yazılım faturası yalnızca küçük kalıcı kapasitesine göre kesilir. Model bu küçük faturayı ihmal eder ve yazılımı yalnızca birincil frame'in MSU'su üzerinden hesaplar (önceki sürümdeki M3 ×1,15 ve M4 ×1,30 yazılım primi kaldırıldı).
+**DR frame'i ve CBU.** DR CPC'si Capacity BackUp (CBU) ile alınır. CBU kaydı, kurulu ama kapalı işlemcileri yalnızca mikrokod (LICCC) ile açar; donanımın (drawer, bellek, I/O) önceden kurulu olması gerekir. Kayıt 1–5 yıllıktır, yıl başına bir ücretsiz 10 günlük test içerir (en fazla 15 test) ve tek bir 90 günlük gerçek aktivasyon hakkı verir [IBM-SC28-7025]. Yazılım açısından en önemli kural şudur: *"Software charges for the designated CBU machine are based on its permanent configuration."* DR makinesinin IBM yazılım faturası yalnızca küçük kalıcı kapasitesine göre kesilir. Model bu küçük faturayı ihmal eder ve yazılımı yalnızca birincil frame'in MSU'su üzerinden hesaplar (önceki sürümdeki M3 ×1,15 ve M4 ×1,30 yazılım primi kaldırıldı).
 
 CBU'nun fiyatı yayımlanmaz. DR frame'inin bedeli bu yüzden tam bir frame'in oranı olarak tanımlanır: `DR_FRAME_COST_FRACTION` = 0,50 [ASSUME], aralık 0,30–1,00. Oranın mantığı şudur. DR frame'inde fiziksel donanımın tamamı kuruludur, ama kapasitenin yalnızca küçük bir kısmı kalıcı olarak satın alınır, geri kalanı CBU kaydıdır. 1,00 değeri CBU kullanmayan, tam kapasiteli bir aynayı temsil eder ve aralığın üst ucudur. Enerji tam sayılır, çünkü DR frame'i açık ve replikasyonu çalıştırıyordur (tutucu).
 
-**GDPS ayrı kalem.** GDPS, lisanslı otomasyon kodu ile IBM uygulama ve destek hizmetlerinden oluşan bir tekliftir. Fiyatı MSU'ya değil, otomatikleştirdiği sistem, sysplex ve site kapsamına bağlıdır ve yayımlanmaz [GDPS-PRICE]. Model bu yüzden GDPS'i kapasiteden bağımsız, sabit bir aylık kalem olarak alır: M3 (Metro Global) $50.000, M4 (CA) $100.000 [ASSUME]. Orta değerler, önceki sürümdeki yazılım priminin 10K TPS referans noktasındaki karşılığına (M3: 0,15 × $340K ≈ $51K; M4: 0,30 × $340K ≈ $102K) eşitlendi. Bu bir kalibrasyon değildir: önceki prim de kaynaksız bir varsayımdı ve bağımsız bir GDPS fiyatı bulunamadı. Eşitlemenin tek amacı, yapı değişikliğinin (yazılıma oranlı prim yerine sabit kalem) referans noktadaki maliyet seviyesini kaydırmamasıdır; GDPS'in payı artık hacim arttıkça küçülür. Belirsizlik geniş bir aralıkla temsil edilir. Seviye `GDPS_COST_LEVEL` ile 0,5–2,0 aralığında taranır. GDPS'in gerektirdiği NetView ve System Automation for z/OS MSU tabanlı ürünlerdir ve bu sabit kaleme dahil sayılır (basitleştirme). M2'deki HyperSwap için gereken Copy Services Manager ayrıca fiyatlanmaz.
+**GDPS ayrı kalem.** GDPS, lisanslı otomasyon kodu ile IBM uygulama ve destek hizmetlerinden oluşan bir tekliftir. Fiyatı MSU'ya değil, otomatikleştirdiği sistem, sysplex ve site kapsamına bağlıdır ve yayımlanmaz [MLE-GDPS]. Model bu yüzden GDPS'i kapasiteden bağımsız, sabit bir aylık kalem olarak alır: M3 (Metro Global) $50.000, M4 (CA) $100.000 [ASSUME]. Orta değerler, önceki sürümdeki yazılım priminin 10K TPS referans noktasındaki karşılığına (M3: 0,15 × $340K ≈ $51K; M4: 0,30 × $340K ≈ $102K) eşitlendi. Bu bir kalibrasyon değildir: önceki prim de kaynaksız bir varsayımdı ve bağımsız bir GDPS fiyatı bulunamadı. Eşitlemenin tek amacı, yapı değişikliğinin (yazılıma oranlı prim yerine sabit kalem) referans noktadaki maliyet seviyesini kaydırmamasıdır; GDPS'in payı artık hacim arttıkça küçülür. Belirsizlik geniş bir aralıkla temsil edilir. Seviye `GDPS_COST_LEVEL` ile 0,5–2,0 aralığında taranır. GDPS'in gerektirdiği NetView ve System Automation for z/OS MSU tabanlı ürünlerdir ve bu sabit kaleme dahil sayılır (basitleştirme). M2'deki HyperSwap için gereken Copy Services Manager ayrıca fiyatlanmaz.
 
 10K TPS'te availability hedefinin maliyeti (`availability_sensitivity.py`; aralık sütununda parantez içi o senaryoda seçilen topolojidir):
 
@@ -510,16 +510,16 @@ Bir OLTP iş yükü mainframe'de yalnızca işletim sistemiyle çalışmaz: tran
 
 Önceki sürüm tek bir $40/MSU/ay fiyatı kullanıyordu. Bu değer, metodolojisi açıklanmamış bir lisans danışmanlığı sitesinden geliyordu ve iki sorunu vardı:
 
-1. **Yapı hatası:** IBM AWLC fiyatı doğrusal değildir. Fatura kümülatif kademelidir: her MSU, düştüğü kademenin marjinal fiyatıyla ücretlenir ve marjinal fiyat MSU arttıkça düşer [IBM-ZNALC]. Doğrusal fiyat, mainframe'in en belirgin ölçek ekonomisini modelden siler. Değerlendirme #1'deki "maliyet/TPS neredeyse düz" tehdidinin ana sebebi buydu.
-2. **Seviye hatası:** IBM'in kendi yayımladığı örnek fatura, 265 MSU'luk bir sistemde yalnızca z/OS için aylık $75.459 gösteriyor [IBM-2004]. Bu MSU başına ~$285 eder; $40, bunun yalnızca z/OS için bile ~7'de biridir.
+1. **Yapı hatası:** IBM AWLC fiyatı doğrusal değildir. Fatura kümülatif kademelidir: her MSU, düştüğü kademenin marjinal fiyatıyla ücretlenir ve marjinal fiyat MSU arttıkça düşer [IBM-zNALC]. Doğrusal fiyat, mainframe'in en belirgin ölçek ekonomisini modelden siler. Değerlendirme #1'deki "maliyet/TPS neredeyse düz" tehdidinin ana sebebi buydu.
+2. **Seviye hatası:** IBM'in kendi yayımladığı örnek fatura, 265 MSU'luk bir sistemde yalnızca z/OS için aylık $75.459 gösteriyor [Adams2005-z9SWPricing]. Bu MSU başına ~$285 eder; $40, bunun yalnızca z/OS için bile ~7'de biridir.
 
 #### 7.1.2. Veri ve kaynaklar
 
-- **Kademe sınırları (resmî, güncel):** Base 1–3 MSU, L0 4–45, L1 46–175, L2 176–315, L3 316–575, L4 576–875, L5 876–1.315, L6 1.316–1.975, L7 1.976+ [CMG-2020], [IBM-ZNALC]. Kademe her ürün için ayrı uygulanır.
-- **Kademe düşüş eğrisi:** IBM'in yayımladığı Db2 liste fiyatı (aylık): Base $3.960 (ilk 3 MSU dahil), L0 $208/MSU, L1 $88, L2 $66, L3 $50 [IBM-2004].
-- **L4 ve üstü:** Kamuya açık fiyat bulunamadı. Longpela'nın "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi [LONGPELA] esas alınarak kademe başına ×0,80 geometrik düşüş varsayıldı: L4 $40, L5 $32, L6 $25,6, L7 $20,48 [ASSUME].
-- **Ürün katsayıları:** IBM'in aynı belgedeki örnek faturası (aylık, sub-capacity): z/OS $75.459 (265 MSU), CICS TS $32.978 (210 MSU, ayrı LPAR), Db2 $31.876 (265 MSU) [IBM-2004]. Katsayı = ürünün örnek bedeli / referans eğrinin aynı MSU'daki değeri. Sonuç: z/OS ×2,509, CICS TS ×1,247, Db2 ×1,060. Kalibrasyon kodda hesaplanır (`_calibrate_products`), elle girilmez.
-- **Mutlak seviye:** SW_PRICE_LEVEL_FACTOR = 1,0, 2004 nominal liste fiyatı demektir [ASSUME]. Güncel seviye iki yöne çekilir: IBM'in yeni donanım nesillerinde verdiği Technology Update indirimleri (z17 TU11: kademe bandına göre %12–42) aşağı, 20 yıllık enflasyon ve IBM'in periyodik fiyat artışları yukarı. Fiyat yılı karışıktır: personel 2025, storage 2019–2022 doları iken yazılım 2004 nominal listesine dayanır. Orta değerin (1,0) güncel seviyeye yakın olduğunu bağımsız bir kontrol destekler: model 150 MSU'da yıllık ~£1,0M veriyor, value-4it'in güncel gözlemi de ~£1M [VALUE4IT] (Bölüm 7.1.4). Aralığın alt ucu (0,5) TU indirimlerinin üst sınırına yakın büyük bir indirimi, üst ucu (1,75) 2004 listesinin ABD TÜFE ile 2026'ya taşınmış halini (2004 → 2026 yaklaşık ×1,7), yani hiç indirim olmamasını temsil eder (Bölüm 7.1.6, 7.8).
+- **Kademe sınırları (resmî, güncel):** Base 1–3 MSU, L0 4–45, L1 46–175, L2 176–315, L3 316–575, L4 576–875, L5 876–1.315, L6 1.316–1.975, L7 1.976+ [CMG2020], [IBM-zNALC]. Kademe her ürün için ayrı uygulanır.
+- **Kademe düşüş eğrisi:** IBM'in yayımladığı Db2 liste fiyatı (aylık): Base $3.960 (ilk 3 MSU dahil), L0 $208/MSU, L1 $88, L2 $66, L3 $50 [Adams2005-z9SWPricing].
+- **L4 ve üstü:** Kamuya açık fiyat bulunamadı. Longpela'nın "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi [Longpela-SWPrice] esas alınarak kademe başına ×0,80 geometrik düşüş varsayıldı: L4 $40, L5 $32, L6 $25,6, L7 $20,48 [ASSUME].
+- **Ürün katsayıları:** IBM'in aynı belgedeki örnek faturası (aylık, sub-capacity): z/OS $75.459 (265 MSU), CICS TS $32.978 (210 MSU, ayrı LPAR), Db2 $31.876 (265 MSU) [Adams2005-z9SWPricing]. Katsayı = ürünün örnek bedeli / referans eğrinin aynı MSU'daki değeri. Sonuç: z/OS ×2,509, CICS TS ×1,247, Db2 ×1,060. Kalibrasyon kodda hesaplanır (`_calibrate_products`), elle girilmez.
+- **Mutlak seviye:** SW_PRICE_LEVEL_FACTOR = 1,0, 2004 nominal liste fiyatı demektir [ASSUME]. Güncel seviye iki yöne çekilir: IBM'in yeni donanım nesillerinde verdiği Technology Update indirimleri (z17 TU11: kademe bandına göre %12–42) aşağı, 20 yıllık enflasyon ve IBM'in periyodik fiyat artışları yukarı. Fiyat yılı karışıktır: personel 2025, storage 2019–2022 doları iken yazılım 2004 nominal listesine dayanır. Orta değerin (1,0) güncel seviyeye yakın olduğunu bağımsız bir kontrol destekler: model 150 MSU'da yıllık ~£1,0M veriyor, value-4it'in güncel gözlemi de ~£1M [Moss2010-Value4IT] (Bölüm 7.1.4). Aralığın alt ucu (0,5) TU indirimlerinin üst sınırına yakın büyük bir indirimi, üst ucu (1,75) 2004 listesinin ABD TÜFE ile 2026'ya taşınmış halini (2004 → 2026 yaklaşık ×1,7), yani hiç indirim olmamasını temsil eder (Bölüm 7.1.6, 7.8).
 
 #### 7.1.3. Formül
 
@@ -541,7 +541,7 @@ m, faturalanan MSU'dur (sub-capacity, R4HA tepesi):
 faturalanan_MSU = min(R4HA_yük / ham_TPS, 1) × kademe.MSU
 ```
 
-Topoloji yazılımı değiştirmez: DR (CBU) makinesinin IBM yazılım faturası yalnızca kalıcı kapasitesine göre kesilir ve ihmal edilir [CBU]; ICF lisansı artırmaz [CFCC]. GDPS yazılıma prim olarak değil, ayrı bir sabit kalem olarak eklenir (Bölüm 6.7). Yıllık moddaki TFP-SW gelir-nötr kalibrasyonu bu fonksiyonla aynen çalışır: efektif MSU-saat fiyatı, Permanent stratejinin kademeli R4HA faturasından türetilir.
+Topoloji yazılımı değiştirmez: DR (CBU) makinesinin IBM yazılım faturası yalnızca kalıcı kapasitesine göre kesilir ve ihmal edilir [IBM-SC28-7025]; ICF lisansı artırmaz [CFCC]. GDPS yazılıma prim olarak değil, ayrı bir sabit kalem olarak eklenir (Bölüm 6.7). Yıllık moddaki TFP-SW gelir-nötr kalibrasyonu bu fonksiyonla aynen çalışır: efektif MSU-saat fiyatı, Permanent stratejinin kademeli R4HA faturasından türetilir.
 
 #### 7.1.4. Doğrulama
 
@@ -556,7 +556,7 @@ Topoloji yazılımı değiştirmez: DR (CBU) makinesinin IBM yazılım faturası
 | 7.513 | $976.498 | 130 | $508.739 | $252.853 | $214.906 |
 
 - 265 MSU satırı IBM örneğini yeniden üretir (z/OS ve Db2 birebir; CICS 265 MSU'ya ölçeklendiği için örnektekinden yüksek).
-- Bağımsız kontrol: value-4it, ~150 MSU'luk bir sistem için yıllık ~£1M yazılım maliyeti raporluyor [VALUE4IT]. Model 150 MSU'da yıllık ~$1,27M (~£1,0M) veriyor. Kaynak ürün listesini açıklamadığı için bu yalnızca büyüklük mertebesi teyididir.
+- Bağımsız kontrol: value-4it, ~150 MSU'luk bir sistem için yıllık ~£1M yazılım maliyeti raporluyor [Moss2010-Value4IT]. Model 150 MSU'da yıllık ~$1,27M (~£1,0M) veriyor. Kaynak ürün listesini açıklamadığı için bu yalnızca büyüklük mertebesi teyididir.
 
 #### 7.1.5. zIIP (specialty engine)
 
@@ -591,7 +591,7 @@ Yorum:
 
 ### 7.2. Donanım Amortismanı
 
-Mainframe donanım fiyatları açık liste olarak yayımlanmaz. Bağımsız fiyat rehberlerinin verdiği aralık ~$500.000 (giriş yapılandırması) ile ~$10.000.000+ (büyük yapılandırma) arasındadır [PRICE]. Model satın alma bedelini bir frame tabanı ve kapasiteyle doğrusal bir artış olarak kurar:
+Mainframe donanım fiyatları açık liste olarak yayımlanmaz. Bağımsız fiyat rehberlerinin verdiği aralık ~$500.000 (giriş yapılandırması) ile ~$10.000.000+ (büyük yapılandırma) arasındadır [Alibaba-MFPrice]. Model satın alma bedelini bir frame tabanı ve kapasiteyle doğrusal bir artış olarak kurar:
 
 ```
 satın_alma = HW_FRAME_BASE_COST + kademe.PCI × HARDWARE_COST_PER_MIPS + zIIP bedeli
@@ -632,7 +632,7 @@ total = yazılım(faturalanan_MSU) + (hardware_amort + maintenance) × (1 + n_DR
 
 üretim_dışı = NONPROD_FACTOR × (yazılım + hardware_amort + maintenance + enerji + birincil storage)   (yalnızca birincil site; Bölüm 7.9)
 
-Yazılım kalemi DR frame'i için artmaz: CBU makinesinin yazılımı kalıcı kapasitesine göre faturalanır [CBU] ve ICF lisansı artırmaz [CFCC]. Donanım ve bakım DR frame oranıyla, enerji frame sayısıyla çarpılır (Bölüm 6.7).
+Yazılım kalemi DR frame'i için artmaz: CBU makinesinin yazılımı kalıcı kapasitesine göre faturalanır [IBM-SC28-7025] ve ICF lisansı artırmaz [CFCC]. Donanım ve bakım DR frame oranıyla, enerji frame sayısıyla çarpılır (Bölüm 6.7).
 
 ### 7.6. Maliyet / TPS Eğrisi (mevcut varsayımlarla)
 
@@ -670,19 +670,19 @@ Kesin bir "doğru FTE sayısı" yoktur. Kaynaklar arasında 3 kata varan fark va
 
 | Kaynak | Bulgu | Not |
 |---|---|---|
-| IBM Eagle TCO ekibi, 17 müşteri [IBM-EAGLE] | 5 FTE + her 625 MIPS için 1 FTE | Küçük/orta kurulumlar (grafik 0–3.000 MIPS); üretici kaynağı |
-| Gartner IT Key Metrics Data 2016 [GARTNER-ITKMD] | Kurulu MIPS / mainframe FTE: 152 → 268 (5 yılda) | Bağımsız; ortalama; yıllık ~%12 verimlilik artışı |
-| Gartner (IBM sunumunda) [IBM-TPF-2007] | Ekip MIPS iki katına çıkarken sabit kaldı (2001 → 2004) | Ölçek ekonomisinin yönü |
-| IBM örnek karşılaştırma [IBM-TPF-2007] | 3.192 MIPS ≈ 4 FTE (~790 MIPS/FTE) | Üretici kaynağı; alt sınıra yakın |
+| IBM Competitive Project Office, 17 müşteri [IBM-CPO2014-Skills] | 5 FTE + her 625 MIPS için 1 FTE | Küçük/orta kurulumlar (grafik 0–3.000 MIPS); üretici kaynağı |
+| Gartner IT Key Metrics Data 2016 [CA2016-MFEcosystem] | Kurulu MIPS / mainframe FTE: 152 → 268 (5 yılda) | Bağımsız; ortalama; yıllık ~%12 verimlilik artışı |
+| Gartner (IBM sunumunda) [Rhoderick2007-TPFUG] | Ekip MIPS iki katına çıkarken sabit kaldı (2001 → 2004) | Ölçek ekonomisinin yönü |
+| IBM örnek karşılaştırma [Rhoderick2007-TPFUG] | 3.192 MIPS ≈ 4 FTE (~790 MIPS/FTE) | Üretici kaynağı; alt sınıra yakın |
 
 **Ücret (2025 USD)**
 
 | Kaynak | Değer |
 |---|---|
-| BLS OEWS, Mayıs 2025 medyanları [BLS-OEWS] | DBA/mimar $126.760 · sistem yöneticisi $99.130 · güvenlik analisti $129.180 |
+| BLS OEWS, Mayıs 2025 medyanları [BLS-OOH] | DBA/mimar $126.760 · sistem yöneticisi $99.130 · güvenlik analisti $129.180 |
 | BLS OEWS, Mayıs 2023, DBA dağılımı | 25. yüzdelik $71.940 · medyan $101.510 · 75. yüzdelik $133.120 |
-| Mainframe ilan ve anketleri [MF-PAY] | Payscale sistem programcısı ~$90K (10–90. yüzdelik $49–130K); Glassdoor Db2 z/OS DBA $104–163K |
-| Yan hak çarpanı | IDC %28 [IDC-2016]; BLS ECEC'te maaş toplam işveren maliyetinin %70'i → ×1,43 [BLS-ECEC] |
+| Mainframe ilan ve anketleri [MF-Payscale] | Payscale sistem programcısı ~$90K (10–90. yüzdelik $49–130K); Glassdoor Db2 z/OS DBA $104–163K |
+| Yan hak çarpanı | IDC %28 [IDC2016-ConnectedMF]; BLS ECEC'te maaş toplam işveren maliyetinin %70'i → ×1,43 [BLS2026-ECEC] |
 
 Karma brüt maaş $95K / $120K / $150K, yan hak çarpanı 1,28 / 1,35 / 1,43 alındı. Yüklü maliyet: **$122K / $162K / $215K / FTE / yıl**. Ücret tablosu (`LOADED_WAGE_USD`) ve taban ekip (`STAFF_FLOOR_FTE`) Adım 6'dan beri ortak modüldedir; x86 tarafı aynı ücretleri ve aynı tabanı kullanır. Ücret seviyesi ayrı bir aralık parametresidir (`WAGE_LEVEL`); `STAFF_SCENARIO` yalnızca FTE eğrisini ve tabanı seçer. Böylece tornado'da "ekip ne kadar büyük" ile "bir kişi ne kadar" soruları ayrı ayrı görünür. Çapraz kontrol: IBM 2007 sunumundaki karşılaştırma ~$175K/FTE ima ediyor. CA'nın uzman danışman saati ($247/saat) dış kaynak fiyatıdır; aralığın dışında tutuldu.
 
@@ -838,13 +838,13 @@ Yorum:
 - **Belirsizliğin üç ana kaynağı** işlem başına CPU (SQL maliyeti), AWLC mutlak fiyat seviyesi ve personeldir (eğri ve ücret). Üçü de kamuya açık, kesin bir rakamla daraltılamıyor. AWLC seviyesinin üst ucu enflasyona göre genişletildi (1,75). Üretim dışı ortamlar beşinci sıradadır; tek kaynağı üretici olduğu için ağırlığı ancak bağımsız bir kaynakla daraltılabilir.
 - **high sütunu tek bir topolojiye ait değildir.** high senaryoda M1 %99,9 hedefini karşılayamadığı için her TPS'te M2 seçilir. Availability belirsizliği bu yolla maliyet aralığının üst ucunu ~%10 yukarı taşır.
 - **Tek z16'nın tavanı düştü.** mid senaryo 150K TPS'te, high senaryo 100K TPS'te infeasible'dır. F kararından sonra tek CEC'in mid tavanı ~132.700 TPS'tir (Adım 6'da ~187.000); üstü Parallel Sysplex ölçeklemesi ister (Bölüm 4.4.4, 12.2).
-- **Kurulum başı çapraz kontrol:** Gartner ITKMD 2016'ya göre kurulu MIPS başına yıllık toplam mainframe maliyeti $5.517'den $3.057'ye düşmüş [GARTNER-ITKMD]. Aynı eğilim (yılda ~%11) sürerse 2026 için ~$940 eder. Model 10K TPS'te low/mid/high için $506 / $835 / $1.906 / PCI / yıl veriyor (high M2 ile). Gartner rakamı ISV yazılımlarını, tesis giderlerini ve üretim dışı ortamları da içerdiği için modelin mid değerinin bu değere yakın olması beklenir. Adım 6'da mid $951'di; Adım 7'de kurulu kademe büyüdüğü (11.243 ham TPS'lik 3931-524) ve maliyet daha büyük bir PCI tabanına bölündüğü için PCI başına değer düştü, TPS başına değer yükseldi. Bu bir doğrulama değil, büyüklük mertebesi kontrolüdür.
+- **Kurulum başı çapraz kontrol:** Gartner ITKMD 2016'ya göre kurulu MIPS başına yıllık toplam mainframe maliyeti $5.517'den $3.057'ye düşmüş [CA2016-MFEcosystem]. Aynı eğilim (yılda ~%11) sürerse 2026 için ~$940 eder. Model 10K TPS'te low/mid/high için $506 / $835 / $1.906 / PCI / yıl veriyor (high M2 ile). Gartner rakamı ISV yazılımlarını, tesis giderlerini ve üretim dışı ortamları da içerdiği için modelin mid değerinin bu değere yakın olması beklenir. Adım 6'da mid $951'di; Adım 7'de kurulu kademe büyüdüğü (11.243 ham TPS'lik 3931-524) ve maliyet daha büyük bir PCI tabanına bölündüğü için PCI başına değer düştü, TPS başına değer yükseldi. Bu bir doğrulama değil, büyüklük mertebesi kontrolüdür.
 
 ### 7.9. Üretim Dışı Ortamlar (NONPROD)
 
 #### 7.9.1. Kalemin savunması
 
-Gerçek bir kurulumda üretim sistemi tek başına durmaz: geliştirme, test, QA ve ön-üretim ortamları da donanım, yazılım lisansı ve storage tüketir. Benzer çalışmalar taraması (`benzer_calismalar_v1.md` §3.2) bu kalemin iki platformda çok farklı büyüklükte olabileceğini gösterdi: IBM Eagle müşteri çalışmalarına göre mainframe'de üretim dışı ortamlar üretimin ~%20'si, dağıtık sistemlerde çoğu zaman ~%200'üdür [IBM-EAGLE-2013]. Kalem dışarıda bırakılırsa, iddia doğruysa, karşılaştırma x86 lehine kayar. Emirhan'ın kararıyla (2026-11-02) iki tarafa ayrı, aralıklı bir çarpan eklendi; düşük uç 0, "kapsam dışı" senaryosunu da gösterir.
+Gerçek bir kurulumda üretim sistemi tek başına durmaz: geliştirme, test, QA ve ön-üretim ortamları da donanım, yazılım lisansı ve storage tüketir. Benzer çalışmalar taraması (`benzer_calismalar_v1.md` §3.2) bu kalemin iki platformda çok farklı büyüklükte olabileceğini gösterdi: IBM Eagle müşteri çalışmalarına göre mainframe'de üretim dışı ortamlar üretimin ~%20'si, dağıtık sistemlerde çoğu zaman ~%200'üdür [IBM2013-TCOLessons]. Kalem dışarıda bırakılırsa, iddia doğruysa, karşılaştırma x86 lehine kayar. Emirhan'ın kararıyla (2026-11-02) iki tarafa ayrı, aralıklı bir çarpan eklendi; düşük uç 0, "kapsam dışı" senaryosunu da gösterir.
 
 #### 7.9.2. Kural (ortak modül, iki tarafta aynı)
 
@@ -861,7 +861,7 @@ Gerçek bir kurulumda üretim sistemi tek başına durmaz: geliştirme, test, QA
 
 | Platform | low | mid | high | Dayanak |
 |---|---|---|---|---|
-| Mainframe (`NONPROD_FACTOR`) | 0 | 0,20 | 0,50 | mid: IBM Eagle "üretim +%20" [IBM-EAGLE-2013]; high [ASSUME]. Kaynak üretici olduğu için mainframe lehine olabilir; high ucu bunu karşılamak için geniş tutuldu |
+| Mainframe (`NONPROD_FACTOR`) | 0 | 0,20 | 0,50 | mid: IBM Eagle "üretim +%20" [IBM2013-TCOLessons]; high [ASSUME]. Kaynak üretici olduğu için mainframe lehine olabilir; high ucu bunu karşılamak için geniş tutuldu |
 | x86 (x86 modelinde) | 0 | (bağımsız kaynak aranıyor) | 2,0 | high: IBM Eagle "dağıtıkta üretim +%200" |
 
 Orta değerlerin bağımsız bir kaynakla daraltılması açık bir iştir (Değerlendirme #7).
@@ -985,7 +985,7 @@ Yorum:
 
 #### 7.12.3. Literatürle ilişki
 
-IBM Eagle'ın 97 çalışmasında dağıtık alternatif ortalama 2,2 kat pahalı çıkar [IBM-EAGLE-2013]. Bu model ana senaryoda ters yönde ~2 kat sonuç verir. Fark, Eagle çalışmalarını çeviren etkenlerin (sunucu yayılması, düşük kullanım, çekirdek başı ticari lisans, sunucu başına personel, göç maliyeti) bu modelin tek iş yüküne ve açık kaynağa dayanan kurgusunda bulunmamasıdır. Model, Eagle ile Barroso & Hölzle / Appuswamy çizgisini şu koşullarla uzlaştırır: mainframe (a) x86 personeli mainframe personelinin ~2 katını aştığında, (b) x86'nın yazma ölçeklemesi ticari kümelemeye zorlandığında (yüksek TPS + elverişsiz x86 köprüsü) ve (c) %99,999 + RPO 0 gibi hedeflerde kazanır.
+IBM Eagle'ın 97 çalışmasında dağıtık alternatif ortalama 2,2 kat pahalı çıkar [IBM2013-TCOLessons]. Bu model ana senaryoda ters yönde ~2 kat sonuç verir. Fark, Eagle çalışmalarını çeviren etkenlerin (sunucu yayılması, düşük kullanım, çekirdek başı ticari lisans, sunucu başına personel, göç maliyeti) bu modelin tek iş yüküne ve açık kaynağa dayanan kurgusunda bulunmamasıdır. Model, Eagle ile Barroso & Hölzle / Appuswamy çizgisini şu koşullarla uzlaştırır: mainframe (a) x86 personeli mainframe personelinin ~2 katını aştığında, (b) x86'nın yazma ölçeklemesi ticari kümelemeye zorlandığında (yüksek TPS + elverişsiz x86 köprüsü) ve (c) %99,999 + RPO 0 gibi hedeflerde kazanır.
 
 #### 7.12.4. Sınırlamalar
 
@@ -1015,8 +1015,8 @@ Modelin sonuçları bu öngörüyü doğruluyor: 10K TPS'te (oltp_rw, personel d
 #### 8.1.2. Neden DS8900F ve neden tek alternatif
 
 - **Nesil uyumu:** DS8900F, z15 ile duyurulan ve z16 ile eşleşen nesildir. Kademe tablosu z16 A01 olduğu için storage da aynı nesilden seçildi.
-- **Temsil gücü:** IDC'ye göre IBM mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TT-2019]. Model tipik bir z16 kurulumunu temsil etmeli.
-- **Mainframe'e özgü yetenekler:** zHyperLink, z16 ile DS8000 arasında tanımlıdır [REDP-5554]; IBM dışı dizilerde bu bağlantının bulunmadığını biliyoruz (doğrulanmalı). Modelin mainframe'e özgü gecikme avantajını temsil edebilmesi için bu dizi gerekli.
+- **Temsil gücü:** IDC'ye göre IBM mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TechTarget2019-DS8900F]. Model tipik bir z16 kurulumunu temsil etmeli.
+- **Mainframe'e özgü yetenekler:** zHyperLink, z16 ile DS8000 arasında tanımlıdır [IBM-REDP-5554]; IBM dışı dizilerde bu bağlantının bulunmadığını biliyoruz (doğrulanmalı). Modelin mainframe'e özgü gecikme avantajını temsil edebilmesi için bu dizi gerekli.
 - **Veri erişilebilirliği:** IBM'in Product Guide'ı model, kapasite, güç ve lisans yapısını açık yayımlıyor; FICON destekli rakip dizilerin (Dell PowerMax, Hitachi VSP 5000) mainframe yapılandırmaları için karşılaştırılabilir açık veri bulunmadı.
 - **Tek alternatif kuralı:** Proje Phase 1'de her katmanda tek alternatif kullanıyor (`project_context_restore_v4.md`, 4.7); mainframe tarafı "tek yığın" olarak tanımlı. Rakip dizileri eklemek kombinasyon sayısını büyütür ama karşılaştırmanın sorusunu (mainframe mi clustered mi) değiştirmez.
 - **Kapsam dışı modeller:** DS8980F (998) yayımlanmış IOPS ve fiyatı olmadığı için; ardılı DS8000 G10 z16 ile aynı nesil olmadığı ve veri bulunmadığı için.
@@ -1031,7 +1031,7 @@ Modelin sonuçları bu öngörüyü doğruluyor: 10K TPS'te (oltp_rw, personel d
 | Kopya başına en ucuz model; dizi sayısı = max(kapasite, IOPS ihtiyacı) | Sabit model | Kapasite ve IOPS iki ayrı darboğazdır; az veri + yüksek TPS IOPS ile, çok veri + düşük TPS kapasiteyle boyutlanır | oltp_rw'de ~104K TPS'te (IOPS tavanıyla) IOPS darboğazı DS8950F'e geçişi zorlar |
 | Fiyat = (flash + kontrolcü liste fiyatı) × (1 − indirim) | Bileşen başına ayrı indirim | Yayımlanmış tek fiyat noktaları liste fiyatlarıdır; tek indirim oranı varsayımı tek bir parametrede toplar ve duyarlılık analizine açık tutar | Tüm belirsizlik tek parametrede (Bölüm 8.8) |
 | Lisans = donanım capex'ine oran | TB başına fiyat | Lisans yapısı (BF, z-synergy, Copy Services; TB kademeli) resmî, fiyatı yayımlanmıyor; TB kademe granülaritesi fiyatın kendisini vermiyor | Varsayılanla storage capex'inin %20'si |
-| Enerji tepe güçle | Tipik güç | Yalnızca tepe güç yayımlanıyor [REDP-5554] | Tutucu; storage enerjisi toplamda küçük |
+| Enerji tepe güçle | Tipik güç | Yalnızca tepe güç yayımlanıyor [IBM-REDP-5554] | Tutucu; storage enerjisi toplamda küçük |
 | 3 yıllık planlama ufku | 1 yıl veya amortisman süresi (5 yıl) | Dizi büyümeye göre boyutlanır ama 5 yıl boyunca boş kapasite taşımak gerçekçi değil; kapasite planlamada yaygın orta ufuk | %15 büyümede kapasite ×1,52 |
 | I/O başına sabit gecikme (kuyruk yok) | Dizi kuyruğu (M/M/c) | PAV/HyperPAV/SuperPAV aynı hacme paralel I/O sağlar; dizi, tepe IOPS'unun %70'iyle sınırlı yüklendiği için kuyruk etkisi küçük tutulur | Gecikme kuyruk olmadan hesaplanır; tavan bu basitleştirmeyi korur |
 | Dizi, üretici tepe IOPS'unun %70'ine kadar yüklenir (STORAGE_IOPS_CEILING) | Tepe IOPS'un %100'ü | Tepe değer önbellek isabetli küçük blok ölçümüdür, gerçek OLTP karışımını temsil etmez; compute'taki %90 operasyonel tavanın storage karşılığı | oltp_rw'de DS8910F → DS8950F geçişi tavansız ~148K yerine ~104K TPS'te |
@@ -1042,7 +1042,7 @@ Modelin sonuçları bu öngörüyü doğruluyor: 10K TPS'te (oltp_rw, personel d
 
 | Parametre | Değer | Dayanak | Taranan aralık | Kalibrasyon yolu |
 |---|---|---|---|---|
-| STORAGE_DISCOUNT | 0,70 | Kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VENDORBENCH]; IBM liste fiyatlarının yüksekliği (flash $8,62/GB) | 0,50–0,85 | Gerçek DS8900F teklifi veya kamu ihale kaydı |
+| STORAGE_DISCOUNT | 0,70 | Kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VendorBenchmark2026-Storage]; IBM liste fiyatlarının yüksekliği (flash $8,62/GB) | 0,50–0,85 | Gerçek DS8900F teklifi veya kamu ihale kaydı |
 | Lisans oranları | 0,15 + 0,10 | Yapı resmî, fiyat yok | 0,05–0,30 | IBM teklifi |
 | DB_OVERHEAD_FACTOR | 1,5 | Db2 log, image copy, work alanı, sistem hacimleri | 1,2–2,0 | Db2 kapasite planlama kılavuzu |
 | RAID_USABLE_FRACTION | 0,75 | RAID 6 (6+P+Q) | sabit | DS8900F Architecture Redbook |
@@ -1067,7 +1067,7 @@ Storage, iki tarafın da aynı girdileri kullandığı ortak bir arayüzdür: `d
 
 ### 8.2. Mainframe'e Özgü Yapı
 
-Mainframe tarafının storage'ı sabittir: IBM DS8900F (z15/z16 ile aynı nesil, tamamen flash). Projenin "mainframe tarafı tek yığın" ilkesine uyar. IDC'ye göre IBM, mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TT-2019]. DS8000'in ardılı DS8000 G10 bu modelin kapsamı dışındadır (z16 ile eşleşen nesil DS8900F; doğrulanmalı: G10'un çıkış tarihi).
+Mainframe tarafının storage'ı sabittir: IBM DS8900F (z15/z16 ile aynı nesil, tamamen flash). Projenin "mainframe tarafı tek yığın" ilkesine uyar. IDC'ye göre IBM, mainframe'e bağlı storage pazarının %40–50'sine sahip ve DS8000'i her yeni mainframe teklifine ekliyor [TechTarget2019-DS8900F]. DS8000'in ardılı DS8000 G10 bu modelin kapsamı dışındadır (z16 ile eşleşen nesil DS8900F; doğrulanmalı: G10'un çıkış tarihi).
 
 Modelin yakaladığı mainframe'e özgü özellikler:
 
@@ -1075,17 +1075,17 @@ Modelin yakaladığı mainframe'e özgü özellikler:
 |---|---|---|
 | Shared-disk (Db2 data sharing) | Tüm Db2 üyeleri aynı diske erişir; site başına verinin tek kopyası | Kopya sayısını yalnızca DR topolojisi belirler (Bölüm 8.4) |
 | Storage tabanlı replikasyon | Metro Mirror (senkron), Global Mirror (asenkron + journal), GDPS yönetir | Kopya başına ayrı dizi; senkron kopya yazma gecikmesine mesafe ekler |
-| zHyperLink | z16 ile DS8900F arasında senkron, < 20 µs (~18 µs) küçük blok okuma; 150 m'ye kadar [REDP-5554] | Uygun okumalarda I/O süresi 90 µs yerine 20 µs |
-| zHPF / FICON | Mainframe I/O protokolü; DS8900F önbellek isabetinde ~90 µs [TT-2019] | Okuma (zHyperLink dışı) ve yazma servis süresi |
+| zHyperLink | z16 ile DS8900F arasında senkron, < 20 µs (~18 µs) küçük blok okuma; 150 m'ye kadar [IBM-REDP-5554] | Uygun okumalarda I/O süresi 90 µs yerine 20 µs |
+| zHPF / FICON | Mainframe I/O protokolü; DS8900F önbellek isabetinde ~90 µs [TechTarget2019-DS8900F] | Okuma (zHyperLink dışı) ve yazma servis süresi |
 | PAV / HyperPAV / SuperPAV | Aynı hacme paralel I/O | Kuyruk etkisi modellenmez; I/O'ların sabit gecikme sayılmasının gerekçesi |
 | Kanal alt sistemi ve SAP'ler | I/O işlemesi genel amaçlı CP'den ayrı | Ek CPU yükü yok: kapasite köprüsündeki CICS benchmark'ı z/OS I/O'sunun CPU maliyetini zaten içeriyor. Clustered tarafta storage yığınının host CPU'su ayrıca eklenmeli |
-| Safeguarded Copy | Fidye yazılımına karşı değiştirilemez anlık kopyalar (yüzlerce, 500'e kadar) [REDP-5554, TT-2019] | Birincil dizide ek kapasite + Copy Services lisansı |
+| Safeguarded Copy | Fidye yazılımına karşı değiştirilemez anlık kopyalar (yüzlerce, 500'e kadar) [IBM-REDP-5554, TechTarget2019-DS8900F] | Birincil dizide ek kapasite + Copy Services lisansı |
 | CKD hacimlerde veri azaltma yok | Sıkıştırma/dedup dizide değil, host'ta (Db2, z16 on-chip hızlandırıcı) | HOST_COMPRESSION_RATIO parametresi (varsayılan 1,0 = yok) |
-| Lisans paketleri | Base Function (tüm kapasite), z-synergy Services (FICON, PAV, zHPF, zHyperLink; CKD), Copy Services. TB başına kademeli: 100 TB'a kadar 10 TB, 12 PB'a kadar 500 TB adımlarla [REDP-5554] | Fiyat yayımlanmadığı için donanım capex'ine oran [ASSUME] |
+| Lisans paketleri | Base Function (tüm kapasite), z-synergy Services (FICON, PAV, zHPF, zHyperLink; CKD), Copy Services. TB başına kademeli: 100 TB'a kadar 10 TB, 12 PB'a kadar 500 TB adımlarla [IBM-REDP-5554] | Fiyat yayımlanmadığı için donanım capex'ine oran [ASSUME] |
 
 ### 8.3. Model Kataloğu
 
-`data/ds8900f_models.csv` [REDP-5554, ITCANDOR, TT-2019]:
+`data/ds8900f_models.csv` [IBM-REDP-5554, ITCandor2019-DS8900F, TechTarget2019-DS8900F]:
 
 | Model | Maks. ham kapasite (15,36 TB drive) | Maks. IOPS | Başlangıç liste fiyatı | Tepe güç |
 |---|---|---|---|---|
@@ -1106,7 +1106,7 @@ ham_TB = veri_TB × (1 + büyüme)^3 × DB_OVERHEAD_FACTOR / HOST_COMPRESSION_RA
 - RAID_USABLE_FRACTION = 0,75 [ASSUME]: RAID 6 (6+P+Q), yedek drive'lar hariç (doğrulanmalı).
 - Safeguarded Copy için birincil dizide +%25 [ASSUME]; gerçek değer değişim hızına ve saklama sayısına bağlıdır.
 
-Kopya sayısı topolojiden gelir [GDPS] (doğrulanmalı):
+Kopya sayısı topolojiden gelir [IBM-SG24-6374] (doğrulanmalı):
 
 | Topoloji | Kopya | Gerekçe |
 |---|---|---|
@@ -1121,13 +1121,13 @@ IOPS ihtiyacı = tepe TPS × storage_iops(profil) (Bölüm 4.4; oltp_rw'de 5,8).
 
 | Kalem | Formül | Kaynak |
 |---|---|---|
-| Flash | ham_TB × $8.620/TB (liste) | 15,36 TB flash kartı liste fiyatı $132.381 = $8,62/GB, kontrolcü hariç, Mayıs 2022 [ITJUNGLE-22] |
-| Kontrolcü | dizi sayısı × başlangıç liste fiyatı | [TT-2019] |
-| İndirim | (flash + kontrolcü) × (1 − 0,70) | [ASSUME]; kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VENDORBENCH] |
-| Lisans | donanım × (0,15 BF + z-synergy, +0,10 Copy Services) | [ASSUME]; yapı [REDP-5554], fiyat yayımlanmıyor |
+| Flash | ham_TB × $8.620/TB (liste) | 15,36 TB flash kartı liste fiyatı $132.381 = $8,62/GB, kontrolcü hariç, Mayıs 2022 [ITJungle2022-Storage] |
+| Kontrolcü | dizi sayısı × başlangıç liste fiyatı | [TechTarget2019-DS8900F] |
+| İndirim | (flash + kontrolcü) × (1 − 0,70) | [ASSUME]; kurumsal all-flash pazarında liste fiyatından %35–65, büyük anlaşmalarda daha fazla [VendorBenchmark2026-Storage] |
+| Lisans | donanım × (0,15 BF + z-synergy, +0,10 Copy Services) | [ASSUME]; yapı [IBM-REDP-5554], fiyat yayımlanmıyor |
 | Amortisman | (donanım + lisans) / 5 yıl | Mainframe donanımıyla aynı |
-| Bakım | donanım × %15/yıl, 1 yıllık garanti sonrası (5 yıla ortalanmış) | [VENDORBENCH] %10–25; [IBM-122-037] garanti |
-| Enerji | tepe kW × $0,12 × 730 saat | [REDP-5554] tepe güç (tutucu: tepe değer kullanılıyor) |
+| Bakım | donanım × %15/yıl, 1 yıllık garanti sonrası (5 yıla ortalanmış) | [VendorBenchmark2026-Storage] %10–25; [IBM2022-ENUS122-037] garanti |
+| Enerji | tepe kW × $0,12 × 730 saat | [IBM-REDP-5554] tepe güç (tutucu: tepe değer kullanılıyor) |
 
 Etkin flash fiyatı varsayılanlarla ~$2.590/TB ham. Bu, modelin en belirsiz storage parametresidir: liste fiyatı resmî, ama gerçek indirim müşteriye özeldir (duyarlılık Bölüm 8.8).
 
@@ -1145,8 +1145,8 @@ Okuma ve yazma I/O sayıları iş yükü profilinden gelir (Bölüm 4.4): okuma,
 |---|---|---|
 | h: önbellek isabeti | 0,90 | [ASSUME] |
 | z: isabetli okumaların zHyperLink'e uygun payı | 0,80 | [ASSUME] Db2 senkron rastgele okumalar |
-| t_zHL | 20 µs | [REDP-5554] |
-| t_FICON | 90 µs | [TT-2019] (yazmalar DS8900F NVS'ine hızlı yazma) |
+| t_zHL | 20 µs | [IBM-REDP-5554] |
+| t_FICON | 90 µs | [TechTarget2019-DS8900F] (yazmalar DS8900F NVS'ine hızlı yazma) |
 | t_miss | 300 µs | [ASSUME] flash arka uç + FICON |
 | Senkron replikasyon | mesafe × 10 µs/km, varsayılan 20 km | Fiberde ışık ~5 µs/km tek yön; gidiş-dönüş 10 µs/km |
 
@@ -1211,9 +1211,9 @@ Yıllık mod (10K TPS ortalama, 20 TB): 1× DS8910F-993, yıllık ~$90K, toplam�
 - **M1 için zorunlu:** M1'in RPO'su 24 saat, RTO'su 72 saattir (Bölüm 6.2). Bu değerler, son günlük yedeğin başka bir sitede olmasına ve oradan zamanında geri yüklenebilmesine dayanır. Yedek katmanı olmadan M1'in felaket kurtarma iddiası maliyetsiz kalırdı.
 - **İki tarafta aynı büyüklükte değil:** Mainframe'de yedek, Db2 image copy'leri ve arşiv loglarıdır. Clustered tarafta yedekleme yazılımı ve çoğunlukla nesne depolama kullanılır. Lisans, kapasite ve sıkıştırma yapısı farklı olduğu için kalem birbirini götürmez ve crossover'ı etkileyebilir.
 - **Neden üç hedef:** Bir kurum mainframe yedeğini gerçekte üç yoldan biriyle alır. Model üçünü de aday yapar ve kısıtları karşılayanlar arasından aylık maliyeti en düşük olanı seçer (`BACKUP_TARGET = "auto"`; `--backup-target` ile tek hedef zorlanabilir).
-  - **TS7770 sanal teyp:** IBM'in mainframe sanal teyp ürünüdür. FICON ile bağlanır; Db2 image copy, HSM ve arşiv log tipik hedefleridir. Grid replikasyonuyla siteler arası kopya tutar [TS7700-2024]. z16 ile aynı dönemin ürünüdür (R5.x, Power9). Model disk-only yapılandırmayı kullanır.
-  - **On-prem nesne depolama (S3 uyumlu):** IBM Cloud Object Storage, Ceph veya MinIO sınıfı kurum içi sistemlerdir. Mainframe'den yol DS8900F'in Transparent Cloud Tiering (TCT) özelliğidir. Image copy'ler önce DASD'ye yazılır, DFSMShsm ile TCT üzerinden nesne depolamaya göç ettirilir. Veri z/OS işlemcilerinden değil, DS8900F'in Ethernet portlarından geçer [SG24-8381].
-  - **AWS S3 (hibrit):** Aynı TCT yolu kullanılır; hedef AWS S3'tür (Standard-IA sınıfı) ve bağlantı Direct Connect hattıyla kurulur [SG24-8381, AWS-S3-2026, AWS-DX-2026]. Kamu bulutu olduğu için bu seçenek projenin on-prem çerçevesini hibrite çevirir. Seçildiğinde çıktıda "hibrit" diye işaretlenir.
+  - **TS7770 sanal teyp:** IBM'in mainframe sanal teyp ürünüdür. FICON ile bağlanır; Db2 image copy, HSM ve arşiv log tipik hedefleridir. Grid replikasyonuyla siteler arası kopya tutar [IBM-TS7700-541]. z16 ile aynı dönemin ürünüdür (R5.x, Power9). Model disk-only yapılandırmayı kullanır.
+  - **On-prem nesne depolama (S3 uyumlu):** IBM Cloud Object Storage, Ceph veya MinIO sınıfı kurum içi sistemlerdir. Mainframe'den yol DS8900F'in Transparent Cloud Tiering (TCT) özelliğidir. Image copy'ler önce DASD'ye yazılır, DFSMShsm ile TCT üzerinden nesne depolamaya göç ettirilir. Veri z/OS işlemcilerinden değil, DS8900F'in Ethernet portlarından geçer [IBM-SG24-8381].
+  - **AWS S3 (hibrit):** Aynı TCT yolu kullanılır; hedef AWS S3'tür (Standard-IA sınıfı) ve bağlantı Direct Connect hattıyla kurulur [IBM-SG24-8381, Nubbo2026-S3, AWS-DXPricing]. Kamu bulutu olduğu için bu seçenek projenin on-prem çerçevesini hibrite çevirir. Seçildiğinde çıktıda "hibrit" diye işaretlenir.
 - **Neden disk:** Model 4 haftalık operasyonel yedeği kapsar. Fiziksel teyp (TS4500 kütüphanesi, TS1160 sürücüler) ve S3 Glacier sınıfları uzun süreli düzenleyici saklama için kullanılır. Arşiv projede kapsam dışıdır (Değerlendirme #3).
 
 #### 8.10.2. Yedek hacmi
@@ -1231,13 +1231,13 @@ tam geri yükleme = D_plan × (1 + 6 × günlük değişim) + bir haftalık log
 | Parametre | Değer | Dayanak | Aralık |
 |---|---|---|---|
 | D_plan | Veri × (1 + büyüme)³ | Storage ile aynı planlama ufku (Bölüm 8.4) | — |
-| Tam kopya sıklığı | Haftada bir; günlük artımlı | IDUG EMEA oturumu: tam kopya "often taken weekly", değişim %10'u aşınca tam kopya; sık güncellenen tablolarda günlük artımlı [IDUG-2024] | sabit |
-| BACKUP_RETENTION_WEEKS | 4 | [ASSUME]; IBM saklama süresi vermez, yalnızca eski kopyaların tutulmasını önerir [DB2-BACKUP] | 2–8 (aralık parametresi) |
+| Tam kopya sıklığı | Haftada bir; günlük artımlı | IDUG EMEA oturumu: tam kopya "often taken weekly", değişim %10'u aşınca tam kopya; sık güncellenen tablolarda günlük artımlı [Hendley2024-IDUG] | sabit |
+| BACKUP_RETENTION_WEEKS | 4 | [ASSUME]; IBM saklama süresi vermez, yalnızca eski kopyaların tutulmasını önerir [IBM-Db2z12-Backup] | 2–8 (aralık parametresi) |
 | BACKUP_DAILY_CHANGE | 0,03 | [ASSUME]; haftada ~%20, tam kopya eşiğinin (%10/hafta) üstünde, yani haftalık tam kopya gerekçeli | 0,01–0,05 |
 | LOG_BYTES_PER_SQL_WRITE / COMMIT | 400 B / 200 B | [ASSUME]; Db2 log kaydı satırın önce/sonra görüntüsü ve başlıktan oluşur | 200–1.000 B |
 | Ortalama yük | Statik modda TPS / 1,5; yıllık ve NPV modunda profilin ortalaması | [ASSUME] statik TPS tasarım tepesidir; 1,5 steady_oltp oranı | — |
-| Kopya sayısı | TS7770 ve on-prem nesne: 2 (iki site). S3: 1 nesne kopyası | IBM: "Make two copies of each level of image copy data sets" [DB2-BACKUP]. S3 nesneyi bölge içinde en az üç erişilebilirlik alanına dağıtır; site dışı kopya odur, ikinci kopya sağlayıcının kendi yedekliliğidir | sabit |
-| Sıkıştırma | TS7770: 2,0. Nesne hedefleri: 1,0 | TS7770 nominal 3:1 [TS7700-2024]; Db2 verisi sıkıştırılmamış sayıldığı için (Bölüm 8.4) orta değer düşük tutuldu. TS7700 dışındaki TCT hedeflerinde DS8000 sıkıştırma yapmaz [SG24-8381] | TS7770: 1,5–3,0 (aralık parametresi) |
+| Kopya sayısı | TS7770 ve on-prem nesne: 2 (iki site). S3: 1 nesne kopyası | IBM: "Make two copies of each level of image copy data sets" [IBM-Db2z12-Backup]. S3 nesneyi bölge içinde en az üç erişilebilirlik alanına dağıtır; site dışı kopya odur, ikinci kopya sağlayıcının kendi yedekliliğidir | sabit |
+| Sıkıştırma | TS7770: 2,0. Nesne hedefleri: 1,0 | TS7770 nominal 3:1 [IBM-TS7700-541]; Db2 verisi sıkıştırılmamış sayıldığı için (Bölüm 8.4) orta değer düşük tutuldu. TS7700 dışındaki TCT hedeflerinde DS8000 sıkıştırma yapmaz [IBM-SG24-8381] | TS7770: 1,5–3,0 (aralık parametresi) |
 
 #### 8.10.3. Kısıtlar
 
@@ -1247,9 +1247,9 @@ Bir hedef ancak üç kısıtı birden karşılarsa adaydır:
 |---|---|---|
 | Yedek penceresi | günlük yazma / hedef verimi ≤ 8 saat | Günlük yazma = D_plan / 7 + artımlı kopya + günlük log. Pencere [ASSUME] |
 | Geri yükleme (yalnızca M1) | tam geri yükleme / hedef verimi ≤ RTO × 0,5 = 36 saat | M1'de alternatif site yoktur ve yedek DR yolundadır. RTO'nun yarısı geri yüklemeye, yarısı donanım, IPL ve log uygulamaya ayrılır [ASSUME]. M2–M4'te site kaybını replikasyon karşılar; bu yüzden kısıt yalnızca M1'de bağlar |
-| TCT verimi (nesne hedefleri) | gereken verim ≤ 5.000 MB/s | Nesne hedefleri DS8900F'in Ethernet portlarından geçer: sunucu başına en fazla altı port, 10 GbE kartlarla [SG24-8381]. Tek DS8900F için ~%40 verim varsayıldı [ASSUME]. IBM TCT verimi yayımlamaz |
+| TCT verimi (nesne hedefleri) | gereken verim ≤ 5.000 MB/s | Nesne hedefleri DS8900F'in Ethernet portlarından geçer: sunucu başına en fazla altı port, 10 GbE kartlarla [IBM-SG24-8381]. Tek DS8900F için ~%40 verim varsayıldı [ASSUME]. IBM TCT verimi yayımlamaz |
 
-TS7770 her zaman feasible'dır, çünkü küme ekleyerek ölçeklenir. Site başına küme sayısı = max(⌈cache / 3.900 TB⌉, pencere kısıtı, geri yükleme kısıtı); küme başına verim 4.000 MB/s'tir [TS7700-2024]. Nesne hedeflerinin verimi ise TCT tavanıyla sınırlıdır. Bu tavanı aşan iş yükünde elenirler. S3'te Direct Connect hattı sayısı (10 Gbps × %80 = 1.000 MB/s) gereken verimden hesaplanır.
+TS7770 her zaman feasible'dır, çünkü küme ekleyerek ölçeklenir. Site başına küme sayısı = max(⌈cache / 3.900 TB⌉, pencere kısıtı, geri yükleme kısıtı); küme başına verim 4.000 MB/s'tir [IBM-TS7700-541]. Nesne hedeflerinin verimi ise TCT tavanıyla sınırlıdır. Bu tavanı aşan iş yükünde elenirler. S3'te Direct Connect hattı sayısı (10 Gbps × %80 = 1.000 MB/s) gereken verimden hesaplanır.
 
 #### 8.10.4. Maliyet
 
@@ -1259,17 +1259,17 @@ On-prem nesne depolamanın ve AWS S3 + Direct Connect'in fiyat fonksiyonları ve
 
 | Kalem | Formül | Dayanak |
 |---|---|---|
-| Küme tabanı | $493.080 liste × küme sayısı | TS7700'ün yayımlanmış başlangıç fiyatı (2006, nominal) [TS7700-2006]. TS7770 fiyatı yayımlanmıyor |
-| Cache | site başına cache TB × $2.000 liste × 2 site; cache 20 TB adımlarla | [ASSUME]; nearline HDD cache, DS8900F flash liste fiyatının (~$8.620/TB) yaklaşık dörtte biri. Aralık $1.000–4.000. 20 TB adım: Capacity on Demand [TS7700-2024] |
+| Küme tabanı | $493.080 liste × küme sayısı | TS7700'ün yayımlanmış başlangıç fiyatı (2006, nominal) [ESF2006-TS7700]. TS7770 fiyatı yayımlanmıyor |
+| Cache | site başına cache TB × $2.000 liste × 2 site; cache 20 TB adımlarla | [ASSUME]; nearline HDD cache, DS8900F flash liste fiyatının (~$8.620/TB) yaklaşık dörtte biri. Aralık $1.000–4.000. 20 TB adım: Capacity on Demand [IBM-TS7700-541] |
 | İndirim | (taban + cache) × (1 − STORAGE_DISCOUNT) | DS8900F ile aynı indirim (Bölüm 8.5) |
-| Amortisman ve bakım | capex / 5 yıl; %15 / yıl, 1 yıllık garanti sonrası | Storage ile aynı [VENDORBENCH] |
-| Enerji | küme × 4 kW × $0,12 × 730 saat | [ASSUME]; tek fazlı 30 A besleme [TS7700-2024], tüketim yayımlanmıyor |
+| Amortisman ve bakım | capex / 5 yıl; %15 / yıl, 1 yıllık garanti sonrası | Storage ile aynı [VendorBenchmark2026-Storage] |
+| Enerji | küme × 4 kW × $0,12 × 730 saat | [ASSUME]; tek fazlı 30 A besleme [IBM-TS7700-541], tüketim yayımlanmıyor |
 
 **On-prem nesne depolama:**
 
 | Kalem | Formül | Dayanak |
 |---|---|---|
-| Donanım | site başına max($70.000, saklanan TB × $100) × 2 site | MinIO'nun TCO örneği: 60 × 16 TB HDD'li 2U sistem $70K, 720 TB kullanılabilir (silme kodlaması 0,75) [MINIO-TCO]. $70K en küçük site sistemidir. Aralık $60–200/TB |
+| Donanım | site başına max($70.000, saklanan TB × $100) × 2 site | MinIO'nun TCO örneği: 60 × 16 TB HDD'li 2U sistem $70K, 720 TB kullanılabilir (silme kodlaması 0,75) [MinIO-ObjectTCO]. $70K en küçük site sistemidir. Aralık $60–200/TB |
 | Yazılım / destek | saklanan TB × 2 site × $5/TB-ay | [MINIO-TCO → ASSUME]: ticari abonelik listesi ~$10/TB-ay, açık kaynak 0. Aralık 0–10 |
 | Amortisman, bakım | storage ile aynı (5 yıl; %15/yıl, 1 yıllık garanti sonrası) | — |
 | Enerji | max(1 kW, 1,5 kW / PB) × 2 site | [ASSUME] |
@@ -1280,15 +1280,15 @@ MinIO bir üretici kaynağıdır ve kendi yazılımını satar. Bu yüzden iki f
 
 | Kalem | Formül | Dayanak |
 |---|---|---|
-| Depolama | saklanan TB × 1.000 × $0,0125 × max(1, 30 gün / saklama günü) | Standard-IA $0,0125/GB-ay; en kısa faturalanan süre 30 gün. 4 haftalık saklamada 28 gün olduğu için ×1,07 [AWS-S3-2026] |
-| İstek | günlük yazma / 256 MB nesne × 30,4 gün × $0,01 / 1.000 PUT | [AWS-S3-2026]; nesne boyutu [ASSUME]. İhmal edilebilir düzeyde |
-| Geri yükleme | yılda 1 tam geri yükleme × ($0,02 DX çıkış + $0,01 geri getirme) / GB | [AWS-S3-2026, AWS-DX-2026]; yılda bir geri yükleme testi [ASSUME]. Veri girişi ücretsiz |
-| Hat | hat sayısı × ($2,25 × 730 saat DX portu + $2.000 taşıyıcı devre) | 10 Gbps dedicated port $2,25/saat [AWS-DX-2026]. Taşıyıcı devre ve cross-connect [ASSUME], aralık $1.000–4.000 |
+| Depolama | saklanan TB × 1.000 × $0,0125 × max(1, 30 gün / saklama günü) | Standard-IA $0,0125/GB-ay; en kısa faturalanan süre 30 gün. 4 haftalık saklamada 28 gün olduğu için ×1,07 [Nubbo2026-S3] |
+| İstek | günlük yazma / 256 MB nesne × 30,4 gün × $0,01 / 1.000 PUT | [Nubbo2026-S3]; nesne boyutu [ASSUME]. İhmal edilebilir düzeyde |
+| Geri yükleme | yılda 1 tam geri yükleme × ($0,02 DX çıkış + $0,01 geri getirme) / GB | [Nubbo2026-S3, AWS-DXPricing]; yılda bir geri yükleme testi [ASSUME]. Veri girişi ücretsiz |
+| Hat | hat sayısı × ($2,25 × 730 saat DX portu + $2.000 taşıyıcı devre) | 10 Gbps dedicated port $2,25/saat [AWS-DXPricing]. Taşıyıcı devre ve cross-connect [ASSUME], aralık $1.000–4.000 |
 | Donanım, enerji | yok | Bütün maliyet işletme gideridir |
 
 Storage ağı proje kararıyla iki tarafta da kapsam dışıdır (Bölüm 8.9). Bulut hattı ise yalnızca S3 seçeneğine özgü olduğu ve onsuz seçenek var olamayacağı için maliyete dahildir. Dışarıda bırakılsaydı S3 haksız biçimde ucuz görünürdü.
 
-**NPV'de (Bölüm 9.10):** TS7770 ve on-prem nesne depolamanın donanımı storage ile aynı döngülerde (t = 0 ve 3) alınır. Abonelik, S3 ve hat ücretleri her yıl o yılın verisi ve yüküyle hesaplanır. Hedef 1. yılda seçilir ve 5 yıl boyunca sabit kalır. On-prem abonelik bakım artışıyla (%3) büyür. S3 ve hat fiyatları sabit tutulur, çünkü S3 fiyatları yıllardır değişmemiştir [MINIO-TCO].
+**NPV'de (Bölüm 9.10):** TS7770 ve on-prem nesne depolamanın donanımı storage ile aynı döngülerde (t = 0 ve 3) alınır. Abonelik, S3 ve hat ücretleri her yıl o yılın verisi ve yüküyle hesaplanır. Hedef 1. yılda seçilir ve 5 yıl boyunca sabit kalır. On-prem abonelik bakım artışıyla (%3) büyür. S3 ve hat fiyatları sabit tutulur, çünkü S3 fiyatları yıllardır değişmemiştir [MinIO-ObjectTCO].
 
 **Örnek (10K TPS, 20 TB, M1):**
 - Ortak hacim: D_plan 30,4 TB → image copy 30,4 × 4 × 1,18 = 144 TB; log 6.667 TPS × 1.800 B × 86.400 × 28 = 29 TB. Toplam 173 TB (tam: 172,6 TB).
@@ -1347,10 +1347,10 @@ Yorum:
 #### 8.10.6. Geçerlilik tehditleri ve sınırlamalar
 
 - **TS7770 fiyatı:** Yayımlanmıyor. Taban, 2006 tarihli TS7700 başlangıç fiyatıdır; enflasyon yukarı, teknoloji fiyatlarının düşüşü aşağı yönde etkiler ve model ikisini birbirini götürmüş sayar. Cache fiyatı kaynaksızdır. İkisi de aralıkla raporlanır.
-- **On-prem nesne depolama fiyatı:** Tek kaynak bir üretici örneğidir [MINIO-TCO]. IBM Cloud Object Storage'ın kurum içi fiyatı yayımlanmıyor. Donanım ve abonelik aralık parametresidir.
+- **On-prem nesne depolama fiyatı:** Tek kaynak bir üretici örneğidir [MinIO-ObjectTCO]. IBM Cloud Object Storage'ın kurum içi fiyatı yayımlanmıyor. Donanım ve abonelik aralık parametresidir.
 - **TCT verimi yayımlanmıyor.** 5.000 MB/s, port sayısından türetilmiş bir varsayımdır. Nesne hedeflerinin elendiği veri eşiği bu değerle doğrusal ölçeklenir (yukarıdaki tablo). Birden fazla DS8900F dizisi olan büyük kurulumlarda TCT verimi dizi sayısıyla artar; model tek dizinin tavanını kullanır.
-- **Image copy için TCT yolu:** SG24-8381, DFSMShsm göçünü ve DFSMSdss döküm/geri yüklemesini destekler. Db2 image copy'lerini açıkça bir kullanım durumu olarak listelemez. Model, image copy'lerin DASD'ye yazılıp DFSMShsm ile göç ettirildiğini varsayar. DASD'deki geçici alan, storage boyutlandırmasındaki ek yük payının içindedir (Bölüm 8.4). Ayrıca TCT, teybe yazılmış veriyi doğrudan taşıyamaz [SG24-8381].
-- **CPU maliyeti:** Image copy (COPY utility) ve arşiv log işlemleri CPU tüketir. Model bu işlerin R4HA tepesinin dışındaki bir pencerede çalıştığını varsayar ve MSU'ya eklemez. TCT veriyi z/OS dışında taşıdığı için nesne hedeflerinde bu varsayım daha da güçlüdür [SG24-8381].
+- **Image copy için TCT yolu:** SG24-8381, DFSMShsm göçünü ve DFSMSdss döküm/geri yüklemesini destekler. Db2 image copy'lerini açıkça bir kullanım durumu olarak listelemez. Model, image copy'lerin DASD'ye yazılıp DFSMShsm ile göç ettirildiğini varsayar. DASD'deki geçici alan, storage boyutlandırmasındaki ek yük payının içindedir (Bölüm 8.4). Ayrıca TCT, teybe yazılmış veriyi doğrudan taşıyamaz [IBM-SG24-8381].
+- **CPU maliyeti:** Image copy (COPY utility) ve arşiv log işlemleri CPU tüketir. Model bu işlerin R4HA tepesinin dışındaki bir pencerede çalıştığını varsayar ve MSU'ya eklemez. TCT veriyi z/OS dışında taşıdığı için nesne hedeflerinde bu varsayım daha da güçlüdür [IBM-SG24-8381].
 - **Mantıksal bozulmadan geri dönüş:** Geri yükleme kısıtı yalnızca M1'de bağlar. M2–M4'te mantıksal bozulmadan geri dönüşün de bir RTO'su vardır, ama model bunu ayrı bir hedef olarak almaz.
 - **Kapsam dışı:** fiziksel teyp ve uzun süreli arşiv, grid ve LAN ağı (Bölüm 8.9), Performance on Demand verim adımlarının fiyatı, TS7770'in kendi bulut katmanı (TS7770 + nesne depolama), IBM Cloud Tape Connector ve FlashCopy tabanlı yedek. Çok büyük veride (yüzlerce TB) kurumlar image copy yerine DS8900F FlashCopy ile yedek alır; model bu durumda yedeği fazla sayabilir.
 - **Clustered tarafla eşleştirme:** Aynı girdiler iki tarafta da kullanılmalıdır: veri hacmi, büyüme, saklama süresi, günlük değişim, işlem bileşiminden log hacmi ve aynı üç hedefin fiyatları. Clustered taraf kendi yedekleme yazılımı lisansını ve sıkıştırma/tekilleştirme oranını ekler. On-prem nesne depolama ve S3 fiyat fonksiyonu iki tarafta ortak olabilir; bu, Adım 6'daki ortak modülün doğal bir parçasıdır.
@@ -1395,12 +1395,12 @@ Bu, neden saatlik simülasyon yaptığımızın kalbidir: günlük veya aylık o
 IBM z15 ve sonrası için güncel ticari model üç katmanlıdır:
 
 1. **Base (satın alınan, permanent) kapasite.** Müşterinin sahip olduğu kademe; donanım amortismanı ve bakım bu kapasite üzerinden işler.
-2. **Capacity corridor (Tailored Fit Pricing for IBM Z Hardware, "Hardware Consumption Solution").** IBM'in tanımıyla "always-on, subscription-based corridor of pay-for-use capacity, on top of purchased capacity" [TFP-HW]. Corridor kapasitesi her zaman aktiftir; ücret, base'in üstünde **fiilen tüketilen MSU** üzerinden, SCRT ile saatlik ölçülerek kesilir. Boşta duran corridor kapasitesi ücretlendirilmez. Ön koşullar: z15 veya sonrası, z/OS genel amaçlı CP'ler, adanmış (dedicated) CP olmaması ve yazılım tarafında **Software Consumption Solution**. Corridor genişliği IBM'in iş yükü analiziyle belirlenir; IBM'in yayımlanmış maliyet çalışmasındaki örnek corridor, yeni iş yükünün %20'sidir [TFP-TCO].
-3. **On/Off Capacity on Demand.** Corridor'u da aşan talep için geçici kapasite kaydı. 24 saatlik periyotlarla, o gün aktif edilen kapasite üzerinden faturalanır [COD].
+2. **Capacity corridor (Tailored Fit Pricing for IBM Z Hardware, "Hardware Consumption Solution").** IBM'in tanımıyla "always-on, subscription-based corridor of pay-for-use capacity, on top of purchased capacity" [IBM-TFP-ContentSolutions]. Corridor kapasitesi her zaman aktiftir; ücret, base'in üstünde **fiilen tüketilen MSU** üzerinden, SCRT ile saatlik ölçülerek kesilir. Boşta duran corridor kapasitesi ücretlendirilmez. Ön koşullar: z15 veya sonrası, z/OS genel amaçlı CP'ler, adanmış (dedicated) CP olmaması ve yazılım tarafında **Software Consumption Solution**. Corridor genişliği IBM'in iş yükü analiziyle belirlenir; IBM'in yayımlanmış maliyet çalışmasındaki örnek corridor, yeni iş yükünün %20'sidir [IBM2021-TFP-HW-Cloud].
+3. **On/Off Capacity on Demand.** Corridor'u da aşan talep için geçici kapasite kaydı. 24 saatlik periyotlarla, o gün aktif edilen kapasite üzerinden faturalanır [IBM-SC28-7025].
 
 Corridor fiyatı, corridor büyüklüğü için IBM'in yayımladığı genel bir kural ve corridor ile On/Off CoD'nin tam etkileşimi kamuya açık değildir; bunlar müşteriye özel sözleşmede belirlenir. Bu yüzden modelde parametre olarak durur ve duyarlılık analizine girer (Bölüm 9.8).
 
-### 9.5. Geçici Kapasitenin Resmî Sınırları [COD]
+### 9.5. Geçici Kapasitenin Resmî Sınırları [IBM-SC28-7025]
 
 SC28-7025'e göre geçici kapasite üç kısıta tabidir. Model her gün aktive edilen kademeyi (corridor tavanı dahil) bu kısıtlarla sınırlar:
 
@@ -1432,7 +1432,7 @@ Corridor ücreti (saatlik) = max(0, min(tüketilen PCI, corridor PCI) − base P
 
 Tüketilen GP PCI, yükün %100 kullanım eşdeğeridir (yük × w × (1 − f) / TPS_PER_PCI). Bu, IBM'in "base'in üstünde tüketilen MSU" ölçüsünün modeldeki karşılığıdır: base'in %90 operasyonel tavanı ile %100'ü arasındaki kullanım corridor kapasitesini aktif tutar ama base tüketimini aşmadığı için ücretlendirilmez. İsteğe bağlı sabit abonelik bedeli CORRIDOR_SUBSCRIPTION_RATE ile eklenebilir (varsayılan 0).
 
-Yazılım (Software Consumption Solution) [TFP-SW]: R4HA yerine yıl boyunca tüketilen MSU-saat × efektif MSU-saat fiyatı. IBM efektif fiyatı müşterinin geçmiş 12 ayından belirler; model bunu gelir-nötr olarak kalibre eder: aynı profilin Permanent konfigürasyondaki R4HA faturası, aynı yılın tüketilen MSU-saatine bölünür. TFP_SW_DISCOUNT (varsayılan 0) bu fiyata uygulanan indirimdir. Gelir-nötr kalibrasyon nedeniyle TFP-SW'nin asıl avantajı (büyüme MSU'larının indirimli fiyatı, tepe cezası olmaması) tek yıllık ufukta görünmez; 5 yıllık ufukta büyüme fiyatıyla modellenir (Bölüm 9.10.7).
+Yazılım (Software Consumption Solution) [IBM2021-TFP-Sensible]: R4HA yerine yıl boyunca tüketilen MSU-saat × efektif MSU-saat fiyatı. IBM efektif fiyatı müşterinin geçmiş 12 ayından belirler; model bunu gelir-nötr olarak kalibre eder: aynı profilin Permanent konfigürasyondaki R4HA faturası, aynı yılın tüketilen MSU-saatine bölünür. TFP_SW_DISCOUNT (varsayılan 0) bu fiyata uygulanan indirimdir. Gelir-nötr kalibrasyon nedeniyle TFP-SW'nin asıl avantajı (büyüme MSU'larının indirimli fiyatı, tepe cezası olmaması) tek yıllık ufukta görünmez; 5 yıllık ufukta büyüme fiyatıyla modellenir (Bölüm 9.10.7).
 
 **Strateji seçimi.** Her availability-feasible topoloji için Strateji A'nın kademesi bulunur; ardından ortalama yükün en az 1,2 katını taşıyan [ASSUME] ve izinli en büyük geçici kademesi peak'i karşılayabilen her base kademe için B ve C simüle edilir. Her strateji için en ucuz sonuç tutulur ve üçü karşılaştırılır. Çok-frame topolojilerde geçici kapasite ücretleri birincil frame için hesaplanır; DR frame'i yalnızca failover içindir ve felaketteki kapasitesi CBU kaydıdır (Bölüm 6.7).
 
@@ -1517,19 +1517,19 @@ NPV = Σ_y [ capex_y / (1 + r)^(y−1) + opex_y / (1 + r)^y ] − kalan değer /
 - **Topoloji** 1. yılda seçilir ve 5 yıl sabit kalır.
 - **Kademe yalnızca yükselebilir.** Kalıcı yükseltmede PCI, CP sayısı ve kapasite seviyesi (4xx < 5xx < 6xx < 7xx) azalamaz (`is_permanent_upgrade`). Her yıl, bir önceki yılın kademesinden izinli yükseltmeler arasında o yılın yükünü taşıyan en ucuz kademe seçilir. Yükseltmenin bedeli satın alma değerleri farkıdır; frame tabanı yeniden ödenmez.
 - **Storage ve yedek** STORAGE_PLANNING_YEARS (3) yıllık döngülerle alınır: t = 0'da 3 yıllık, t = 3'te kalan 2 yıllık veriye ve döngüdeki en yüksek yüke göre. İkinci döngünün bedeli kurulu değerin üstündeki farktır.
-- **Yıllık modda** her yıl profil (1 + g)^(y−1) ile büyütülür ve strateji yeniden optimize edilir; base kademe yine yalnızca yükselebilir. TFP'de yazılım 1. yılda sözleşmelenir: 1. yılın MSU-saati taban kabul edilir, taban her yıl (tüketilmese de) ödenir, tabanın üstündeki MSU-saat TFP_GROWTH_PRICE_FACTOR ile fiyatlanır [TFP-SW-2021, KYNE-2022].
+- **Yıllık modda** her yıl profil (1 + g)^(y−1) ile büyütülür ve strateji yeniden optimize edilir; base kademe yine yalnızca yükselebilir. TFP'de yazılım 1. yılda sözleşmelenir: 1. yılın MSU-saati taban kabul edilir, taban her yıl (tüketilmese de) ödenir, tabanın üstündeki MSU-saat TFP_GROWTH_PRICE_FACTOR ile fiyatlanır [IBM2021-TFP-Sensible, Kyne2022-TFP].
 
 #### 9.10.4. Parametreler
 
 | Parametre | Değer | Dayanak | Aralık |
 |---|---|---|---|
-| NPV_DISCOUNT_RATE (r, nominal) | 0,07 | Damodaran, ABD sermaye maliyeti, Ocak 2026: toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98 [DAMODARAN-2026] | Tarama %5 / %7 / %10 (köşe senaryolarına girmez, aşağıya bakınız) |
+| NPV_DISCOUNT_RATE (r, nominal) | 0,07 | Damodaran, ABD sermaye maliyeti, Ocak 2026: toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98 [Damodaran2026-WACC] | Tarama %5 / %7 / %10 (köşe senaryolarına girmez, aşağıya bakınız) |
 | NPV_TPS_GROWTH (g) | 0,10 | Senaryo girdisi | Tarama 0 / 0,05 / 0,10 / 0,20 |
-| SW_PRICE_ESCALATION (yazılım, GDPS) | 0,03 | IBM yıllık fiyat uyumlaması: IBM Z yazılımı (MLC, S&S) 2026'da +%6 [IBM-PRICE-2026]. Orta değer uzun dönem enflasyonuna yakın tutuldu; sabit fiyatlı sözleşme 0'dır | 0–0,06 |
-| HW_SERVICE_ESCALATION (bakım, CoD, corridor, storage bakımı) | 0,03 | IBM TLS 2025'te +%4–6, 2026'da ortalama +%6 [IBM-PRICE-2026] | 0–0,06 |
-| WAGE_ESCALATION | 0,033 | BLS ECI, Haziran 2026: özel sektör toplam ücret maliyeti 12 ayda +%3,3 [BLS-ECI-2026] | 0,025–0,045 |
-| ENERGY_ESCALATION | 0,04 | EIA: ABD ticari elektrik 10,59 (2020) → 13,37 cent/kWh (2025), yıllık ~%4,8 [EIA-EPM] | 0,015–0,056 |
-| TFP_GROWTH_PRICE_FACTOR | 0,5 | IBM: taban üstü MSU'lar "very aggressive Growth Price" [TFP-SW-2021]; Kyne ve Baker: "IBM mentions 50% discount for growth MSUs" [KYNE-2022] | 0,5–1,0 |
+| SW_PRICE_ESCALATION (yazılım, GDPS) | 0,03 | IBM yıllık fiyat uyumlaması: IBM Z yazılımı (MLC, S&S) 2026'da +%6 [Schneider2026-IBMPrice]. Orta değer uzun dönem enflasyonuna yakın tutuldu; sabit fiyatlı sözleşme 0'dır | 0–0,06 |
+| HW_SERVICE_ESCALATION (bakım, CoD, corridor, storage bakımı) | 0,03 | IBM TLS 2025'te +%4–6, 2026'da ortalama +%6 [Schneider2026-IBMPrice] | 0–0,06 |
+| WAGE_ESCALATION | 0,033 | BLS ECI, Haziran 2026: özel sektör toplam ücret maliyeti 12 ayda +%3,3 [BLS2026-ECI] | 0,025–0,045 |
+| ENERGY_ESCALATION | 0,04 | EIA: ABD ticari elektrik 10,59 (2020) → 13,37 cent/kWh (2025), yıllık ~%4,8 [EIA-EPM-5.3] | 0,015–0,056 |
+| TFP_GROWTH_PRICE_FACTOR | 0,5 | IBM: taban üstü MSU'lar "very aggressive Growth Price" [IBM2021-TFP-Sensible]; Kyne ve Baker: "IBM mentions 50% discount for growth MSUs" [Kyne2022-TFP] | 0,5–1,0 |
 | NPV_RESIDUAL_FRACTION | 0 | [ASSUME] tutucu | 0–1 |
 
 **İskonto oranı neden köşe senaryolarına girmez:** r, belirsiz bir fiyat değil, kurumun sermaye maliyetidir ve iki tarafta aynı olmalıdır. Köşe senaryolarına (hepsi aynı yönde) katılsaydı, yüksek r mainframe'i hep ucuz göstereceği için "low = mainframe lehine" tanımını anlamsızlaştırırdı. Bu yüzden ayrı bir tarama olarak verilir. Artış oranları ise belirsiz fiyatlardır ve aralık çıktısına (NPV_RANGE_PARAMETERS: 22 statik + 5 NPV parametresi) dahildir.
@@ -1672,96 +1672,98 @@ Bazı testler tasarım gereği tautolojiktir: örneğin kademe tablosunun kendi 
 
 ## 11. Referanslar ve Kullanım Amaçları
 
+> Tam künyeler, erişim tarihleri ve yerel kopyalar: [`kaynaklar/KAYNAKCA.md`](../kaynaklar/KAYNAKCA.md). Bu bölümdeki köşeli parantezli anahtarlar oradaki anahtarlardır (2026-11-24 kaynak düzeltmesi).
+
 ### 11.1. Kapasite Tablosu ve Throughput Köprüsü
 
-- **[LSPR]** IBM Z LSPR ITRRs (çok imajlı tablo, System z9 2094-701 = 1,00). 3931 4xx/5xx/6xx 1–39 CP ve 701–703 için PCI, MSU, Low/Average/High. https://www.ibm.com/support/pages/ibm-z-lspr-itrrs
-- **[LSPR-z13]** IBM Z LSPR ITR zOSv2r2. Köprü çapaları: 2964-718 = 21.579 PCI (38,55), 2964-726 = 29.048 PCI (51,89). https://www.ibm.com/support/pages/node/6953815
-- **[EXHIBIT]** IBM Mainframe Exhibit, Full Capacity MSUs, IBM z16 (3931), güncelleme 5/2/2025. 3931-701…7K0 resmî MSU değerleri ve A0–K0 kodlaması. https://www.ibm.com/downloads/documents/us-en/10a99803f42fd829
-- **[STINE]** K. Stine, "IBM z16 Technical Overview", IBM Z Council, 2022. z16 200-way = 215.089 PCI (z15 190-way'e göre +%17); türetilen PCI değerlerinin bağımsız doğrulaması. https://ibm-zcouncil.com/wp-content/uploads/2022/05/z16-Technical-Overview-50M-KennyStine.pdf
-- **[SG24-8950]** IBM Redbooks, "IBM z16 Technical Introduction" (2. baskı, 2023). A01'de 317 kapasite seviyesi (200 tam-hız + 117 alt-kapasite) ve Max39–Max200 özellikleri. https://redbooks.ibm.com/redbooks/pdfs/sg248950.pdf
-- **[SG24-8952]** IBM Redbooks, "IBM z16 A02 and IBM z16 AGZ Technical Guide" (2023). Kapsam dışı bırakılan rack-mount modellerin tanımı. https://www.redbooks.ibm.com/redbooks/pdfs/sg248952.pdf
-- **[REDP]** IBM Redpaper REDP-5320, "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13" (Burgess, Mitchell, Moxey). 18 CP → 174.000 TPS, 26 CP → 227.000 TPS. https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf
-- **[REDP-PROFILE]** Aynı raporun sayaç tabloları (18 ve 26 CP): shared data table okumaları, read for update/rewrite, CF log yazımları, bölge bazında CICS CPU. İşlem başına değerler (4,76 okuma, 0,047 güncelleme, 0,062 log yazımı, 85,9 µs CPU) bu çalışmada türetildi: `data/raw/redp5320_workload_profile.csv`.
-- **[CATTERALL-2019]** R. Catterall (IBM), "A Case Study: Measuring the Impact of Db2 for z/OS Buffer Pool Changes", Robert's Db2 blog, Ocak 2019. Bir sahada CICS-Db2 işlemi class 2 CPU (GP + zIIP) 1,322 → 1,245 ms; DRDA işlemi 0,392 → 0,259 ms. Donanım belirtilmemiş. https://robertsdb2blog.blogspot.com/2019/01/a-case-study-measuring-impact-of-db2.html
-- **[CATTERALL-2012]** R. Catterall, "DB2 for z/OS: What's With DDF CPU Time?", 2012, okur yorumu: CICS programında tek INSERT ~68 µs CPU (stored procedure içinde 139 µs); DDF SRB süresinin %47'si zIIP'te (bazı sahalarda %60). https://robertsdb2blog.blogspot.com/2012/07/db2-for-zos-whats-with-ddf-cpu-time.html
-- **[SYSBENCH]** sysbench oltp_read_write betiği: işlem başına 10 point SELECT, 4 aralık SELECT, 2 UPDATE, 1 DELETE, 1 INSERT, 1 COMMIT. Varsayılan oltp_rw profilinin bileşimi; x86 tarafında yaygın ölçülen OLTP bileşimi.
-- **[TPC-B]** TPC Benchmark B (debit-credit) işlem bileşimi: 3 UPDATE, 1 SELECT, 1 INSERT. tpcb_like profilinin bileşimi.
-- **[IBM-Z14-PR]** IBM IBM Z (z14) duyurusu, Temmuz 2017: "günde 12 milyardan fazla şifreli işlem" (Amwal Al Ghad haberi, https://en.amwalalghad.com/?p=62475). Profil ağırlığı için büyüklük mertebesi kontrolü; işlem tanımı açıklanmamıştır.
+- **[IBM-LSPR-ITRR]** IBM Z LSPR ITRRs (çok imajlı tablo, System z9 2094-701 = 1,00). 3931 4xx/5xx/6xx 1–39 CP ve 701–703 için PCI, MSU, Low/Average/High. https://www.ibm.com/support/pages/ibm-z-lspr-itrrs
+- **[IBM-LSPR-zOS22]** IBM Z LSPR ITR zOSv2r2. Köprü çapaları: 2964-718 = 21.579 PCI (38,55), 2964-726 = 29.048 PCI (51,89). https://www.ibm.com/support/pages/node/6953815
+- **[IBM2025-MSU-Exhibit]** IBM Mainframe Exhibit, Full Capacity MSUs, IBM z16 (3931), güncelleme 5/2/2025. 3931-701…7K0 resmî MSU değerleri ve A0–K0 kodlaması. https://www.ibm.com/downloads/documents/us-en/10a99803f42fd829
+- **[Stine2022]** K. Stine, "IBM z16 Technical Overview", IBM Z Council, 2022. z16 200-way = 215.089 PCI (z15 190-way'e göre +%17); türetilen PCI değerlerinin bağımsız doğrulaması. https://ibm-zcouncil.com/wp-content/uploads/2022/05/z16-Technical-Overview-50M-KennyStine.pdf
+- **[IBM-SG24-8950]** IBM Redbooks, "IBM z16 Technical Introduction" (2. baskı, 2023). A01'de 317 kapasite seviyesi (200 tam-hız + 117 alt-kapasite) ve Max39–Max200 özellikleri. https://redbooks.ibm.com/redbooks/pdfs/sg248950.pdf
+- **[IBM-SG24-8952]** IBM Redbooks, "IBM z16 A02 and IBM z16 AGZ Technical Guide" (2023). Kapsam dışı bırakılan rack-mount modellerin tanımı. https://www.redbooks.ibm.com/redbooks/pdfs/sg248952.pdf
+- **[Burgess2016-REDP5320]** IBM Redpaper REDP-5320, "IBM CICS Performance Series: CICS TS V5.3 Benchmark on IBM z13" (Burgess, Mitchell, Moxey). 18 CP → 174.000 TPS, 26 CP → 227.000 TPS. https://www.redbooks.ibm.com/redpapers/pdfs/redp5320.pdf
+- **[Burgess2016-REDP5320]** Aynı raporun sayaç tabloları (18 ve 26 CP): shared data table okumaları, read for update/rewrite, CF log yazımları, bölge bazında CICS CPU. İşlem başına değerler (4,76 okuma, 0,047 güncelleme, 0,062 log yazımı, 85,9 µs CPU) bu çalışmada türetildi: `data/raw/redp5320_workload_profile.csv`.
+- **[Catterall2019]** R. Catterall (IBM), "A Case Study: Measuring the Impact of Db2 for z/OS Buffer Pool Changes", Robert's Db2 blog, Ocak 2019. Bir sahada CICS-Db2 işlemi class 2 CPU (GP + zIIP) 1,322 → 1,245 ms; DRDA işlemi 0,392 → 0,259 ms. Donanım belirtilmemiş. https://robertsdb2blog.blogspot.com/2019/01/a-case-study-measuring-impact-of-db2.html
+- **[Catterall2012]** R. Catterall, "DB2 for z/OS: What's With DDF CPU Time?", 2012, okur yorumu: CICS programında tek INSERT ~68 µs CPU (stored procedure içinde 139 µs); DDF SRB süresinin %47'si zIIP'te (bazı sahalarda %60). https://robertsdb2blog.blogspot.com/2012/07/db2-for-zos-whats-with-ddf-cpu-time.html
+- **[Kopytov-sysbench]** sysbench oltp_read_write betiği: işlem başına 10 point SELECT, 4 aralık SELECT, 2 UPDATE, 1 DELETE, 1 INSERT, 1 COMMIT. Varsayılan oltp_rw profilinin bileşimi; x86 tarafında yaygın ölçülen OLTP bileşimi.
+- **[TPC1994-TPCB]** TPC Benchmark B (debit-credit) işlem bileşimi: 3 UPDATE, 1 SELECT, 1 INSERT. tpcb_like profilinin bileşimi.
+- **[AmwalAlGhad2017-z14]** IBM IBM Z (z14) duyurusu, Temmuz 2017: "günde 12 milyardan fazla şifreli işlem" (Amwal Al Ghad haberi, https://en.amwalalghad.com/?p=62475). Profil ağırlığı için büyüklük mertebesi kontrolü; işlem tanımı açıklanmamıştır.
 
 ### 11.2. Availability ve Felaket Kurtarma
 
-- **[SG24-8446] —** IBM Redbooks SG24-8446, "Getting Started with IBM Z Resiliency" (güncel baskı). Dört desen (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıkları: HA'da RTO dakikalar–birkaç saat, RPO 0; DR'de RTO 2–72 saat, 2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister. Desen başına availability yüzdesi vermez. M1–M4 eşlemesinin ve M1/M2 kurtarma sürelerinin kaynağı. https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf
-- **[SG24-6374] —** IBM Redbooks SG24-6374, "IBM GDPS: An Introduction to Concepts and Capabilities", Tablo 1-1: depolama replikasyonlu uzak sitede RPO "sıfırdan dakikalara", RTO "bir veya daha fazla saat"; yalnızca senkron replikasyon RPO 0 verir. https://www.redbooks.ibm.com/redbooks/pdfs/sg246374.pdf
-- **[GDPS-2026] —** S. Cook (IBM GDPS Development), "GDPS Overview: Availability, Disaster Recovery, and Cyber Resiliency for z/OS, z/VM, and Linux on Z", VM Workshop, Haziran 2026: GDPS Metro RPO 0, RTO ~2 dk (çok-siteli iş yükü) / < 1 saat (tek siteli); GDPS Global ve Metro Global RPO "2 saniyeye kadar düşük", RTO < 1 saat; GDPS CA RPO 0–5 sn, RTO 20–30 sn (portföy slaytında < 60 sn). Üretici kaynağı. https://vmworkshop.org/2026/present/gdpsover.pdf
-- **[GDPS-CA-2021] —** IBM, "GDPS Continuous Availability" sunumu (2021, New Era aracılığıyla): iş yükü geçişi < 30 sn; bir bankada planlı kesinti 4 saatten 30 saniyenin altına. https://www.newera.com/INFO/GDPS-CA.pdf
-- **[CBU] —** IBM SC28-7025, "IBM Z and LinuxONE Capacity on Demand User's Guide", CBU bölümü: LICCC ile etkinleşen, önceden kurulu donanım gerektiren yedek kapasite; yıl başına bir ücretsiz 10 günlük test (en fazla 15), tek 90 günlük gerçek aktivasyon, 1–5 yıllık kayıt; "Software charges for the designated CBU machine are based on its permanent configuration." Fiyat yayımlanmaz. SHARE 2012 oturumu 10869 (IBM): CBU "priced for H/W, no IBM S/W charges". https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf
-- **[GDPS-PRICE] —** Mainframe Licensing Experts (bağımsız alıcı tarafı danışmanlık), GDPS ürün ve yenileme sayfaları: GDPS lisanslı otomasyon kodu ile IBM hizmetlerinin birleşimi; fiyat otomatikleştirilen sistem, sysplex ve site kapsamına bağlı, MSU'ya değil. Rakam vermez; yalnızca fiyatlama yapısının dayanağı. https://mainframelicensingexperts.pages.dev/products/ibm/gdps/
-- **[UPTIME-2025] —** Uptime Institute, Annual Outage Analysis 2025 (basın bülteni ve Data Center Knowledge haberi): operatörlerin %53'ü son üç yılda kesinti bildirdi (2020'de %78); 2024'te olayların %9'u ciddi/ağır; etkili kesintilerin %54'ü güç kaynaklı, %23'ü BT/ağ; insan hatası tüm kesintilerin üçte ikisi–dörtte üçünde rol oynar. https://www.datacenterknowledge.com/outages/data-center-outages-decline-for-fourth-straight-year-but-issues-persist
-- **[UPTIME-2022] —** Uptime Institute, Annual Outage Analysis 2022 (Data Center Frontier haberi): kamuya yansıyan kesintilerin 24 saatten uzun süren payı 2017'de %8, 2021'de ~%30. https://www.datacenterfrontier.com/uptime-longer-data-center-outages-are-becoming-more-common
-- **[ITIC-2023] —** ITIC 2023 Global Server Hardware, Server OS Reliability Survey (~1.900 kurum): 200+ z16 kullanıcısının %96'sı 9 nine (sunucu başına yılda 31,56 ms plansız kesinti); z13–z15 ortalaması 7–8 nine; IBM'e göre IBM Z ortalaması 8 nine. IT Jungle özetine göre x86 Linux platformları: Lenovo ThinkSystem 31,5 sn, Cisco/HPE/Huawei ~1,3 dk, Dell PowerEdge 24 dk, HPE ProLiant 39 dk, white box 59 dk. Kesinti nedenleri: güvenlik (%84), insan hatası (%67; yanlış yapılandırma dahil). İki taraftaki D_platform teriminin kaynağı (Değ. #10). Kendi seçilen katılımcılarla web anketi; bağımsız doğrulama yok. https://itic-corp.com/?p=3107 ; https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
-- **[YUAN-2014] —** D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures: An Analysis of Production Failures in Distributed Data-Intensive Systems", OSDI 2014: katastrofik hataların %92'si önemsiz hataların yanlış işlenmesinden. u parametresinin nitel dayanağı.
-- **[GUNAWI-2016] —** H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", ACM SoCC 2016: kesintilerde kurtarma/geçiş mekanizmalarının kendisinin hata üretmesi. u parametresinin nitel dayanağı.
-- **[ITIC-2024] —** ITIC 2024 anketi (TechChannel haberi): z16 9 nine; Lenovo ThinkSystem'in güncel x86 sunucuları 8 nine (yılda 315 ms). Sunucu güvenilirliğinin iki platformda da hizmet availability'sinin belirleyicisi olmadığının dayanağı. https://techchannel.com/industry-news/server-reliability-survey-2024/
-- **[PRECISELY] —** Precisely, High Availability tanımı: toplam kesintinin büyük kısmı (~%90) planlıdır. Artık çarpan olarak kullanılmıyor; yalnızca olay tabanlı sonucun yön kontrolü. https://www.precisely.com/glossary/high-availability-ha/
+- **[IBM-SG24-8446] —** IBM Redbooks SG24-8446, "Getting Started with Business Continuity on IBM Z" (SG24-8446-01, 2. baskı, Ağustos 2026; 1. baskının adı "Getting Started with IBM Z Resiliency"). Dört desen (Reliable base, Failover capable, Fault tolerant, Adaptive continuity) ve genel RTO/RPO aralıkları: HA'da RTO dakikalar–birkaç saat, RPO 0; DR'de RTO 2–72 saat, 2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister. Desen başına availability yüzdesi vermez. M1–M4 eşlemesinin ve M1/M2 kurtarma sürelerinin kaynağı. https://www.redbooks.ibm.com/redbooks/pdfs/sg248446.pdf
+- **[IBM-SG24-6374] —** IBM Redbooks SG24-6374, "IBM GDPS: An Introduction to Concepts and Capabilities", Tablo 1-1: depolama replikasyonlu uzak sitede RPO "sıfırdan dakikalara", RTO "bir veya daha fazla saat"; yalnızca senkron replikasyon RPO 0 verir. https://www.redbooks.ibm.com/redbooks/pdfs/sg246374.pdf
+- **[Cook2026-GDPS] —** S. Cook (IBM GDPS Development), "GDPS Overview: Availability, Disaster Recovery, and Cyber Resiliency for z/OS, z/VM, and Linux on Z", VM Workshop, Haziran 2026: GDPS Metro RPO 0, RTO ~2 dk (çok-siteli iş yükü) / < 1 saat (tek siteli); GDPS Global ve Metro Global RPO "2 saniyeye kadar düşük", RTO < 1 saat; GDPS CA RPO 0–5 sn, RTO 20–30 sn (portföy slaytında < 60 sn). Üretici kaynağı. https://vmworkshop.org/2026/present/gdpsover.pdf
+- **[Aubert2021-GDPSCA] —** IBM, "GDPS Continuous Availability" sunumu (2021, New Era aracılığıyla): iş yükü geçişi < 30 sn; bir bankada planlı kesinti 4 saatten 30 saniyenin altına. https://www.newera.com/INFO/GDPS-CA.pdf
+- **[IBM-SC28-7025] —** IBM SC28-7025, "IBM Z and LinuxONE Capacity on Demand User's Guide", CBU bölümü: LICCC ile etkinleşen, önceden kurulu donanım gerektiren yedek kapasite; yıl başına bir ücretsiz 10 günlük test (en fazla 15), tek 90 günlük gerçek aktivasyon, 1–5 yıllık kayıt; "Software charges for the designated CBU machine are based on its permanent configuration." Fiyat yayımlanmaz. SHARE 2012 oturumu 10869 (IBM): CBU "priced for H/W, no IBM S/W charges". https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf
+- **[MLE-GDPS] —** Mainframe Licensing Experts (bağımsız alıcı tarafı danışmanlık), GDPS ürün ve yenileme sayfaları: GDPS lisanslı otomasyon kodu ile IBM hizmetlerinin birleşimi; fiyat otomatikleştirilen sistem, sysplex ve site kapsamına bağlı, MSU'ya değil. Rakam vermez; yalnızca fiyatlama yapısının dayanağı. https://mainframelicensingexperts.pages.dev/products/ibm/gdps/
+- **[Uptime2025-PR] —** Uptime Institute, Annual Outage Analysis 2025 (basın bülteni ve Data Center Knowledge haberi): operatörlerin %53'ü son üç yılda kesinti bildirdi (2020'de %78); 2024'te olayların %9'u ciddi/ağır; etkili kesintilerin %54'ü güç kaynaklı, %23'ü BT/ağ; insan hatası tüm kesintilerin üçte ikisi–dörtte üçünde rol oynar. https://www.datacenterknowledge.com/outages/data-center-outages-decline-for-fourth-straight-year-but-issues-persist
+- **[DCF2022-Uptime] —** Uptime Institute, Annual Outage Analysis 2022 (Data Center Frontier haberi): kamuya yansıyan kesintilerin 24 saatten uzun süren payı 2017'de %8, 2021'de ~%30. https://www.datacenterfrontier.com/uptime-longer-data-center-outages-are-becoming-more-common
+- **[ITIC2023-IBMZ] —** ITIC 2023 Global Server Hardware, Server OS Reliability Survey (~1.900 kurum): 200+ z16 kullanıcısının %96'sı 9 nine (sunucu başına yılda 31,56 ms plansız kesinti); z13–z15 ortalaması 7–8 nine; IBM'e göre IBM Z ortalaması 8 nine. IT Jungle özetine göre x86 Linux platformları: Lenovo ThinkSystem 31,5 sn, Cisco/HPE/Huawei ~1,3 dk, Dell PowerEdge 24 dk, HPE ProLiant 39 dk, white box 59 dk. Kesinti nedenleri: güvenlik (%84), insan hatası (%67; yanlış yapılandırma dahil). İki taraftaki D_platform teriminin kaynağı (Değ. #10). Kendi seçilen katılımcılarla web anketi; bağımsız doğrulama yok. https://itic-corp.com/?p=3107 ; https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
+- **[Yuan2014] —** D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures: An Analysis of Production Failures in Distributed Data-Intensive Systems", OSDI 2014: katastrofik hataların %92'si önemsiz hataların yanlış işlenmesinden. u parametresinin nitel dayanağı.
+- **[Gunawi2016] —** H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", ACM SoCC 2016: kesintilerde kurtarma/geçiş mekanizmalarının kendisinin hata üretmesi. u parametresinin nitel dayanağı.
+- **[TechChannel2024-ITIC] —** ITIC 2024 anketi (TechChannel haberi): z16 9 nine; Lenovo ThinkSystem'in güncel x86 sunucuları 8 nine (yılda 315 ms). Sunucu güvenilirliğinin iki platformda da hizmet availability'sinin belirleyicisi olmadığının dayanağı. https://techchannel.com/industry-news/server-reliability-survey-2024/
+- **[Precisely-HA] —** Precisely, High Availability tanımı: toplam kesintinin büyük kısmı (~%90) planlıdır. Artık çarpan olarak kullanılmıyor; yalnızca olay tabanlı sonucun yön kontrolü. https://www.precisely.com/glossary/high-availability-ha/
 
 ### 11.3. CoD ve Yıllık Simülasyon
-- **\[COD\] —** IBM SC28-7025, "IBM Z and LinuxONE Capacity on Demand User's Guide". On/Off CoD'nin teknik yapısı (gün-bazlı faturalandırma, 24-saatlik aktivasyon periyodu, prepaid/postpaid modelleri) ve geçici kapasite sınırları (satın alınan kapasitenin %100'ü, kurulu kapasite, alt-kapasite seviye kuralları). Gün başına dolar fiyatı kapalı, premium çarpanı 2.5 \[ASSUME\]. https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf
-- **\[CFCC\] —** IBM Coupling Facility Configuration Options (Raften), IBM Z Resiliency Redbook ve ilgili IBM dokümanları. ICF (Internal Coupling Facility) specialty engine olduğu için kapasite derecelendirmesini etkilemez ve yazılım lisansını artırmaz. Ek frame'in yazılım lisansını artırmamasının gerekçelerinden biridir (diğeri [CBU]).
+- **\[IBM-SC28-7025\] —** IBM SC28-7025, "IBM Z and LinuxONE Capacity on Demand User's Guide". On/Off CoD'nin teknik yapısı (gün-bazlı faturalandırma, 24-saatlik aktivasyon periyodu, prepaid/postpaid modelleri) ve geçici kapasite sınırları (satın alınan kapasitenin %100'ü, kurulu kapasite, alt-kapasite seviye kuralları). Gün başına dolar fiyatı kapalı, premium çarpanı 2.5 \[ASSUME\]. https://www.ibm.com/docs/en/module_1687296212988/pdf/SC28-7025-00.pdf
+- **\[CFCC\] —** IBM Coupling Facility Configuration Options (Raften), IBM business continuity Redbook [IBM-SG24-8446] ve ilgili IBM dokümanları. ICF (Internal Coupling Facility) specialty engine olduğu için kapasite derecelendirmesini etkilemez ve yazılım lisansını artırmaz. Ek frame'in yazılım lisansını artırmamasının gerekçelerinden biridir (diğeri [IBM-SC28-7025]).
 
-- **[TFP-HW] —** IBM Z Content Solutions, "Tailored Fit Pricing" (https://www.ibm.com/support/z-content-solutions/tailored-fit-pricing/). Hardware Consumption Solution'ın tanımı (always-on, subscription-based, pay-for-use corridor), ön koşulları (z15+, z/OS genel amaçlı CP, Software Consumption Solution, dedicated CP yok, RMF aralığı 1/3/5/15 dk). Ayrıca DBTA ve NetworkWorld duyuru haberleri: corridor kullanımı SCRT ile 1 saatlik çözünürlükte, fiilen tüketilen MSU üzerinden faturalanır.
-- **[TFP-TCO] —** IBM IT Economics Consulting & Research, TFP for IBM Z Hardware maliyet çalışması (Mayıs 2021). Örnek corridor: 4.000 MSU'luk yeni iş yükü için %20 (800 MSU). CORRIDOR_FRACTION = 0,20 varsayılanının kaynağı. IBM sponsorlu bir çalışmadır; yalnızca yapı ve büyüklük örneği olarak kullanılır.
-- **[TFP-SW] —** IBM TFP Software Consumption Solution fiyatlama özeti ve z/OS TFP dokümantasyonu: geçmiş 12 ayın MSU tüketiminden efektif MSU fiyatı, yıllık MSU taahhüdü (kullanılmayan MSU devreder), büyüme için indirimli fiyat, R4HA/tepe/capping yok. Modeldeki gelir-nötr kalibrasyonun gerekçesi.
+- **[IBM-TFP-ContentSolutions] —** IBM Z Content Solutions, "Tailored Fit Pricing" (https://www.ibm.com/support/z-content-solutions/tailored-fit-pricing/). Hardware Consumption Solution'ın tanımı (always-on, subscription-based, pay-for-use corridor), ön koşulları (z15+, z/OS genel amaçlı CP, Software Consumption Solution, dedicated CP yok, RMF aralığı 1/3/5/15 dk). Ayrıca DBTA ve NetworkWorld duyuru haberleri: corridor kullanımı SCRT ile 1 saatlik çözünürlükte, fiilen tüketilen MSU üzerinden faturalanır.
+- **[IBM2021-TFP-HW-Cloud] —** IBM IT Economics Consulting & Research, TFP for IBM Z Hardware maliyet çalışması (Mayıs 2021). Örnek corridor: 4.000 MSU'luk yeni iş yükü için %20 (800 MSU). CORRIDOR_FRACTION = 0,20 varsayılanının kaynağı. IBM sponsorlu bir çalışmadır; yalnızca yapı ve büyüklük örneği olarak kullanılır.
+- **[IBM2021-TFP-Sensible] —** IBM TFP Software Consumption Solution fiyatlama özeti ve z/OS TFP dokümantasyonu: geçmiş 12 ayın MSU tüketiminden efektif MSU fiyatı, yıllık MSU taahhüdü (kullanılmayan MSU devreder), büyüme için indirimli fiyat, R4HA/tepe/capping yok. Modeldeki gelir-nötr kalibrasyonun gerekçesi.
 
 ### 11.4. Storage (DS8900F)
 
-- **[REDP-5554] —** IBM Storage DS8900F Product Guide, Release 9.3.2 (https://www.redbooks.ibm.com/redpapers/pdfs/redp5554.pdf). Model kataloğu (çekirdek, bellek, HPFE Gen2 çifti, maks. drive ve ham kapasite), drive katmanları (Tier 0: 0,8/1,6/3,2 TB; Tier 1: 3,84 TB; Tier 2: 1,92/7,68/15,36 TB), tepe güç, zHyperLink (< 20 µs, ~18 µs; 150 m), lisans paketleri (Base Function, Copy Services, z-synergy Services) ve TB kademeleri, Safeguarded Copy.
-- **[ITCANDOR] —** "IBM launches the DS8900F" (https://www.itcandor.com/ibm-storage-q419/). Maks. IOPS: DS8910F 860K, DS8950F 2.320K.
-- **[TT-2019] —** TechTarget, "IBM Storage syncs new DS8900F array to z15 mainframe launch" (https://www.techtarget.com/searchstorage/news/252470647/IBM-Storage-syncs-new-DS8900F-array-to-z15-mainframe-launch). IBM'e göre başlangıç fiyatları ($134.000 DS8910F, $196.000 DS8950F), zHPF yanıt süresi (z13'te 120 → 90 µs), IDC'ye göre mainframe storage pazar payı %40–50.
-- **[ITJUNGLE-22] —** IT Jungle, "More Price Hikes From IBM, Now For High End Storage" (https://www.itjungle.com/2022/05/16/more-price-hikes-from-ibm-now-for-high-end-storage/). IBM duyurusu 322-396: 16 adet 15,36 TB flash kartı (özellik 1625) liste fiyatı $2,12M, kart başına $132.381 = $8,62/GB (kontrolcü hariç); flash +%18, FICON +%40 fiyat artışı.
-- **[VENDORBENCH] —** Kurumsal storage TB başına fiyat karşılaştırmaları (isvcosell.com / vendorbenchmark.com, 2026): liste fiyatından %35–65 indirim, yıllık destek %10–25. Metodolojisi açıklanmamış; yalnızca aralık olarak kullanılır.
-- **[IBM-122-037] —** IBM duyurusu 122-037, DS8900F bir yıllık garanti teklifi.
-- **[GDPS] —** IBM GDPS mimarisi (Metro Mirror çifti ve HyperSwap; Metro/Global Mirror'da uzak sitede journal kopyası). Kopya sayıları doğrulanmalı (GDPS Redbook).
+- **[IBM-REDP-5554] —** IBM Storage DS8900F Product Guide, Release 9.3.2 (https://www.redbooks.ibm.com/redpapers/pdfs/redp5554.pdf). Model kataloğu (çekirdek, bellek, HPFE Gen2 çifti, maks. drive ve ham kapasite), drive katmanları (Tier 0: 0,8/1,6/3,2 TB; Tier 1: 3,84 TB; Tier 2: 1,92/7,68/15,36 TB), tepe güç, zHyperLink (< 20 µs, ~18 µs; 150 m), lisans paketleri (Base Function, Copy Services, z-synergy Services) ve TB kademeleri, Safeguarded Copy.
+- **[ITCandor2019-DS8900F] —** "IBM launches the DS8900F" (https://www.itcandor.com/ibm-storage-q419/). Maks. IOPS: DS8910F 860K, DS8950F 2.320K.
+- **[TechTarget2019-DS8900F] —** TechTarget, "IBM Storage syncs new DS8900F array to z15 mainframe launch" (https://www.techtarget.com/searchstorage/news/252470647/IBM-Storage-syncs-new-DS8900F-array-to-z15-mainframe-launch). IBM'e göre başlangıç fiyatları ($134.000 DS8910F, $196.000 DS8950F), zHPF yanıt süresi (z13'te 120 → 90 µs), IDC'ye göre mainframe storage pazar payı %40–50.
+- **[ITJungle2022-Storage] —** IT Jungle, "More Price Hikes From IBM, Now For High End Storage" (https://www.itjungle.com/2022/05/16/more-price-hikes-from-ibm-now-for-high-end-storage/). IBM duyurusu 322-396: 16 adet 15,36 TB flash kartı (özellik 1625) liste fiyatı $2,12M, kart başına $132.381 = $8,62/GB (kontrolcü hariç); flash +%18, FICON +%40 fiyat artışı.
+- **[VendorBenchmark2026-Storage] —** Kurumsal storage TB başına fiyat karşılaştırmaları (isvcosell.com / vendorbenchmark.com, 2026): liste fiyatından %35–65 indirim, yıllık destek %10–25. Metodolojisi açıklanmamış; yalnızca aralık olarak kullanılır.
+- **[IBM2022-ENUS122-037] —** IBM duyurusu 122-037, DS8900F bir yıllık garanti teklifi.
+- **[IBM-SG24-6374] —** IBM GDPS mimarisi (Metro Mirror çifti ve HyperSwap; Metro/Global Mirror'da uzak sitede journal kopyası). Kopya sayıları doğrulanmalı (GDPS Redbook).
 
 ### 11.5. Yedekleme (TS7770, nesne depolama, AWS S3)
 
-- **[TS7700-2024] —** IBM, "IBM TS7700 Tape Solution Overview" (03/2024) ve IBM Documentation, TS7700 5.4.1 "TS7700 server"; IBM TS7770 cache controller sayfası. TS7770'in yapısı (Power9 sunucu, disk-only veya teyp bağlı), cache'in 20 TB / 100 TB adımlarla Capacity on Demand ile açılması, taban + iki genişleme çerçevesiyle ~3,9 PB üst sınır, küme başına ~4.000 MB/s host verimi, nominal 3:1 sıkıştırma, grid replikasyonu (en fazla 8 küme). https://www.ibm.com/docs/en/ts7700-virtual-tape/5.4.1?topic=components-ts7700-server ; IBM TS7700 R5.3/R5.4 performance white paper'ları (https://www.ibm.com/support/pages/ibm-ts7700-r54-performance).
-- **[TS7700-2006] —** Enterprise Storage Forum, "Big Blue Takes Tape to the Next Level" (21.09.2006): TS7700'ün başlangıç fiyatı $493.080. Yayımlanmış tek TS7700 fiyatıdır; küme tabanı olarak nominal değeriyle kullanılır. https://www.enterprisestorageforum.com/backup/big-blue-takes-tape-to-the-next-level/
-- **[DB2-BACKUP] —** IBM Db2 12 for z/OS Documentation, "Actions to take to prepare for backup and recovery": image copy'lerin ve arşiv logların ikişer kopyası, kopyalardan birinin site dışında tutulması. https://www.ibm.com/docs/SSEPEK_12.0.0/admin/src/tpc/db2z_actionstakebackupdata.html
-- **[IDUG-2024] —** A. Hendley, Planet Mainframe (15.11.2024), A. Svoboda'nın IDUG EMEA oturumunun aktarımı: tam image copy tipik olarak haftada bir, arada artımlı kopya; haftalık değişim %10'u aşan nesnelerde tam kopya önerilir. Uygulayıcı kaynağı; sıklık varsayımının dayanağı.
-- **[SG24-8381] —** IBM Redbooks SG24-8381, "IBM DS8000 Transparent Cloud Tiering (DS8000 Release 9.3)": TCT ile DFSMShsm göçü, DFSMShsm tam hacim dökümü ve DFSMSdss veri seti/hacim döküm ve geri yüklemesinin nesne depolamaya taşınması; hedefler OpenStack Swift, IBM Cloud Object Storage (kamu veya kurum içi), Amazon S3 ve nesne hedefi olarak TS7700; en fazla sekiz bulut hedefi; veri DS8000 sunucularının Ethernet portlarından geçer (sunucu başına iki 1 GbE, ek kartlarla 10 GbE, en fazla altı port); TS7700 dışındaki hedeflerde DS8000 sıkıştırma yapmaz; teybe yazılmış veri doğrudan taşınamaz. Verim değeri vermez. https://www.redbooks.ibm.com/redbooks/pdfs/sg248381.pdf
-- **[AWS-S3-2026] —** AWS S3 liste fiyatları, us-east-1 (Nubbo, "AWS S3 pricing in 2026" derlemesi üzerinden; ikincil aktarım): Standard $0,023, Standard-IA $0,0125 (en kısa süre 30 gün), Glacier Instant Retrieval $0,004 /GB-ay; Standard-IA PUT $0,01 / 1.000, geri getirme $0,01/GB; veri girişi ücretsiz. https://nubbo.app/blog/aws-s3-pricing-2026
-- **[AWS-DX-2026] —** AWS Direct Connect, pay-as-you-go fiyatları: dedicated port 1 Gbps $0,30, 10 Gbps $2,25, 100 Gbps $22,50 /saat; ABD içi DX çıkış $0,02/GB; giriş ücretsiz. https://aws.amazon.com/directconnect/pricing/pay-as-you-go/
-- **[MINIO-TCO] —** MinIO, "The Long Term Costs of Object Storage in the Public Cloud" (tarihsiz blog): 1 PB için 60 × 16 TB HDD'li 2U sistem $70K (0,72 PB kullanılabilir, 36 ay amortisman), MinIO Standard abonelik $0,01/GB-ay; S3 fiyatlarının dört yıldır değişmediği gözlemi. Üretici kaynağı; yalnızca aralık olarak kullanılır. https://blog.min.io/the-long-term-costs-of-storage-in-the-cloud
+- **[IBM-TS7700-541] —** IBM, "IBM TS7700 Tape Solution Overview" (03/2024) ve IBM Documentation, TS7700 5.4.1 "TS7700 server"; IBM TS7770 cache controller sayfası. TS7770'in yapısı (Power9 sunucu, disk-only veya teyp bağlı), cache'in 20 TB / 100 TB adımlarla Capacity on Demand ile açılması, taban + iki genişleme çerçevesiyle ~3,9 PB üst sınır, küme başına ~4.000 MB/s host verimi, nominal 3:1 sıkıştırma, grid replikasyonu (en fazla 8 küme). https://www.ibm.com/docs/en/ts7700-virtual-tape/5.4.1?topic=components-ts7700-server ; IBM TS7700 R5.3/R5.4 performance white paper'ları (https://www.ibm.com/support/pages/ibm-ts7700-r54-performance).
+- **[ESF2006-TS7700] —** Enterprise Storage Forum, "Big Blue Takes Tape to the Next Level" (21.09.2006): TS7700'ün başlangıç fiyatı $493.080. Yayımlanmış tek TS7700 fiyatıdır; küme tabanı olarak nominal değeriyle kullanılır. https://www.enterprisestorageforum.com/backup/big-blue-takes-tape-to-the-next-level/
+- **[IBM-Db2z12-Backup] —** IBM Db2 12 for z/OS Documentation, "Actions to take to prepare for backup and recovery": image copy'lerin ve arşiv logların ikişer kopyası, kopyalardan birinin site dışında tutulması. https://www.ibm.com/docs/SSEPEK_12.0.0/admin/src/tpc/db2z_actionstakebackupdata.html
+- **[Hendley2024-IDUG] —** A. Hendley, Planet Mainframe (15.11.2024), A. Svoboda'nın IDUG EMEA oturumunun aktarımı: tam image copy tipik olarak haftada bir, arada artımlı kopya; haftalık değişim %10'u aşan nesnelerde tam kopya önerilir. Uygulayıcı kaynağı; sıklık varsayımının dayanağı.
+- **[IBM-SG24-8381] —** IBM Redbooks SG24-8381, "IBM DS8000 Transparent Cloud Tiering (DS8000 Release 9.3)": TCT ile DFSMShsm göçü, DFSMShsm tam hacim dökümü ve DFSMSdss veri seti/hacim döküm ve geri yüklemesinin nesne depolamaya taşınması; hedefler OpenStack Swift, IBM Cloud Object Storage (kamu veya kurum içi), Amazon S3 ve nesne hedefi olarak TS7700; en fazla sekiz bulut hedefi; veri DS8000 sunucularının Ethernet portlarından geçer (sunucu başına iki 1 GbE, ek kartlarla 10 GbE, en fazla altı port); TS7700 dışındaki hedeflerde DS8000 sıkıştırma yapmaz; teybe yazılmış veri doğrudan taşınamaz. Verim değeri vermez. https://www.redbooks.ibm.com/redbooks/pdfs/sg248381.pdf
+- **[Nubbo2026-S3] —** AWS S3 liste fiyatları, us-east-1 (Nubbo, "AWS S3 pricing in 2026" derlemesi üzerinden; ikincil aktarım): Standard $0,023, Standard-IA $0,0125 (en kısa süre 30 gün), Glacier Instant Retrieval $0,004 /GB-ay; Standard-IA PUT $0,01 / 1.000, geri getirme $0,01/GB; veri girişi ücretsiz. https://nubbo.app/blog/aws-s3-pricing-2026
+- **[AWS-DXPricing] —** AWS Direct Connect, pay-as-you-go fiyatları: dedicated port 1 Gbps $0,30, 10 Gbps $2,25, 100 Gbps $22,50 /saat; ABD içi DX çıkış $0,02/GB; giriş ücretsiz. https://aws.amazon.com/directconnect/pricing/pay-as-you-go/
+- **[MinIO-ObjectTCO] —** MinIO, "The Long Term Costs of Object Storage in the Public Cloud" (tarihsiz blog): 1 PB için 60 × 16 TB HDD'li 2U sistem $70K (0,72 PB kullanılabilir, 36 ay amortisman), MinIO Standard abonelik $0,01/GB-ay; S3 fiyatlarının dört yıldır değişmediği gözlemi. Üretici kaynağı; yalnızca aralık olarak kullanılır. https://blog.min.io/the-long-term-costs-of-storage-in-the-cloud
 
 ### 11.6. 5 Yıllık Ufuk ve NPV
 
-- **[DAMODARAN-2026] —** A. Damodaran, "Cost of Capital by Sector (US)", Ocak 2026: toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98. NPV_DISCOUNT_RATE = 0,07 ve %5–%10 taramasının kaynağı. https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/wacc.html
-- **[IBM-PRICE-2026] —** IBM yıllık fiyat uyumlamaları, bayi ve danışman özetleri (Schneider IT Management, "IBM price increases 2025/2026"; Insight, "Decoding IBM's software price surge", 2024): IBM Z yazılımı (MLC, S&S) 2026'da yaklaşık +%6; donanım bakımı (TLS) 2025'te +%4–6. SW ve HW servis artışlarının (orta %3, aralık 0–%6) dayanağı; orta değer, liste artışının sözleşmeli müşterilere tam yansımadığı varsayımıyla düşük tutuldu. https://www.schneider.im/lu/ibm-price-increases-2026/
-- **[BLS-ECI-2026] —** BLS, Employment Cost Index, Haziran 2026 (31.07.2026 bülteni): özel sektör toplam ücret maliyeti 12 ayda +%3,3. WAGE_ESCALATION'ın kaynağı. https://www.bls.gov/news.release/archives/eci_07312026.htm
-- **[EIA-EPM] —** EIA, Electric Power Monthly, Tablo 5.3: ticari elektrik fiyatı 10,59 (2020) → 13,37 cent/kWh (2025), yıllık ~%4,8. ENERGY_ESCALATION aralığının üst ucu. https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_3
-- **[TFP-SW-2021] —** IBM, "Tailored Fit Pricing: A sensible pricing model" (05/2021): tabanın üstündeki MSU'lar için "very aggressive Growth Price". Büyüme fiyatının yapısal dayanağı.
-- **[KYNE-2022] —** F. Kyne, J. Baker (Watson & Walker), "How Should I Think About Tailored Fit Pricing?" (2022): "IBM mentions 50% discount for growth MSUs"; taban geçmiş 12 ayın MLC'sidir ve kullanılmasa da ödenir. TFP_GROWTH_PRICE_FACTOR = 0,5'in kaynağı. Bağımsız danışman kaynağı. https://tuningletter.planetmainframe.com/wp-content/uploads/presentations/2022-08-102-How-Should-I-Think-About-Tailored-Fit-Pricing.pdf
+- **[Damodaran2026-WACC] —** A. Damodaran, "Cost of Capital by Sector (US)", Ocak 2026: toplam piyasa %6,96; bilgisayar hizmetleri %7,83; yazılım %9,34; bankalar %4,98. NPV_DISCOUNT_RATE = 0,07 ve %5–%10 taramasının kaynağı. https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/wacc.html
+- **[Schneider2026-IBMPrice] —** IBM yıllık fiyat uyumlamaları, bayi ve danışman özetleri (Schneider IT Management, "IBM price increases 2025/2026"; Insight, "Decoding IBM's software price surge", 2024): IBM Z yazılımı (MLC, S&S) 2026'da yaklaşık +%6; donanım bakımı (TLS) 2025'te +%4–6. SW ve HW servis artışlarının (orta %3, aralık 0–%6) dayanağı; orta değer, liste artışının sözleşmeli müşterilere tam yansımadığı varsayımıyla düşük tutuldu. https://www.schneider.im/lu/ibm-price-increases-2026/
+- **[BLS2026-ECI] —** BLS, Employment Cost Index, Haziran 2026 (31.07.2026 bülteni): özel sektör toplam ücret maliyeti 12 ayda +%3,3. WAGE_ESCALATION'ın kaynağı. https://www.bls.gov/news.release/archives/eci_07312026.htm
+- **[EIA-EPM-5.3] —** EIA, Electric Power Monthly, Tablo 5.3: ticari elektrik fiyatı 10,59 (2020) → 13,37 cent/kWh (2025), yıllık ~%4,8. ENERGY_ESCALATION aralığının üst ucu. https://www.eia.gov/electricity/monthly/epm_table_grapher.php?t=epmt_5_3
+- **[IBM2021-TFP-Sensible] —** IBM, "Tailored Fit Pricing: A sensible pricing model" (05/2021): tabanın üstündeki MSU'lar için "very aggressive Growth Price". Büyüme fiyatının yapısal dayanağı.
+- **[Kyne2022-TFP] —** F. Kyne, J. Baker (Watson & Walker), "How Should I Think About Tailored Fit Pricing?" (2022): "IBM mentions 50% discount for growth MSUs"; taban geçmiş 12 ayın MLC'sidir ve kullanılmasa da ödenir. TFP_GROWTH_PRICE_FACTOR = 0,5'in kaynağı. Bağımsız danışman kaynağı. https://tuningletter.planetmainframe.com/wp-content/uploads/presentations/2022-08-102-How-Should-I-Think-About-Tailored-Fit-Pricing.pdf
 
 ### 11.7. Maliyet Verileri (Yarı-Kapalı)
-- **\[PRICE\] —** Bağımsız mainframe fiyat rehberleri (electronics.alibaba buying guides serisi). z15/z16 donanım fiyat aralığı (\$0.5M-\$10M+), yıllık bakım donanım değerinin %10-15'i, alt ekonomik eşik ~150 MIPS. HARDWARE_COST_PER_MIPS = \$200, HW_FRAME_BASE_COST = \$500K (aralığın giriş ucu) ve MAINTENANCE_RATE_ANNUAL = 0.125 değerlerinin kaynağıdır. Açık liste fiyatı olmadığı için kestirim.
-- **[IBM-2004] —** IBM, "Workload License Charges" sunumu, z/VM sayfası (vm.ibm.com, 2005-Z24, 2004 fiyatları). Db2 PSLC/WLC kademe fiyatları (Base $3.960 ilk 3 MSU dahil; 4–45 $208; 46–175 $88; 176–315 $66; 316+ $50 /MSU/ay) ve örnek sub-capacity faturası (z/OS $75.459 @265 MSU, CICS $32.978 @210 MSU, Db2 $31.876 @265 MSU). AWLC kademe düşüş eğrisinin ve ürün katsayılarının kaynağı. 2004 tarihli olduğu için mutlak seviye SW_PRICE_LEVEL_FACTOR ile taranır.
-- **[IBM-ZNALC] —** IBM, "z Systems New Application License Charges (zNALC)", ZSL03508-USEN-01. Kademe sınırları (Base 3, L0 4–45 … L7 1.976+) ve "kümülatif aylık fiyatlama" ilkesi (aynı yapı AWLC'de geçerli).
-- **[CMG-2020] —** CMG, "Understanding Z Pricing to Control your Software Costs" (2020). AWLC kademe sınırlarının güncel teyidi; R4HA'nın LPAR bazlı tepeye göre faturalanması.
-- **[LONGPELA] —** Longpela Expertise, MLC fiyatlama yazıları. "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi; L4+ için ×0,80 düşüş varsayımının dayanağı.
-- **[VALUE4IT] —** value-4it, "Mainframe Software Costs" yazı dizisi. ~150 MSU ≈ yıllık £1M yazılım; büyüklük mertebesi teyidi.
-- **[TU11] —** IBM Technology Update Pricing (z17 için TU11): AWLC indirimleri kademe bandına göre %12–42. Mutlak seviyenin aşağı yönlü gerekçesi.
-- **[ZIIP] —** IBM z16 zIIP kuralları (SG24-8950): zIIP MSU'ya sayılmaz, alt-kapasite modellerde tam hızda çalışır, zIIP:CP ≤ 2:1. Tipik offload aralığı (%10–25, Redress Compliance) doğrulanmamıştır, yalnızca aralık olarak kullanılır.
-- **\[LIC\] (kullanımdan kaldırıldı) —** Önceki sürümdeki $40/MSU/ay değerinin kaynağı (atonementlicensing.com). Metodolojisi açıklanmadığı ve IBM'in kendi örnek faturasıyla ~7–10 kat çeliştiği için bırakıldı.
-- **[IBM-EAGLE] —** IBM, "Mainframe skills: The myths and the reality" (v3, IBM Eagle TCO ekibi), slayt 5: 17 müşteri çalışmasından "5 FTE to start + 1 FTE for every 625 MIPS". https://public.dhe.ibm.com/software/os/systemz/pdf/Mainframe_skills_-_The_myths_and_the_reality_v3.pdf. Üretici kaynağı.
-- **[GARTNER-ITKMD] —** Gartner IT Key Metrics Data 2016, CA Technologies (Broadcom) "Why the Mainframe Should Be Part of Your Digital Business Ecosystem" üzerinden: kurulu MIPS/mainframe FTE 152 → 268, MIPS başına maliyet $5.517 → $3.057, mainframe FTE'leri BT FTE'lerinin %5,5'i. https://docs.broadcom.com/doc/why-the-mainframe-should-be-part-of-your-digital-business-ecosystem. İkincil aktarım.
-- **[IBM-TPF-2007] —** IBM, "A Fresh Look at the Mainframe: Mainframe Total Cost of Ownership Issues" (TPFUG 2007): Gartner'a göre ekip 2001 → 2004 sabitken MIPS iki katından fazla arttı; örnek karşılaştırmada 3.192 MIPS ≈ 4 FTE ($793K). https://public.dhe.ibm.com/software/htp/tpf/tpfug/tgs07/tgs07e.pdf
-- **[BLS-OEWS] —** U.S. Bureau of Labor Statistics, Occupational Outlook Handbook / OEWS, Mayıs 2025 medyanları (DBA ve mimarlar $126.760; ağ ve sistem yöneticileri $99.130; bilgi güvenliği analistleri $129.180) ve Mayıs 2023 DBA dağılımı (15-1242). https://www.bls.gov/ooh/computer-and-information-technology/
-- **[BLS-ECEC] —** BLS, Employer Costs for Employee Compensation, Haziran 2026: özel sektörde maaş toplam işveren maliyetinin %70,0'ı, yan haklar %30,0'ı. https://www.bls.gov/opub/ted/2026/compensation-costs-for-private-industry-workers-averaged-46-89-per-hour-worked-in-june-2026.htm
-- **[IDC-2016] —** IDC, "The Business Value of the Connected Mainframe for Digital Transformation" (2016, CA sponsorlu): yüklü maaş = maaş + %28 yan hak ve genel gider. https://docs.broadcom.com/doc/idc-the-business-value-of-connected-mainframe-for-digital-transformation
-- **[MF-PAY] —** Payscale, Mainframe Systems Programmer (23 profil, 2022 güncellemesi, ort. ~$90K, 10–90. yüzdelik $49–130K); Glassdoor, Db2 z/OS DBA (toplam ücret $104–163K, tek kayıt). Küçük örneklem; yalnızca aralık teyidi.
-- **\[PWR\] —** Aynı fiyat rehberi (electronics.alibaba) enerji ölçütleri. z15/z16 frame başına 20-40 kW; modelde POWER_KW_PER_SYSTEM = 30 kW (orta).
+- **\[Alibaba-MFPrice\] —** Bağımsız mainframe fiyat rehberleri (electronics.alibaba buying guides serisi). z15/z16 donanım fiyat aralığı (\$0.5M-\$10M+), yıllık bakım donanım değerinin %10-15'i, alt ekonomik eşik ~150 MIPS. HARDWARE_COST_PER_MIPS = \$200, HW_FRAME_BASE_COST = \$500K (aralığın giriş ucu) ve MAINTENANCE_RATE_ANNUAL = 0.125 değerlerinin kaynağıdır. Açık liste fiyatı olmadığı için kestirim.
+- **[Adams2005-z9SWPricing] —** K. E. Adams (IBM), "IBM z9xx Software Pricing Overview", zExpo 2005 Session Z24 (vm.ibm.com; fiyat tabloları "current as of 7May04"). Db2 PSLC/WLC kademe fiyatları (Base $3.960 ilk 3 MSU dahil; 4–45 $208; 46–175 $88; 176–315 $66; 316+ $50 /MSU/ay) ve örnek sub-capacity faturası (z/OS $75.459 @265 MSU, CICS $32.978 @210 MSU, Db2 $31.876 @265 MSU). AWLC kademe düşüş eğrisinin ve ürün katsayılarının kaynağı. 2004 tarihli olduğu için mutlak seviye SW_PRICE_LEVEL_FACTOR ile taranır.
+- **[IBM-zNALC] —** IBM, "z Systems New Application License Charges (zNALC)", ZSL03508-USEN-01. Kademe sınırları (Base 3, L0 4–45 … L7 1.976+) ve "kümülatif aylık fiyatlama" ilkesi (aynı yapı AWLC'de geçerli).
+- **[CMG2020] —** CMG, "Understanding Z Pricing to Control your Software Costs" (2020). AWLC kademe sınırlarının güncel teyidi; R4HA'nın LPAR bazlı tepeye göre faturalanması.
+- **[Longpela-SWPrice] —** Longpela Expertise, MLC fiyatlama yazıları. "L7'nin MSU fiyatı L6'dan ~%20 düşük" gözlemi; L4+ için ×0,80 düşüş varsayımının dayanağı.
+- **[Moss2010-Value4IT] —** value-4it, "Mainframe Software Costs" yazı dizisi. ~150 MSU ≈ yıllık £1M yazılım; büyüklük mertebesi teyidi.
+- **[IBM-AWLC-TU11] —** IBM Technology Update Pricing (z17 için TU11): AWLC indirimleri kademe bandına göre %12–42. Mutlak seviyenin aşağı yönlü gerekçesi.
+- **[IBM-SG24-8950] —** IBM z16 zIIP kuralları (SG24-8950): zIIP MSU'ya sayılmaz, alt-kapasite modellerde tam hızda çalışır, zIIP:CP ≤ 2:1. Tipik offload aralığı (%10–25, Redress Compliance) doğrulanmamıştır, yalnızca aralık olarak kullanılır.
+- **\[Atonement-MLC\] (kullanımdan kaldırıldı) —** Önceki sürümdeki $40/MSU/ay değerinin kaynağı (atonementlicensing.com). Metodolojisi açıklanmadığı ve IBM'in kendi örnek faturasıyla ~7–10 kat çeliştiği için bırakıldı.
+- **[IBM-CPO2014-Skills] —** IBM Competitive Project Office, "Mainframe Skills – The Myth and the Reality" (v3, 2014), slayt 5: 17 müşteri çalışmasından "5 FTE to start + 1 FTE for every 625 MIPS". https://public.dhe.ibm.com/software/os/systemz/pdf/Mainframe_skills_-_The_myths_and_the_reality_v3.pdf. Üretici kaynağı.
+- **[CA2016-MFEcosystem] —** Gartner IT Key Metrics Data 2016, CA Technologies (Broadcom) "Why the Mainframe Should Be Part of Your Digital Business Ecosystem" üzerinden: kurulu MIPS/mainframe FTE 152 → 268, MIPS başına maliyet $5.517 → $3.057, mainframe FTE'leri BT FTE'lerinin %5,5'i. https://docs.broadcom.com/doc/why-the-mainframe-should-be-part-of-your-digital-business-ecosystem. İkincil aktarım.
+- **[Rhoderick2007-TPFUG] —** IBM, "A Fresh Look at the Mainframe: Mainframe Total Cost of Ownership Issues" (TPFUG 2007): Gartner'a göre ekip 2001 → 2004 sabitken MIPS iki katından fazla arttı; örnek karşılaştırmada 3.192 MIPS ≈ 4 FTE ($793K). https://public.dhe.ibm.com/software/htp/tpf/tpfug/tgs07/tgs07e.pdf
+- **[BLS-OOH] —** U.S. Bureau of Labor Statistics, Occupational Outlook Handbook / OEWS, Mayıs 2025 medyanları (DBA ve mimarlar $126.760; ağ ve sistem yöneticileri $99.130; bilgi güvenliği analistleri $129.180) ve Mayıs 2023 DBA dağılımı (15-1242). https://www.bls.gov/ooh/computer-and-information-technology/
+- **[BLS2026-ECEC] —** BLS, Employer Costs for Employee Compensation, Haziran 2026: özel sektörde maaş toplam işveren maliyetinin %70,0'ı, yan haklar %30,0'ı. https://www.bls.gov/opub/ted/2026/compensation-costs-for-private-industry-workers-averaged-46-89-per-hour-worked-in-june-2026.htm
+- **[IDC2016-ConnectedMF] —** IDC, "The Business Value of the Connected Mainframe for Digital Transformation" (2016, CA sponsorlu): yüklü maaş = maaş + %28 yan hak ve genel gider. https://docs.broadcom.com/doc/idc-the-business-value-of-connected-mainframe-for-digital-transformation
+- **[MF-Payscale] —** Payscale, Mainframe Systems Programmer (23 profil, 2022 güncellemesi, ort. ~$90K, 10–90. yüzdelik $49–130K); Glassdoor, Db2 z/OS DBA (toplam ücret $104–163K, tek kayıt). Küçük örneklem; yalnızca aralık teyidi.
+- **\[Alibaba-MFPrice\] —** Aynı fiyat rehberi (electronics.alibaba) enerji ölçütleri. z15/z16 frame başına 20-40 kW; modelde POWER_KW_PER_SYSTEM = 30 kW (orta).
 
-- **[IBM-EAGLE-2013] —** IBM CPO, "TCO Lessons Learned From Customer Engagements" v4 (2013): üretim dışı ortamlar mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200; HA için adanmış kopya 2–2,5× üretim. `NONPROD_FACTOR` orta değerinin kaynağı (Bölüm 7.9). https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf. Üretici kaynağı; ayrıntı `benzer_calismalar_v1.md` §3.2.
+- **[IBM2013-TCOLessons] —** IBM CPO, "TCO Lessons Learned From Customer Engagements" v4 (2013): üretim dışı ortamlar mainframe'de üretim +%20, dağıtıkta çoğu zaman +%200; HA için adanmış kopya 2–2,5× üretim. `NONPROD_FACTOR` orta değerinin kaynağı (Bölüm 7.9). https://public.dhe.ibm.com/software/os/systemz/pdf/TCO_lessons_from_customer_engagements_v4.pdf. Üretici kaynağı; ayrıntı `benzer_calismalar_v1.md` §3.2.
 
 ### 11.8. Teorik Temel
 
@@ -1802,7 +1804,7 @@ Bazı testler tasarım gereği tautolojiktir: örneğin kademe tablosunun kendi 
 - 5 yıllık yol açgözlüdür: kademe her yıl o yılın yüküne göre en ucuz izinli yükseltmedir; ileriye bakan optimizasyon yok. 5 yıl içinde z17'ye geçiş modellenmez; yükseltme PCI fiyatı nominal sabittir (Bölüm 9.10.8).
 - Drawer maliyeti olmadığı için 5 yıllık yolda geçici kapasitenin drawer sınırına çarpması (retail_bursty, 5. yıl) kalıcı bir yükseltmeye zorlar; önceden büyük drawer kurma seçeneği değerlendirilemiyor (Bölüm 9.10.7).
 - Yedekleme işinin CPU'su (image copy, log arşivleme) MSU faturasına eklenmez; zIIP'e kayabilen ve gece penceresinde çalışan bir yük olarak ihmal edilir. Yedek ağı (FICON, grid bağlantısı) ve fiziksel teyp arşivi kapsam dışıdır (Bölüm 8.10.6).
-- Personel iş yükünün PCI eşdeğerinden hesaplanır (P kararı, Adım 7). Kaynak çalışmalar [IBM-EAGLE, GARTNER-ITKMD] ekipleri kurulu MIPS'e göre verir; eğri bu kaynaklarla kalibre edildiği halde girdisi iş yüküdür. Sonuç olarak latency için alınan boş kapasitenin yönetim yükü sıfır sayılır. Personel verisinin kendisine güven düşük olduğu için (Emirhan, 2026-11-16) personel iki tarafta aynı eğriyle hesaplanır ve crossover için nötrdür; başabaş personel oranı ve personelsiz TCO ayrıca raporlanır (Bölüm 7.7.3, 7.11).
+- Personel iş yükünün PCI eşdeğerinden hesaplanır (P kararı, Adım 7). Kaynak çalışmalar [IBM-CPO2014-Skills, CA2016-MFEcosystem] ekipleri kurulu MIPS'e göre verir; eğri bu kaynaklarla kalibre edildiği halde girdisi iş yüküdür. Sonuç olarak latency için alınan boş kapasitenin yönetim yükü sıfır sayılır. Personel verisinin kendisine güven düşük olduğu için (Emirhan, 2026-11-16) personel iki tarafta aynı eğriyle hesaplanır ve crossover için nötrdür; başabaş personel oranı ve personelsiz TCO ayrıca raporlanır (Bölüm 7.7.3, 7.11).
 
 ### 12.3. Yol Haritası (Değerlendirme #2, M3–M8)
 
