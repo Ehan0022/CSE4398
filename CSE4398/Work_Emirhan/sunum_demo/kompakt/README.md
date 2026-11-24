@@ -11,12 +11,13 @@ Sunumda girdileri ve çıktıları kod üzerinde göstermek için. Model kodunun
 | `inputs/_fiyat_parametreleri.json` | Modelin 43 kaynaklı fiyat/maliyet parametresi (senaryo girdisi değil; `prices` ile değiştirilir) |
 | `kod/common_model.py`, `mainframe_model.py`, `x86_model.py` | `src/` kopyası, yalnızca girdi okuma eklendi |
 | `kod/veri/` | Modelin okuduğu iki veri tablosu (z16 A01 kademeleri, DS8900F) |
-| `ciktilar/` | `calistir.py`'nin yazdığı tam çıktılar |
+| `ciktilar/` | `calistir.py`'nin yazdığı tam çıktılar (case başına bir dosya) |
+| `case_sonuclari.txt` | Çalıştırılan bütün case'lerin tam çıktıları sırayla, tek dosyada alt alta (argümansız çalıştırmada 12 case); her case CASE ÖZETİ ile biter |
 
 ## Çalıştırma
 
 ```
-python sunum_demo/kompakt/calistir.py              # bütün case'ler, her koşunun OZET satırları
+python sunum_demo/kompakt/calistir.py              # bütün case'ler; 12'si de case_sonuclari.txt'ye alt alta
 python sunum_demo/kompakt/calistir.py --ayrinti    # OZET'e ek olarak ozet_deseni satırları
 python sunum_demo/kompakt/calistir.py 3 7          # yalnızca Case 3 ve 7
 python sunum_demo/kompakt/calistir.py 4 --adim     # her koşudan önce Enter bekler (canlı sunum)
@@ -83,3 +84,5 @@ Model `src/` altında değişirse bu kopya eskir. O durumda üç dosya yeniden k
 ## Case özeti (2026-11-24)
 
 Her koşu, modelin OZET bloğuyla biter: iki tarafta en ucuz feasible yapılandırma ve aylık maliyet (`kod/ozet.py`, `src/ozet.py` ile aynı). `calistir.py` ekrana varsayılan olarak yalnızca bu satırları basar ve her `ciktilar/case_NN_*.txt` dosyasının sonuna bütün koşuların CASE ÖZETİ'ni yazar (biçim ana demodakiyle aynı).
+
+Argümansız `python sunum_demo/kompakt/calistir.py`, 12 case'in tam çıktısını içindekiler listesiyle birlikte `kompakt/case_sonuclari.txt` dosyasına sırayla yazar; dosyanın sonunda orijinal kodla karşılaştırma satırı vardır. Case seçilerek çalıştırılırsa (ör. `3 7`) dosya yalnızca o case'leri içerir.

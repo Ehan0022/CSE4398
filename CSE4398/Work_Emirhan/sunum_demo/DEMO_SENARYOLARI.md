@@ -24,6 +24,8 @@ CASE 1 OZETI: iki tarafta en ucuz feasible yapilandirma ve aylik maliyet
     x86:       X1 vSphere / VM / PostgreSQL+Patroni, 3 x 2x8c DB dugumu  $576,454/ay  $57.65/TPS
 ```
 
+Kompakt kopyada (`kompakt/calistir.py`, argümansız) 12 case'in tam çıktısı tek dosyada alt alta toplanır: `kompakt/case_sonuclari.txt`.
+
 Özet satırı her zaman iki tarafı da çözer: yalnızca mainframe komutu olan case'lerde (3, 5, 6, 7, 8) x86 tarafı aynı girdilerle hesaplanır. `--range` / `--npv` koşularında özet mid / 1. yıl statik değerdir; yıllık modda (Case 8) mainframe A / B / C'nin en ucuzu, x86 tepeye göre kurulu yığındır. Kurulamayan taraf `kurulamaz`, `redp_light` için x86 `karşılığı yok` yazılır.
 
 **Ortak varsayılanlar:** oltp_rw iş yükü (10 nokta + 4 aralık okuma + 4 yazma), %99,9 availability, 20 TB veri, yılda %15 veri büyümesi, `PRICE_EPOCH` = 2025-mid, `STAFF_RATIO_X86` = 1,0 (personel nötr), mid senaryo. Değerler aylık USD'dir; "$/TPS" aylık TPS başına maliyettir.

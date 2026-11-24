@@ -43,7 +43,7 @@ CASES = [
       ("p99 10 ms", MF, "--tps 10000 --latency-ms 10"),
       ("x86, p99 20 ms", X86, "--tps 10000 --latency-ms 20")],
      r"KADEME|tavani|utilization:|tahmini p99|p99 ~|kullanim %|AYLIK"),
-    (4, "availability", "Availability / RPO / RTO: (%99,9 = Case 1) -> M2-X2 -> M4-X3 ve infeasible sinir",
+    (4, "availability", "Availability / RPO / RTO: (%99,9 = Case 1) -> M2-X2 -> M3-X4 (%99,999) ve RPO 0 + RTO 30 dk",
      [("%99,99 + RPO 0 + RTO 120 dk", X86,
        "--tps 10000 --availability 0.9999 --rpo-seconds 0 --rto-minutes 120 --compare"),
       ("%99,999", X86, "--tps 10000 --availability 0.99999 --compare"),

@@ -976,3 +976,16 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 - Kodda (`src/`, kompakt `kod/`) etiketlerin yeni anahtarlara geçirilmesi (çıktı metnini değiştirir; demo çıktıları yeniden üretilmeli).
 - `z16_a01_capacity.csv`'nin 7xx satırlarını resmî LSPR PCI'siyle değiştirmek (sonuçları en fazla %0,13 oynatır).
 - Değerlendirmeler ve log eski etiketleri tarihsel kayıt olarak koruyor.
+
+## 2026-11-24 — Oturum 14: bütün case sonuçları tek dosyada
+
+### 1. Aksiyon
+- `sunum_demo/kompakt/calistir.py` çalıştırılan bütün case'lerin tam çıktılarını (her case CASE ÖZETİ ile biter) içindekiler listesiyle birlikte sırayla `kompakt/case_sonuclari.txt` dosyasına yazıyor; argümansız çalıştırmada 12 case'in hepsi. Case başına dosyalar ve diğer seçenekler (`3 7`, `--adim`, `--tam`, `--kisa`, `--ayrinti`) değişmedi.
+- Case 4 başlığı Değ #10 sonucuna göre düzeltildi ("M4-X3 ve infeasible sınır" → "M3-X4 (%99,999) ve RPO 0 + RTO 30 dk"; ana demo ve kompakt JSON).
+- Kompakt README ve `DEMO_SENARYOLARI.md` güncellendi.
+
+### 2. Sebep
+- Emirhan'ın isteği (2026-11-24): `calistir.py` doğrudan çalıştırılınca 12 case'in çıktısı tek bir txt'de alt alta, `case_sonuclari` adıyla.
+
+### 3. Sonuç
+- `case_sonuclari.txt`: 12 case, ~2.900 satır. Demo 51 komut farklı; kompakt 50/50 orijinalle aynı. Model koduna dokunulmadı.

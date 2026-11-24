@@ -1,7 +1,7 @@
 """Kompakt sunum demosu: inputs/ klasorundeki case dosyalarini sira sira calistirir.
 
 Kullanim (herhangi bir klasorden):
-    python sunum_demo/kompakt/calistir.py              # butun case'ler, ozet satirlari
+    python sunum_demo/kompakt/calistir.py              # butun case'ler; hepsi case_sonuclari.txt'ye
     python sunum_demo/kompakt/calistir.py 3 7          # yalnizca Case 3 ve Case 7
     python sunum_demo/kompakt/calistir.py 4 --adim     # her kosudan once Enter bekler
     python sunum_demo/kompakt/calistir.py 1 --tam      # model ciktisinin tamamini basar
@@ -15,6 +15,9 @@ Her case bir JSON dosyasidir (inputs/case_NN_*.json). Dosyadaki her kosu icin:
      aylik maliyet; --ayrinti ile case'in ozet_deseni'ne uyan satirlar da),
   3. tam cikti kompakt/ciktilar/case_NN_*.txt dosyasina yazilir; dosyanin sonunda
      butun kosularin CASE OZETI vardir.
+Calistirilan butun case'lerin tam ciktilari ayrica sirayla tek bir dosyada
+alt alta toplanir: kompakt/case_sonuclari.txt (argumansiz calistirmada 12 case'in
+hepsi).
 
 Modeller kod/ klasorundeki kopyadir ve girdiyi kendileri okur:
     python sunum_demo/kompakt/kod/x86_model.py --input sunum_demo/kompakt/inputs/case_01_referans.json
@@ -38,6 +41,7 @@ CIKTI = os.path.join(BURASI, "ciktilar")
 ORIJINAL_CIKTI = os.path.join(os.path.dirname(BURASI), "ciktilar")
 BETIK = {"mainframe": "mainframe_model.py", "x86": "x86_model.py"}
 CIZGI = "=" * 78
+TOPLU_CIKTI = os.path.join(BURASI, "case_sonuclari.txt")
 
 
 def kosu_calistir(case_dosyasi, kosu_no, model):
@@ -101,6 +105,23 @@ def case_ozeti(no, ozetler):
     return out
 
 
+def toplu_yaz(yazilanlar, dogrulama):
+    """Calistirilan case'lerin tam ciktilarini sirayla tek dosyaya yazar."""
+    with open(TOPLU_CIKTI, "w", encoding="utf-8") as f:
+        f.write(f"{CIZGI}\nCASE SONUCLARI: kompakt sunum demosu, {len(yazilanlar)} case\n")
+        f.write("Her case: kosularin tam ciktisi, sonunda CASE OZETI (iki tarafta en ucuz "
+                "feasible yapilandirma ve aylik maliyet).\n")
+        f.write("Icerik:\n")
+        for case, _ in yazilanlar:
+            f.write(f"  Case {case['case']:>2}: {case['baslik']}\n")
+        f.write(f"{CIZGI}\n\n")
+        for case, yol in yazilanlar:
+            f.write(f"{CIZGI}\nCASE {case['case']}: {case['baslik']}\n{CIZGI}\n")
+            with open(yol, encoding="utf-8") as g:
+                f.write(g.read().rstrip("\n") + "\n\n")
+        f.write(f"{CIZGI}\n{dogrulama}\n")
+
+
 def main(argv):
     adim = "--adim" in argv
     tam = "--tam" in argv
@@ -113,6 +134,7 @@ def main(argv):
     import common_model as cm  # yalnizca girdi -> komut cevirisini gostermek icin
     import ozet
     ayni, farkli, kontrolsuz = [], [], []
+    yazilanlar = []
 
     for yol in sorted(glob.glob(os.path.join(GIRDILER, "case_*.json"))):
         with open(yol, encoding="utf-8") as f:
@@ -159,11 +181,16 @@ def main(argv):
                         print("    " + satir.rstrip())
                 print()
             cikti.write("\n".join(case_ozeti(case["case"], ozetler)) + "\n")
+        yazilanlar.append((case, cikti_yolu))
         print(f"  -> tam cikti: kompakt/ciktilar/{os.path.basename(cikti_yolu)}\n")
 
+    dogrulama = (f"Orijinal kodla karsilastirma: {len(ayni)} kosu ayni, {len(farkli)} farkli, "
+                 f"{len(kontrolsuz)} karsilastirilamadi.")
+    toplu_yaz(yazilanlar, dogrulama)
     print(CIZGI)
-    print(f"Orijinal kodla karsilastirma: {len(ayni)} kosu ayni, {len(farkli)} farkli, "
-          f"{len(kontrolsuz)} karsilastirilamadi.")
+    print(dogrulama)
+    print(f"Butun case ciktilari alt alta: kompakt/{os.path.basename(TOPLU_CIKTI)} "
+          f"({len(yazilanlar)} case)")
     for e in farkli:
         print(f"  FARKLI: {e}")
     return 1 if farkli else 0
