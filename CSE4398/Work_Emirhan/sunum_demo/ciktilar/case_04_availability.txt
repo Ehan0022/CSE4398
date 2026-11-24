@@ -1,4 +1,4 @@
---- %99,99 + RPO 0 + RTO 120 dk: python src/x86_model.py --tps 10000 --availability 0.9999 --rpo-seconds 0 --rto-minutes 120 --compare  (cikis kodu 0, sha 0a34977f0b23)
+--- %99,99 + RPO 0 + RTO 120 dk: python src/x86_model.py --tps 10000 --availability 0.9999 --rpo-seconds 0 --rto-minutes 120 --compare  (cikis kodu 0, sha 006d2a6a51f1)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -8,44 +8,44 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / Oracle
   -> SECILEN TOPOLOJI: X2: Tek site HA + uzak DR, elle gecis [Failover capable; Silver + Data Guard (Max Availability)]
-     availability: 99.99538% (aralik 99.97745% - 99.99929%) | RPO 0 s, RTO 105 dk
+     availability: 99.99446% (aralik 99.97308% - 99.99928%) | RPO 0 s, RTO 105 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 2, 'B': 1}; RAC 2 dugum (N+1)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 4.35 ms; p99 ~ 19.61 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 7 fiziksel sunucu, 112 cekirdek
-     AYLIK maliyet: $611,894  ($61.19/TPS)
+     AYLIK maliyet: $653,792  ($65.38/TPS)
        yazilim/abonelik: $39,298  (Oracle $34,804)
        donanim:  $1,305   bakim: $326   enerji: $264
-       personel: $547,400  (40.5 FTE, oran 1)
+       personel: $589,298  (43.7 FTE, oran 1)
        storage:  $3,136  (site A: 1 AFA (76 TB ham); site B: 1 AFA (61 TB ham))
        yedekleme: $4,772  (cos_onprem, site basina 86 TB)
        uretim disi: $15,392  (NONPROD_FACTOR_X86=0.5)
-     DR payi %2.2; uygulama katmani payi %0.6
+     DR payi %2.1; uygulama katmani payi %0.6
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    611,894  vSphere / VM / Oracle                      X2 2x8c k=2
-     $    618,331  vSphere / VM / PostgreSQL+Patroni          X3 2x8c
-     $    618,331  vSphere / K8s / PostgreSQL+Patroni         X3 2x8c
-     $    623,062  OpenShift Virt / VM / PostgreSQL+Patroni   X3 2x12c
-     $    623,062  OpenShift Virt / K8s / PostgreSQL+Patroni  X3 2x12c
-     $    635,911  vSphere / OpenShift / PostgreSQL+Patroni   X3 2x8c
-     $    638,192  OpenShift Virt / VM / Oracle               X2 2x12c k=2
-     $    645,642  OpenShift Virt / OpenShift / PostgreSQL+Patroni X3 2x12c
+     $    653,792  vSphere / VM / Oracle                      X2 2x8c k=2
+     $    671,552  vSphere / VM / PostgreSQL+Patroni          X3 2x8c
+     $    671,552  vSphere / K8s / PostgreSQL+Patroni         X3 2x8c
+     $    679,950  OpenShift Virt / VM / PostgreSQL+Patroni   X3 2x12c
+     $    679,950  OpenShift Virt / K8s / PostgreSQL+Patroni  X3 2x12c
+     $    680,090  OpenShift Virt / VM / Oracle               X2 2x12c k=2
+     $    689,132  vSphere / OpenShift / PostgreSQL+Patroni   X3 2x8c
+     $    702,530  OpenShift Virt / OpenShift / PostgreSQL+Patroni X3 2x12c
 
 
 KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,222,880/ay  ($122.29/TPS)  M2 3931-524
-  x86:       $     611,894/ay  ($61.19/TPS)  vSphere / VM / Oracle X2 2x8c
-  oran (mainframe / x86): 2.00
+  mainframe: $   1,264,778/ay  ($126.48/TPS)  M2 3931-524
+  x86:       $     653,792/ay  ($65.38/TPS)  vSphere / VM / Oracle X2 2x8c
+  oran (mainframe / x86): 1.93
   personel haric: mainframe $675,480 | x86 $64,494 (oran 10.47)
-  personel orani 1.25: x86 $748,744/ay ($74.87/TPS)
-  personel orani 2: x86 $1,159,293/ay ($115.93/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $741,666/ay ($74.17/TPS), personel haric $194,267; vSphere / VM / Oracle X2 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $626,111/ay ($62.61/TPS)
-  basabas personel orani: 2.12  (x86 personeli, ayni is yuku icin mainframe personelinin 2.12 katindan azsa x86 ucuz)
+  personel orani 1.25: x86 $801,116/ay ($80.11/TPS)
+  personel orani 2: x86 $1,243,089/ay ($124.31/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $783,564/ay ($78.36/TPS), personel haric $194,267; vSphere / VM / Oracle X2 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $683,733/ay ($68.37/TPS)
+  basabas personel orani: 2.04  (x86 personeli, ayni is yuku icin mainframe personelinin 2.04 katindan azsa x86 ucuz)
 
---- %99,999: python src/x86_model.py --tps 10000 --availability 0.99999 --compare  (cikis kodu 0, sha 006498683ba9)
+--- %99,999: python src/x86_model.py --tps 10000 --availability 0.99999 --compare  (cikis kodu 0, sha 1d9e3ef78328)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -53,46 +53,40 @@ x86 FEASIBILITY MODELI (STATIK)
          latency hedefi: yok -> x86 kullanim tavani %70
      is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma, x86 goreli agirlik=1.00, IOPS=5.80
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
-  -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
-  -> SECILEN TOPOLOJI: X3: Iki site, otomatik gecis [Fault tolerant; Patroni: coklu site, uzak senkron, DCS 3 sitede]
-     availability: 99.99917% (aralik 99.99663% - 99.99978%) | RPO 0 s, RTO 2 dk
-  -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 2, 'B': 2}; tek yazici (birincil)
+  -> SECILEN YIGIN: vSphere / VM / Oracle
+  -> SECILEN TOPOLOJI: X4: Iki site aktif-aktif [Adaptive continuity; Platinum (GoldenGate aktif-aktif)]
+     availability: 99.99941% (aralik 99.99479% - 99.99997%) | RPO 5 s, RTO 0.25 dk
+  -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 2, 'B': 2}; RAC 2 dugum (N+1)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
-     sabit gecikme (ag + I/O + replikasyon) 3.86 ms; p99 ~ 19.13 ms
+     sabit gecikme (ag + I/O + replikasyon) 3.85 ms; p99 ~ 19.11 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 9 fiziksel sunucu, 144 cekirdek
-     AYLIK maliyet: $618,331  ($61.83/TPS)
-       yazilim/abonelik: $8,445
+     AYLIK maliyet: $797,664  ($79.77/TPS)
+       yazilim/abonelik: $67,686  (Oracle $61,908)
        donanim:  $1,678   bakim: $420   enerji: $340
-       personel: $599,533  (44.4 FTE, oran 1)
-       storage:  $405  (site A: 2 dugum x 11 x 3.84 TB NVMe; site B: 2 dugum x 11 x 3.84 TB NVMe)
-       yedekleme: $4,917  (cos_onprem, site basina 101 TB)
-       uretim disi: $2,594  (NONPROD_FACTOR_X86=0.5)
-     DR payi %1.0; uygulama katmani payi %0.6
+       personel: $701,545  (52.0 FTE, oran 1)
+       storage:  $3,136  (site A: 1 AFA (76 TB ham); site B: 1 AFA (61 TB ham))
+       yedekleme: $4,772  (cos_onprem, site basina 86 TB)
+       uretim disi: $18,087  (NONPROD_FACTOR_X86=0.5)
+     DR payi %4.6; uygulama katmani payi %0.5
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    618,331  vSphere / VM / PostgreSQL+Patroni          X3 2x8c
-     $    618,331  vSphere / K8s / PostgreSQL+Patroni         X3 2x8c
-     $    623,062  OpenShift Virt / VM / PostgreSQL+Patroni   X3 2x12c
-     $    623,062  OpenShift Virt / K8s / PostgreSQL+Patroni  X3 2x12c
-     $    635,911  vSphere / OpenShift / PostgreSQL+Patroni   X3 2x8c
-     $    645,642  OpenShift Virt / OpenShift / PostgreSQL+Patroni X3 2x12c
-     $    691,032  vSphere / VM / Oracle                      X3 2x8c k=2
-     $    730,479  OpenShift Virt / VM / Oracle               X3 2x12c k=2
+     $    797,664  vSphere / VM / Oracle                      X4 2x8c k=2
+     $    839,421  OpenShift Virt / VM / Oracle               X4 2x12c k=2
 
 
 KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,439,712/ay  ($143.97/TPS)  M4 3931-524
-  x86:       $     618,331/ay  ($61.83/TPS)  vSphere / VM / PostgreSQL+Patroni X3 2x8c
-  oran (mainframe / x86): 2.33
-  personel haric: mainframe $788,046 | x86 $18,798 (oran 41.92)
-  personel orani 1.25: x86 $768,214/ay ($76.82/TPS)
-  personel orani 2: x86 $1,217,863/ay ($121.79/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $841,389/ay ($84.14/TPS), personel haric $241,857; vSphere / VM / Oracle X3 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $626,111/ay ($62.61/TPS)
-  basabas personel orani: 2.37  (x86 personeli, ayni is yuku icin mainframe personelinin 2.37 katindan azsa x86 ucuz)
+  mainframe: $   1,383,467/ay  ($138.35/TPS)  M3 3931-524
+  x86:       $     797,664/ay  ($79.77/TPS)  vSphere / VM / Oracle X4 2x8c
+  oran (mainframe / x86): 1.73
+  personel haric: mainframe $738,046 | x86 $96,119 (oran 7.68)
+  personel orani 1.25: x86 $973,050/ay ($97.31/TPS)
+  personel orani 2: x86 $1,499,209/ay ($149.92/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $957,261/ay ($95.73/TPS), personel haric $255,717; vSphere / VM / Oracle X4 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $851,925/ay ($85.19/TPS)
+  basabas personel orani: 1.84  (x86 personeli, ayni is yuku icin mainframe personelinin 1.84 katindan azsa x86 ucuz)
 
---- mainframe %99,999 + RPO 0 + RTO 30 dk: python src/mainframe_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --rto-minutes 30  (cikis kodu 1, sha 1e06a3455c4c)
+--- mainframe %99,999 + RPO 0 + RTO 30 dk: python src/mainframe_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --rto-minutes 30  (cikis kodu 0, sha 000cbfee1738)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -103,11 +97,30 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      -> 0.62 islem / s / PCI (zIIP payi f=0.10 haric)
          RPO hedefi: 0.0 s | RTO hedefi: 30.0 dk
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
-  -> SONUC: hicbir topoloji bu uptime hedefini saglayamiyor
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
+  -> SECILEN TOPOLOJI: M3: Fault-tolerant + GDPS Metro/Global
+     Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu ve HyperSwap; sysplex iki siteye yayilir (cok-siteli is yuku). RTO ~2 dk.
+     availability: 99.99975% (0.02 saat/yil kesinti; aralik 99.99786% - 99.99997%)
+  -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
+     tam-hiz CP esdegeri: 7.27
+     dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
+     bu kademenin max TPS'i (latency altinda): 10,119
+     utilization: 88.9%  (x2 frame)
+     AYLIK maliyet: $1,383,467
+       yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
+       donanim:  $97,216  (1 frame + 1 DR frame (CBU, x0.50); 1 zIIP, f=0.10)
+       GDPS:     $50,000  (metro_global)
+       bakim:    $48,608
+       personel: $645,421  (47.8 FTE, senaryo=mid)
+       enerji:   $5,256
+       storage:  $26,344  (birincil: 1x DS8910F-993 (76 TB ham); kopya 1: 1x DS8910F-993 (61 TB ham); kopya 2: 1x DS8910F-993 (61 TB ham); kopya 3: 1x DS8910F-993 (61 TB ham))
+     I/O: 58,000 IOPS, I/O basina 121 us, islem basina D_io = 0.46 ms
+       yedekleme: $5,635  (on-prem nesne depolama: 2 site x 173 TB; image copy 144 TB + log 29 TB; geri donus ~2.4 sa)
+       uretim disi: $102,054  (NONPROD_FACTOR=0.2; birincil site yazilim + donanim + enerji + storage)
+     fiyat modu: kaynakli fiyat seti
 
-Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).
 
---- mainframe %99,999 dokum: python src/mainframe_model.py --tps 10000 --availability 0.99999  (cikis kodu 0, sha fecd3eb98ad4)
+--- mainframe %99,999 dokum: python src/mainframe_model.py --tps 10000 --availability 0.99999  (cikis kodu 0, sha 8e915cdef6ad)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -117,21 +130,22 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma SQL, w=12.85, sync I/O=3.80, IOPS=5.80
      -> 0.62 islem / s / PCI (zIIP payi f=0.10 haric)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
-  -> SECILEN TOPOLOJI: M4: GDPS Continuous Availability (geo-redundant)
-     Iki cografi site, GDPS Continuous Availability. Plansiz ve planli gecis saniyeler (20-60 sn).
-     availability: 99.99994% (0.01 saat/yil kesinti; aralik 99.99976% - 99.99998%)
+  -> SECILEN TOPOLOJI: M3: Fault-tolerant + GDPS Metro/Global
+     Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu ve HyperSwap; sysplex iki siteye yayilir (cok-siteli is yuku). RTO ~2 dk.
+     availability: 99.99975% (0.02 saat/yil kesinti; aralik 99.99786% - 99.99997%)
   -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
      tam-hiz CP esdegeri: 7.27
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x2 frame)
-     AYLIK maliyet: $1,439,712
+     AYLIK maliyet: $1,383,467
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $97,216  (1 frame + 1 DR frame (CBU, x0.50); 1 zIIP, f=0.10)
-       GDPS:     $100,000  (ca)
+       GDPS:     $50,000  (metro_global)
        bakim:    $48,608
-       personel: $651,666  (48.3 FTE, senaryo=mid)
+       personel: $645,421  (47.8 FTE, senaryo=mid)
        enerji:   $5,256
        storage:  $26,344  (birincil: 1x DS8910F-993 (76 TB ham); kopya 1: 1x DS8910F-993 (61 TB ham); kopya 2: 1x DS8910F-993 (61 TB ham); kopya 3: 1x DS8910F-993 (61 TB ham))
      I/O: 58,000 IOPS, I/O basina 121 us, islem basina D_io = 0.46 ms

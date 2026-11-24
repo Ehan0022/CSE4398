@@ -1,5 +1,7 @@
 # Slayt İçeriği — Bölüm 4: Kapanış (3 slayt)
 
+> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
+
 ---
 
 ### Slayt S1 — Bulgular

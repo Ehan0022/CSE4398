@@ -104,6 +104,7 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 | 7 | 2026-11-02 | `evaluations/2026-11-02_degerlendirme_07_ortak_modul.md` | Adım 6: ortak modül (`common_model.py`), iki fiyat modu ve üretim dışı ortamlar; taşıma altın sonuç kümesine karşı 0 farkla doğrulandı; `NONPROD_FACTOR` 10K TPS başlığını $84,62 → $93,10 yaptı (aralık $27,06 / $93,10 / $411,28); TFP büyüme indirimi kaldırılınca steady'de artık B önde (%0,3); 30 test |
 | 8 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_08_acik_sistem_incelemesi.md` | x86 araştırmasının eleştirel incelemesi (kod yok); personel köprüsü kritik derecede tutarsız (10K TPS'te mainframe 30,8 FTE, x86 0,4 → taban 4 FTE; fark başlığın ~%40'ı); Vonng çapası belgelenmemiş ayarlara dayanıyor, K6 çapa olmalı; aralık sorgusu nokta sorgusunun 3,4–3,9 katı (w 9,15 → ~12,5); %15–20 x86 kullanım alt ucu çift sayım; fiyat dönemi varsayılanı x86 aleyhine; 7 köprü kararı (P, F, K, U, E, C, N) aynı gün verildi ve `docs/kopruler_v1.md`'de belgelendi |
 | 9 | 2026-11-16 | `evaluations/2026-11-16_degerlendirme_09_x86_modeli.md` | Adım 7: x86 modeli ve F/E/P; #8'in personel (P), aralık okuma (F), kullanım (U), fiyat dönemi (E), uygulama katmanı (C), x86 üretim dışı (N) ve Patroni tavanı tehditleri kapandı, K6 açık; mainframe 10K $93,10 → $113,93 (tavan ~132,7K), x86 $53,66; başabaş personel oranı 2,0–3,6; personel hariç fark 8–42 kat (yazılım lisansı); mainframe lehine eşleştirilmiş senaryoda 30–50K TPS'te crossover (Patroni tavanı); 4 köprü düzeltmesi, 4 model hatası düzeltildi; x86 24, mainframe 30 test |
+| 10 | 2026-11-24 | `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md` | Mainframe neden kazanmıyor: ana senaryoda fark tamamen personel dışı (AWLC %66), başabaş = 1 + ΔPersonelDışı/personel ≈ 2; üç x86 lehine asimetri düzeltildi (M3 RTO eşitliği, ortak ITIC platform kesintisi terimi, personel girdisinde zIIP); desteksiz PostgreSQL SLA kuralı; %99,999 + RPO 0'da yalnız mainframe (u ≥ ~0,1 koşullu), mainframe_lehine senaryoda ≥ 30K TPS'te mainframe ucuz; #9'un 'crossover görünmüyor' tehdidi kapandı, u kalibrasyonu ve DDF yığını açık; mainframe 30, x86 29 test |
 
 ---
 
@@ -898,3 +899,35 @@ Plan Hafta 1–2: Mainframe TCO genişletme (CICS, Db2, DS8900F, GDPS lisansı a
 
 ### 4. Açık kalanlar
 - Yok (Oturum 10'daki kopya senkronizasyonu notu geçerli).
+
+## 2026-11-24 — Oturum 12: Mainframe neden kazanmıyor? Availability eşitliği ve kazanan bölgeler (Değerlendirme #10)
+
+### 1. Aksiyon
+- **Analiz:** 10K TPS'te iki modelin kalem kalem karşılaştırması yapıldı; başabaş personel oranı kapalı biçimde türetildi (`1 + ΔPersonelDışı / personel`). Önerilen düzeltmeler ve gerekçeleri önce project chat'te açıklandı; Emirhan "Hepsi, DDF hariç" seçeneğini onayladı.
+- **M3 eşitliği (`mainframe_model.py`):** M3 GDPS Metro çok siteli iş yükü olarak tanımlandı: kurtarma 1 / 2 / 5 dk (önce 2 / 30 / 60), planlı geçiş 0,5 / 2 / 10 dk (önce 2 / 10 / 30). x86 X3 ile aynı aralık.
+- **Ortak platform kesintisi terimi (A kararı; `common_model.platform_downtime_hours`, `PLATFORM_UNMASKED_SHARE` 0,05 / 0,10 / 0,20):** D_platform = kesen düğüm × ITIC sunucu kesintisi × u^katman; tek CPC'de u = 1, aktif-aktif iki sitede u². x86'ya ITIC değerleri eklendi (`X86_ITIC_DOWNTIME_MINUTES` 0,525 / 24 / 59 dk). Maskelenen pay düğüm olayı × failover ile sayılmaya devam ediyor.
+- **SLA'ya bağlı zorunlu PostgreSQL desteği (B kararı; `pg_support_rate`):** ≥ %99,99 ya da RPO 0 → $1.600, ≥ %99,999 → $2.400 /çekirdek/yıl (EDB mağaza fiyatları); desteksiz yığında platform kesintisi ITIC'in high ucundan.
+- **Personel girdisi:** `staff_pci_equivalent` artık zIIP işini de sayıyor ((1 − f) çarpanı kaldırıldı).
+- **CLI ve çıktı:** x86 modeline `--pg-support` ve `--unmasked-share`; karşılaştırmada yalnız bir platform kurulabiliyorsa onun maliyeti ve "yalnızca X bu kısıtları sağlayabiliyor" satırı basılıyor.
+- **Araç:** `src/tools/kazanan_haritasi.py` (TPS × availability/RPO × eşleştirilmiş senaryo; u hassasiyeti; `data/out/kazanan_haritasi.csv`).
+- **Testler:** 5 yeni x86 testi (M3–X3 eşitliği, ortak platform formülü, destek kuralı ve desteksiz ceza, personel girdisinde zIIP, beş dokuz + RPO 0'da yalnız mainframe). Altın küme testi Değ. #10 öncesi availability kurallarını sabitleyerek taşıma kontrolünü sürdürüyor.
+- **Demo:** Case 11 (yüksek availability) ve Case 12 (maliyette kazanan bölge) eklendi; bütün demo çıktıları ve kompakt kopya yeniden üretildi (kompakt `kod/` yeniden kopyalandı, x86 girdilerine `pg_support` ve `unmasked_share` alanları eklendi, case 11–12 JSON'ları yazıldı).
+- **Dokümanlar:** mainframe v3 §6.2–6.8, §7.7.3 ve yeni §7.12; x86 v1 §8.3–8.4, §9.2, §16.2–16.3, yeni §16.5, §19, §20; Değerlendirme #10.
+
+### 2. Sebep
+- Emirhan'ın sorusu (2026-11-24): "Çıktılarda mainframe'in kazandığı bir durum yok mu? Bu saçma değil mi?" ve devamı: availability hedefi yükseldikçe mainframe'in avantajlı olması beklenmez mi; desteksiz açık kaynak yüksek standartlı girdileri karşılayamaz mı?
+- İnceleme, ana sonucun büyük ölçüde gerçek olduğunu (personel nötr + açık kaynak yığın + tek iş yükü), ama availability tarafında üç asimetrinin x86'yı en yüksek hedeflerde iyimser gösterdiğini buldu: M3'e tek siteli GDPS değeri verilmesi, platform kesintisinin yalnız mainframe'de sayılması ve geçişin her zaman başarılı varsayılması.
+
+### 3. Sonuç
+- 10K TPS ana senaryo: mainframe $113,93 → $117,92/TPS/ay, x86 $53,66 → $57,65, başabaş 2,16 → 2,07 (personel 38,6 → 41,6 FTE). Yön değişmedi.
+- %99,999 + RPO 0 ve %99,9995'te 1K–100K TPS'in hepsinde yalnızca mainframe (M3) kurulabiliyor; RPO serbestken x86 Oracle X4 ile kurulup ucuz kalıyor. Sınır u'ya hassas (10K'da u = 0,05'te x86 X3 ile kurulur).
+- Mainframe_lehine eşleştirilmiş senaryoda 30K TPS'ten itibaren mainframe ucuz (oran 0,86 / 0,81), 100K'da x86 kurulamıyor.
+- Testler: mainframe 30/30, x86 29/29. Demo: 51 komut, hepsi farklı çıktı; kompakt: 50 koşunun 50'si orijinalle aynı.
+
+### 4. Açık kalanlar
+- u'nun kaynakla kalibrasyonu (otomatik failover başarı oranı verisi).
+- Db2 DDF + dağıtık uygulama yığını (Emirhan'ın kararıyla eklenmedi).
+- M3 çok siteli iş yükünde ikinci sitedeki etkin imajların MSU faturası ihmal edildi.
+- `kopruler_v2.md`'ye KB-07/KB-08 için platform kesintisi terimi ve M3 eşitliği eklenmeli.
+- Slaytlar (`sunum_demo/slaytlar/`) bu oturumdaki sayılarla henüz güncellenmedi.
+- Önceki açık kalanlar değişmedi: K6 ölçümü, RAC USL kaynağı, sunucu ihale kaydı, drawer maliyeti, planlı kesinti kalibrasyonu.

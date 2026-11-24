@@ -89,6 +89,18 @@
       "model": "yalnizca x86",
       "aciklama": "STAFF_RATIO_X86: x86 personelinin mainframe personeline orani (1,0 = notr)."
     },
+    "pg_support": {
+      "varsayilan": null,
+      "birim": "USD/cekirdek/yil",
+      "model": "yalnizca x86",
+      "aciklama": "PostgreSQL ticari destegi (PG_SUPPORT_USD_PER_CORE_YEAR). null = model varsayilani ($500); 0 = desteksiz. SLA tabani (%99,99 / RPO 0: $1.600; %99,999: $2.400) yine uygulanir."
+    },
+    "unmasked_share": {
+      "varsayilan": null,
+      "birim": "oran (0-1)",
+      "model": "yalnizca x86 komutu (ortak parametre)",
+      "aciklama": "PLATFORM_UNMASKED_SHARE: otomatik gecisin maskeleyemedigi platform kesintisi payi u. null = model varsayilani (0,10). Iki platforma birlikte uygulanir."
+    },
     "db": {
       "varsayilan": null,
       "birim": "-",
@@ -322,6 +334,8 @@
         "sql_range_reads": null,
         "sql_writes": null,
         "staff_ratio": 1.0,
+        "pg_support": null,
+        "unmasked_share": null,
         "db": null,
         "hypervisor": null,
         "placement": null,
@@ -360,6 +374,8 @@
         "sql_range_reads": null,
         "sql_writes": null,
         "staff_ratio": 1.0,
+        "pg_support": null,
+        "unmasked_share": null,
         "db": null,
         "hypervisor": null,
         "placement": null,

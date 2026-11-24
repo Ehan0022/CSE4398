@@ -7,7 +7,7 @@ Sunumda girdileri ve çıktıları kod üzerinde göstermek için. Model kodunun
 | Yol | Ne |
 |---|---|
 | `calistir.py` | `inputs/` altındaki bütün case'leri sırayla çalıştırır: her koşu için girdiyi, modelin ona karşılık gelen komutunu ve çıktıyı basar |
-| `inputs/case_01_referans.json` … `case_10_npv_ve_aralik.json` | 10 case, 42 koşu (ana demodaki senaryoların aynısı); her koşuda tam girdi seti |
+| `inputs/case_01_referans.json` … `case_12_maliyet_kazanan.json` | 12 case, 50 koşu (ana demodaki senaryoların aynısı; ana demodaki kazanan haritası aracı burada yok); her koşuda tam girdi seti |
 | `inputs/_fiyat_parametreleri.json` | Modelin 43 kaynaklı fiyat/maliyet parametresi (senaryo girdisi değil; `prices` ile değiştirilir) |
 | `kod/common_model.py`, `mainframe_model.py`, `x86_model.py` | `src/` kopyası, yalnızca girdi okuma eklendi |
 | `kod/veri/` | Modelin okuduğu iki veri tablosu (z16 A01 kademeleri, DS8900F) |
@@ -57,7 +57,7 @@ Her koşuda modelin bütün senaryo girdileri açıkça yazılıdır: verilmeyen
 ```
 
 - `girdi_sozlugu`: o case'te kullanılan modellerin her girdisi için varsayılan, birim, hangi modele ait olduğu ve kısa açıklama.
-- `girdi`: koşunun tam girdi seti. Mainframe koşusunda 25, x86 koşusunda 28 alan var.
+- `girdi`: koşunun tam girdi seti. Mainframe koşusunda 25, x86 koşusunda 30 alan var (Değ #10 ile `pg_support` ve `unmasked_share` eklendi).
 - `referanstan_farkli`: Case 1 referansından (10K TPS, diğer her şey varsayılan) farklı olan alanlar. `calistir.py` bunları `>>` ile işaretler.
 - `null`: o girdi verilmedi; anlamı açıklamada yazılı (ör. `rpo_seconds: null` = kısıt yok, `db: null` = iki veritabanı da aday).
 
@@ -75,6 +75,6 @@ Yeni bir senaryo için bir case dosyasını kopyalayıp `girdi` değerlerini de�
 2. `mainframe_model.py` ve `x86_model.py`: `--input` / `--kosu` seçenekleri ve `parse_args` çağrısı girdiyi dosyadan genişletir. Girdi aynı argparse yolundan geçtiği için doğrulama ve varsayılanlar komut satırıyla birebir aynıdır.
 3. `mainframe_model.py`: veri klasörü `../data` yerine `kod/veri`.
 
-Model hesabına dokunulmadı. `calistir.py` her koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktıyla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır. Son koşu: 42 koşunun 42'si aynı. Bu, varsayılanların açıkça yazılmasının sonucu değiştirmediğini de gösterir.
+Model hesabına dokunulmadı. `calistir.py` her koşunun çıktısını orijinal `src/` koduyla üretilmiş çıktıyla (`sunum_demo/ciktilar/`) SHA-256 üzerinden karşılaştırır. Son koşu (2026-11-24): 50 koşunun 50'si aynı. Bu, varsayılanların açıkça yazılmasının sonucu değiştirmediğini de gösterir.
 
 Model `src/` altında değişirse bu kopya eskir. O durumda üç dosya yeniden kopyalanıp yukarıdaki üç değişiklik tekrar uygulanmalıdır.

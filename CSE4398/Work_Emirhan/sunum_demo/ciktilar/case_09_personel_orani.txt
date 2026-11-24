@@ -1,4 +1,4 @@
---- oran 1.25: python src/x86_model.py --tps 10000 --staff-ratio 1.25 --compare  (cikis kodu 0, sha 18495a854e04)
+--- oran 1.25: python src/x86_model.py --tps 10000 --staff-ratio 1.25 --compare  (cikis kodu 0, sha 2bead8d1d46e)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -8,44 +8,44 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $666,885  ($66.69/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $716,763  ($71.68/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $651,666  (48.3 FTE, oran 1.25)
+       personel: $701,545  (52.0 FTE, oran 1.25)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    666,885  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    666,885  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    670,503  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    670,503  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    680,070  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    688,188  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    702,614  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    723,466  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    716,763  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    716,763  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    720,382  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    720,382  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    729,948  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    738,067  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    752,493  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    773,345  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-  x86:       $     666,885/ay  ($66.69/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-  oran (mainframe / x86): 1.71
+  mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+  x86:       $     716,763/ay  ($71.68/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+  oran (mainframe / x86): 1.65
   personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
-  personel orani 1.25: x86 $666,885/ay ($66.69/TPS)
-  personel orani 2: x86 $1,057,884/ay ($105.79/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $782,203/ay ($78.22/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $677,187/ay ($67.72/TPS)
-  basabas personel orani: 2.16  (x86 personeli, ayni is yuku icin mainframe personelinin 2.16 katindan azsa x86 ucuz)
+  personel orani 1.25: x86 $716,763/ay ($71.68/TPS)
+  personel orani 2: x86 $1,137,690/ay ($113.77/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $832,081/ay ($83.21/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $727,065/ay ($72.71/TPS)
+  basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
 
---- oran 2.16: python src/x86_model.py --tps 10000 --staff-ratio 2.16 --compare  (cikis kodu 0, sha f85b8ea9d615)
+--- oran 2.16: python src/x86_model.py --tps 10000 --staff-ratio 2.16 --compare  (cikis kodu 0, sha 422de32b1086)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -55,87 +55,87 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $1,141,298  ($114.13/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $1,227,488  ($122.75/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $1,126,079  (83.4 FTE, oran 2.16)
-       storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
-       yedekleme: $4,917  (cos_onprem, site basina 101 TB)
-       uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
-     DR payi %0.0; uygulama katmani payi %0.2
-     fiyat modu: kaynakli fiyat seti
-  Yigin secim motoru (yigin basina en ucuz):
-     $  1,141,298  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $  1,141,298  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $  1,144,916  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $  1,144,916  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $  1,154,483  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $  1,162,601  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $  1,177,027  vSphere / VM / Oracle                      X1 2x8c k=2
-     $  1,197,879  OpenShift Virt / VM / Oracle               X1 2x12c k=2
-
-
-KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-  x86:       $   1,141,298/ay  ($114.13/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-  oran (mainframe / x86): 1.00
-  personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
-  personel orani 1.25: x86 $666,885/ay ($66.69/TPS)
-  personel orani 2: x86 $1,057,884/ay ($105.79/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $1,256,615/ay ($125.66/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $1,151,600/ay ($115.16/TPS)
-  basabas personel orani: 2.16  (x86 personeli, ayni is yuku icin mainframe personelinin 2.16 katindan azsa x86 ucuz)
-
---- oran 3.0: python src/x86_model.py --tps 10000 --staff-ratio 3.0 --compare  (cikis kodu 0, sha ac305da87c69)
-======================================================================
-x86 FEASIBILITY MODELI (STATIK)
-======================================================================
-  Girdi: 10,000 TPS | is yuku=oltp_rw | uptime hedefi=99.900000% | fiyat donemi=2025-mid
-         latency hedefi: yok -> x86 kullanim tavani %70
-     is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma, x86 goreli agirlik=1.00, IOPS=5.80
-     kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
-  -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
-  -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
-  -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
-     cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
-     sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
-     uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
-     toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $1,579,217  ($157.92/TPS)
-       yazilim/abonelik: $5,210
-       donanim:  $932   bakim: $233   enerji: $189
-       personel: $1,563,999  (115.9 FTE, oran 3)
+       personel: $1,212,269  (89.8 FTE, oran 2.16)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.1
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $  1,579,217  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $  1,579,217  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $  1,582,836  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $  1,582,836  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $  1,592,402  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $  1,600,521  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $  1,614,947  vSphere / VM / Oracle                      X1 2x8c k=2
-     $  1,635,799  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $  1,227,488  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $  1,227,488  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $  1,231,106  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $  1,231,106  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $  1,240,673  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $  1,248,791  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $  1,263,217  vSphere / VM / Oracle                      X1 2x8c k=2
+     $  1,284,069  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-  x86:       $   1,579,217/ay  ($157.92/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-  oran (mainframe / x86): 0.72
+  mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+  x86:       $   1,227,488/ay  ($122.75/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+  oran (mainframe / x86): 0.96
   personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
-  personel orani 1.25: x86 $666,885/ay ($66.69/TPS)
-  personel orani 2: x86 $1,057,884/ay ($105.79/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $1,694,535/ay ($169.45/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $1,589,519/ay ($158.95/TPS)
-  basabas personel orani: 2.16  (x86 personeli, ayni is yuku icin mainframe personelinin 2.16 katindan azsa x86 ucuz)
+  personel orani 1.25: x86 $716,763/ay ($71.68/TPS)
+  personel orani 2: x86 $1,137,690/ay ($113.77/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $1,342,806/ay ($134.28/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $1,237,790/ay ($123.78/TPS)
+  basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
+
+--- oran 3.0: python src/x86_model.py --tps 10000 --staff-ratio 3.0 --compare  (cikis kodu 0, sha eb589433e7f5)
+======================================================================
+x86 FEASIBILITY MODELI (STATIK)
+======================================================================
+  Girdi: 10,000 TPS | is yuku=oltp_rw | uptime hedefi=99.900000% | fiyat donemi=2025-mid
+         latency hedefi: yok -> x86 kullanim tavani %70
+     is yuku profili: oltp_rw: 10 nokta + 4 aralik okuma + 4 yazma, x86 goreli agirlik=1.00, IOPS=5.80
+     kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
+  -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
+  -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
+  -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
+     cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
+     sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
+     uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
+     toplam 5 fiziksel sunucu, 80 cekirdek
+     AYLIK maliyet: $1,698,926  ($169.89/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
+       donanim:  $932   bakim: $233   enerji: $189
+       personel: $1,683,707  (124.7 FTE, oran 3)
+       storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
+       yedekleme: $4,917  (cos_onprem, site basina 101 TB)
+       uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
+     DR payi %0.0; uygulama katmani payi %0.1
+     fiyat modu: kaynakli fiyat seti
+  Yigin secim motoru (yigin basina en ucuz):
+     $  1,698,926  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $  1,698,926  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $  1,702,544  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $  1,702,544  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $  1,712,111  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $  1,720,229  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $  1,734,655  vSphere / VM / Oracle                      X1 2x8c k=2
+     $  1,755,507  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+
+
+KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
+  mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+  x86:       $   1,698,926/ay  ($169.89/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+  oran (mainframe / x86): 0.69
+  personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
+  personel orani 1.25: x86 $716,763/ay ($71.68/TPS)
+  personel orani 2: x86 $1,137,690/ay ($113.77/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $1,814,244/ay ($181.42/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $1,709,228/ay ($170.92/TPS)
+  basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
 

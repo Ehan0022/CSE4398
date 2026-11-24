@@ -444,3 +444,63 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(fn):
             fn()
             print(f"OK  {name}")
+
+
+# ------------------------------------------------------------------------------
+# Degerlendirme #10: availability esitligi, platform kesintisi, destek kurali
+# ------------------------------------------------------------------------------
+def test_m3_x3_recovery_parity():
+    """M3 cok-siteli GDPS Metro olarak X3 ile ayni kurtarma ve planli kesinti araligini alir."""
+    for lv in ("low", "mid", "high"):
+        assert mf.RECOVERY_MINUTES["M3"][lv] == x.X86_RECOVERY_TECH_MINUTES["X3"][lv]
+        assert mf.PLANNED_OUTAGE_MINUTES["M3"][lv] == x.X86_PLANNED_OUTAGE_MINUTES["multi"][lv]
+
+
+def test_platform_downtime_common_rule():
+    """Ortak formul: tek CPC'de maskelenmez; kumede u, aktif-aktifte u^2; u artinca
+    availability iki tarafta da duser."""
+    assert cm.platform_downtime_hours(1.0, 1, clustered=False) == 1.0
+    u = cm.PLATFORM_UNMASKED_SHARE
+    assert abs(cm.platform_downtime_hours(1.0, 2, True) - 2 * u) < 1e-12
+    assert abs(cm.platform_downtime_hours(1.0, 1, True, layers=2) - u * u) < 1e-12
+    m1 = next(t for t in mf.TOPOLOGIES if t.code == "M1")
+    base_x3, base_m1 = _topo("X3").availability("postgresql"), m1.availability()
+    with x.use_values({"PLATFORM_UNMASKED_SHARE": 0.20}):
+        assert _topo("X3").availability("postgresql") < base_x3
+        assert m1.availability() == base_m1          # tek CPC: u'dan bagimsiz
+    # ITIC: x86 sunucu kesintisi z16 CPC'sinden buyuk (ayni kaynak)
+    assert x.X86_ITIC_DOWNTIME_MINUTES["mid"] * 60 > mf.CPC_HW_DOWNTIME_SECONDS["mid"]
+
+
+def test_pg_support_tiers_and_unsupported_penalty():
+    assert x.pg_support_rate(0.999) == x.PG_SUPPORT_USD_PER_CORE_YEAR
+    assert x.pg_support_rate(0.9999) == 1600.0
+    assert x.pg_support_rate(0.999, rpo_seconds=0) == 1600.0
+    assert x.pg_support_rate(0.99999) == 2400.0
+    with x.use_values({"PG_SUPPORT_USD_PER_CORE_YEAR": 0.0}):
+        assert x.pg_support_rate(0.999) == 0.0           # desteksiz yalniz dusuk hedefte
+        assert x.pg_support_rate(0.9999) == 1600.0
+        r = x.solve(10000, 0.999, stacks=PG, verbose=False)
+        assert r["pg_support_rate"] == 0.0
+    t = _topo("X1")
+    assert t.availability("postgresql", supported=False) < t.availability("postgresql")
+    assert t.availability("oracle", 2, supported=False) == t.availability("oracle", 2)
+    hi = x.solve(10000, 0.99995, rpo_seconds=0, stacks=PG, verbose=False)
+    assert hi["pg_support_rate"] == 1600.0
+
+
+def test_staff_input_includes_ziip_work():
+    """Ortak personel egrisinin girdisi zIIP payindan bagimsizdir."""
+    base = mf.staff_pci_equivalent(10000)
+    with x.use_values({"ZIIP_OFFLOAD_FRACTION": 0.40, "CROSS_BRIDGE_WEIGHTS": "current"}):
+        assert abs(mf.staff_pci_equivalent(10000) - base) < 1e-9
+
+
+def test_five_nines_with_rpo0_is_mainframe_only():
+    """Ana senaryoda %99,999 + RPO 0: x86 kurulamaz, mainframe M3 kurulur; RPO
+    serbestken x86 Oracle X4 (GoldenGate, RPO 5 sn) ile kurulur."""
+    o = x.compare(10000, availability=0.99999, rpo_seconds=0)
+    assert o["x86"] is None and o["mainframe"] is not None
+    assert o["mainframe"][1].code == "M3"
+    o2 = x.compare(10000, availability=0.99999)
+    assert o2["x86"]["topology"].code == "X4" and o2["x86"]["stack"].db == "oracle"

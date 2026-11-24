@@ -1,5 +1,7 @@
 # Slayt İçeriği — Bölüm 3: Köprüler (KB-01 – KB-18)
 
+> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
+
 *18 köprü × 2 slayt. Bir köprü, iki platformun aynı girdiyle beslendiği, aynı ölçüyle ölçüldüğü ya da aynı kuralla fiyatlandığı arayüzdür. Her köprünün ilk slaytı "ne ve nasıl", ikinci slaytı "kanıt, karar ve açık kalan"dır. Kaynak: `docs/kopruler_v1.md`; kodlamada yapılan dört düzeltme `docs/x86_model_dokumantasyonu_v1.md` §17'de.*
 
 **Açılış slaytı önerisi (Slayt K0 — Köprü haritası):** 18 köprü dört grupta toplanır. **Ölçü:** KB-01 işlem birimi, KB-02/03 kapasite köprüleri, KB-04 kontrol, KB-05 kullanım ve latency, KB-06 tavanlar. **Dayanıklılık:** KB-07 availability, KB-08 topoloji, KB-09 storage, KB-10 yedek. **Maliyet:** KB-11 lisans, KB-12 kapsam sınırı, KB-13 personel, KB-14 üretim dışı, KB-15 fiyat dönemi, KB-17 enerji. **Zaman ve belirsizlik:** KB-16 NPV, KB-18 aralık. *Konuşmacı notu:* "Köprü yoksa iki model iki ayrı dünyayı ölçer; köprüler bu tezin metodolojik katkısı."

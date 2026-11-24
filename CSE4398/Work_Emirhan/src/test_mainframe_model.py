@@ -490,6 +490,14 @@ def test_common_module_preserves_results():
     with open(g.GOLDEN_PATH) as f:
         gold = json.load(f)
     legacy = {"NONPROD_FACTOR": 0.0, "RANGE_READ_WEIGHT": 1.0, "STAFF_BASIS": "installed"}
+    # Degerlendirme #10 oncesi availability kurallari (M3 tek siteli is yuku,
+    # platform kesintisi yalnizca tek CPC'de): altin kume tasima oncesi koddur.
+    legacy.update({
+        "RECOVERY_MINUTES": dict(m.RECOVERY_MINUTES, M3={"low": 2.0, "mid": 30.0, "high": 60.0}),
+        "PLANNED_OUTAGE_MINUTES": dict(m.PLANNED_OUTAGE_MINUTES,
+                                       M3={"low": 2.0, "mid": 10.0, "high": 30.0}),
+        "PLATFORM_UNMASKED_SHARE": 0.0,
+    })
     cm.PINNED.update(legacy)
     try:
         with m.use_values(legacy):

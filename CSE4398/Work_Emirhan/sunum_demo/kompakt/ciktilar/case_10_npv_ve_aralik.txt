@@ -1,4 +1,4 @@
---- mainframe NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 03720ddaef54)
+--- mainframe NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fc92a1e69c66)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -10,7 +10,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -20,11 +20,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,139,294
+     AYLIK maliyet: $1,179,197
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -35,24 +35,24 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
 
 NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | kademe    |      capex |       opex |   bugunku deger
-    1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-    2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-    3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-  NPV: $41,900,879   (indirgenmemis $47,346,660; yillik esdeger $15,966,400)
-  seviyelendirilmis maliyet: $121.11 / TPS / ay
+    1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+    2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+    3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+  NPV: $43,286,865   (indirgenmemis $48,938,155; yillik esdeger $16,494,532)
+  seviyelendirilmis maliyet: $125.12 / TPS / ay
   kalem dokumu (bugunku deger):
-    personel                                       $   18,107,943  (%43.2)
-    yazilim (AWLC)                                 $   13,708,689  (%32.7)
-    donanim alimi (z16 + DR frame + zIIP)          $    4,506,529  (%10.8)
-    uretim disi ortamlar                           $    3,927,415  (% 9.4)
-    z16 bakim                                      $      970,802  (% 2.3)
+    personel                                       $   19,493,928  (%45.0)
+    yazilim (AWLC)                                 $   13,708,689  (%31.7)
+    donanim alimi (z16 + DR frame + zIIP)          $    4,506,529  (%10.4)
+    uretim disi ortamlar                           $    3,927,415  (% 9.1)
+    z16 bakim                                      $      970,802  (% 2.2)
     storage alimi (DS8900F)                        $      296,061  (% 0.7)
     yedekleme alimi (TS7770 / nesne depolama)      $      140,000  (% 0.3)
     storage + yedek bakim                          $       99,808  (% 0.2)
     enerji                                         $       97,998  (% 0.2)
     yedek hizmeti (abonelik / S3 / bulut hatti)    $       45,634  (% 0.1)
 
---- mainframe NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha b7e907bc0aea)
+--- mainframe NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha df7cc8814e0e)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -64,7 +64,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -74,11 +74,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,139,294
+     AYLIK maliyet: $1,179,197
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -89,26 +89,26 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
 
 NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | kademe    |      capex |       opex |   bugunku deger
-    1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-    2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-    3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-    4 |   13,310 | 3931-534  | $  770,069 | $16,726,309 | $   13,389,027
-    5 |   14,641 | 3931-537  | $  401,520 | $18,270,395 | $   13,332,857
-  NPV: $68,622,763   (indirgenmemis $83,514,953; yillik esdeger $16,736,453)
-  seviyelendirilmis maliyet: $115.70 / TPS / ay
+    1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+    2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+    3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+    4 |   13,310 | 3931-534  | $  770,069 | $17,371,089 | $   13,880,926
+    5 |   14,641 | 3931-537  | $  401,520 | $18,982,406 | $   13,840,511
+  NPV: $71,008,302   (indirgenmemis $86,463,239; yillik esdeger $17,318,264)
+  seviyelendirilmis maliyet: $119.73 / TPS / ay
   kalem dokumu (bugunku deger):
-    personel                                       $   31,167,141  (%45.4)
-    yazilim (AWLC)                                 $   23,037,102  (%33.6)
-    uretim disi ortamlar                           $    6,191,840  (% 9.0)
-    donanim alimi (z16 + DR frame + zIIP)          $    5,220,921  (% 7.6)
-    z16 bakim                                      $    2,054,440  (% 3.0)
+    personel                                       $   33,552,679  (%47.3)
+    yazilim (AWLC)                                 $   23,037,102  (%32.4)
+    uretim disi ortamlar                           $    6,191,840  (% 8.7)
+    donanim alimi (z16 + DR frame + zIIP)          $    5,220,921  (% 7.4)
+    z16 bakim                                      $    2,054,440  (% 2.9)
     storage alimi (DS8900F)                        $      360,773  (% 0.5)
     storage + yedek bakim                          $      207,857  (% 0.3)
     enerji                                         $      158,836  (% 0.2)
     yedekleme alimi (TS7770 / nesne depolama)      $      140,000  (% 0.2)
     yedek hizmeti (abonelik / S3 / bulut hatti)    $       83,854  (% 0.1)
 
---- mainframe NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a238d2cde11c)
+--- mainframe NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fbd988fd341c)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -120,7 +120,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -130,11 +130,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,139,294
+     AYLIK maliyet: $1,179,197
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -145,31 +145,31 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
 
 NPV | topoloji M1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | kademe    |      capex |       opex |   bugunku deger
-    1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-    2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-    3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-    4 |   13,310 | 3931-534  | $  828,584 | $16,733,982 | $   13,442,647
-    5 |   14,641 | 3931-537  | $  401,520 | $18,278,298 | $   13,338,492
-    6 |   16,105 | 3931-637  | $3,285,360 | $20,339,278 | $   15,895,336
-    7 |   17,716 | 3931-637  | $  233,674 | $22,217,544 | $   13,991,677
-    8 |   19,487 | 3931-637  | $        0 | $24,261,122 | $   14,120,194
-    9 |   21,436 | 3931-637  | $        0 | $26,525,149 | $   14,427,923
-   10 |   23,579 | 3931-638  | $  314,984 | $29,085,866 | $   14,957,110
-  NPV: $142,074,257   (indirgenmemis $209,852,022; yillik esdeger $20,228,178)
-  seviyelendirilmis maliyet: $111.51 / TPS / ay
+    1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+    2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+    3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+    4 |   13,310 | 3931-534  | $  828,584 | $17,378,762 | $   13,934,546
+    5 |   14,641 | 3931-537  | $  401,520 | $18,990,309 | $   13,846,145
+    6 |   16,105 | 3931-637  | $3,285,360 | $21,125,530 | $   16,419,249
+    7 |   17,716 | 3931-637  | $  233,674 | $23,085,779 | $   14,532,370
+    8 |   19,487 | 3931-637  | $        0 | $25,219,887 | $   14,678,204
+    9 |   21,436 | 3931-637  | $        0 | $27,583,884 | $   15,003,805
+   10 |   23,579 | 3931-638  | $  314,984 | $30,254,995 | $   15,551,436
+  NPV: $147,252,620   (indirgenmemis $217,641,424; yillik esdeger $20,965,460)
+  seviyelendirilmis maliyet: $115.57 / TPS / ay
   kalem dokumu (bugunku deger):
-    personel                                       $   67,655,478  (%47.6)
-    yazilim (AWLC)                                 $   47,309,060  (%33.3)
-    uretim disi ortamlar                           $   12,316,256  (% 8.7)
-    donanim alimi (z16 + DR frame + zIIP)          $    7,269,319  (% 5.1)
-    z16 bakim                                      $    5,746,014  (% 4.0)
+    personel                                       $   72,833,841  (%49.5)
+    yazilim (AWLC)                                 $   47,309,060  (%32.1)
+    uretim disi ortamlar                           $   12,316,256  (% 8.4)
+    donanim alimi (z16 + DR frame + zIIP)          $    7,269,319  (% 4.9)
+    z16 bakim                                      $    5,746,014  (% 3.9)
     storage alimi (DS8900F)                        $      576,724  (% 0.4)
     storage + yedek bakim                          $      547,595  (% 0.4)
     enerji                                         $      296,619  (% 0.2)
-    yedek hizmeti (abonelik / S3 / bulut hatti)    $      217,193  (% 0.2)
+    yedek hizmeti (abonelik / S3 / bulut hatti)    $      217,193  (% 0.1)
     yedekleme alimi (TS7770 / nesne depolama)      $      140,000  (% 0.1)
 
---- x86 NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha ebc8756693e1)
+--- x86 NPV 3 yil: --input case_10_npv_ve_aralik.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 3, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 76984d7dee6b)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -179,41 +179,41 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $536,552  ($53.66/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $576,454  ($57.65/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $521,333  (38.6 FTE, oran 1)
+       personel: $561,236  (41.6 FTE, oran 1)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    536,552  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    536,552  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    540,170  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    540,170  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    549,737  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    557,855  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    572,281  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    593,133  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    576,454  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    576,454  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    580,073  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    580,073  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    589,639  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    597,758  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    612,184  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | dugum       |      capex |       opex |   bugunku deger
-    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,364,424 | $    6,193,837
-    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,061,832 | $    6,177,710
-    3 |   12,100 | 2x12c  k=1   | $        0 | $7,788,270 | $    6,357,548
-  NPV: $18,729,095  (yillik esdeger $7,136,753)
-  seviyelendirilmis maliyet: $54.14 / TPS / ay
-    personel                                             $   18,107,943  (%96.7)
-    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      190,006  (% 1.0)
+    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,843,259 | $    6,641,346
+    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,590,595 | $    6,639,552
+    3 |   12,100 | 2x12c  k=1   | $        0 | $8,372,167 | $    6,834,182
+  NPV: $20,115,080  (yillik esdeger $7,664,885)
+  seviyelendirilmis maliyet: $58.14 / TPS / ay
+    personel                                             $   19,493,928  (%96.9)
+    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      190,006  (% 0.9)
     yedek alimi (nesne depolama)                         $      140,000  (% 0.7)
     uretim disi ortamlar                                 $      136,783  (% 0.7)
     sunucu alimi (DB + uygulama + tanik)                 $       62,367  (% 0.3)
@@ -222,7 +222,7 @@ x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %
     veri storage alimi (NVMe / AFA)                      $       14,573  (% 0.1)
     enerji                                               $       12,351  (% 0.1)
 
---- x86 NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 9e755935f4f4)
+--- x86 NPV 5 yil: --input case_10_npv_ve_aralik.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 0296cbb30081)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -232,53 +232,53 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $536,552  ($53.66/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $576,454  ($57.65/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $521,333  (38.6 FTE, oran 1)
+       personel: $561,236  (41.6 FTE, oran 1)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    536,552  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    536,552  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    540,170  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    540,170  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    549,737  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    557,855  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    572,281  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    593,133  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    576,454  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    576,454  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    580,073  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    580,073  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    589,639  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    597,758  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    612,184  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | dugum       |      capex |       opex |   bugunku deger
-    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,364,424 | $    6,193,837
-    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,061,832 | $    6,177,710
-    3 |   12,100 | 2x12c  k=1   | $        0 | $7,788,270 | $    6,357,548
-    4 |   13,310 | 2x12c  k=1   | $    5,962 | $8,604,695 | $    6,569,347
-    5 |   14,641 | 2x12c  k=1   | $        0 | $9,491,982 | $    6,767,652
-  NPV: $32,066,094  (yillik esdeger $7,820,622)
-  seviyelendirilmis maliyet: $54.07 / TPS / ay
-    personel                                             $   31,167,141  (%97.2)
-    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      311,929  (% 1.0)
-    uretim disi ortamlar                                 $      209,048  (% 0.7)
+    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,843,259 | $    6,641,346
+    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,590,595 | $    6,639,552
+    3 |   12,100 | 2x12c  k=1   | $        0 | $8,372,167 | $    6,834,182
+    4 |   13,310 | 2x12c  k=1   | $    5,962 | $9,249,475 | $    7,061,246
+    5 |   14,641 | 2x12c  k=1   | $        0 | $10,203,993 | $    7,275,306
+  NPV: $34,451,633  (yillik esdeger $8,402,433)
+  seviyelendirilmis maliyet: $58.09 / TPS / ay
+    personel                                             $   33,552,679  (%97.4)
+    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      311,929  (% 0.9)
+    uretim disi ortamlar                                 $      209,048  (% 0.6)
     yedek alimi (nesne depolama)                         $      140,000  (% 0.4)
     storage + yedek bakimi                               $       74,417  (% 0.2)
     sunucu alimi (DB + uygulama + tanik)                 $       62,367  (% 0.2)
-    yedek hizmeti                                        $       51,083  (% 0.2)
+    yedek hizmeti                                        $       51,083  (% 0.1)
     enerji                                               $       20,161  (% 0.1)
     veri storage alimi (NVMe / AFA)                      $       17,817  (% 0.1)
     sunucu bakimi                                        $       12,131  (% 0.0)
 
---- x86 NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 1de8ae8f9f77)
+--- x86 NPV 10 yil: --input case_10_npv_ve_aralik.json --kosu 6  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": true, "years": 10, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha d209cd536255)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -288,48 +288,48 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $536,552  ($53.66/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $576,454  ($57.65/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $521,333  (38.6 FTE, oran 1)
+       personel: $561,236  (41.6 FTE, oran 1)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    536,552  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    536,552  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    540,170  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    540,170  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    549,737  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    557,855  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    572,281  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    593,133  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    576,454  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    576,454  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    580,073  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    580,073  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    589,639  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    597,758  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    612,184  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %10/yil
   yil |      TPS | dugum       |      capex |       opex |   bugunku deger
-    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,364,424 | $    6,193,837
-    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,061,832 | $    6,177,710
-    3 |   12,100 | 2x12c  k=1   | $        0 | $7,788,270 | $    6,357,548
-    4 |   13,310 | 2x12c  k=1   | $    9,936 | $8,604,695 | $    6,572,591
-    5 |   14,641 | 2x12c  k=1   | $        0 | $9,491,982 | $    6,767,652
-    6 |   16,105 | 2x16c  k=1   | $   13,358 | $10,491,332 | $    7,000,341
-    7 |   17,716 | 2x16c  k=1   | $   15,898 | $11,573,271 | $    7,217,845
-    8 |   19,487 | 2x24c  k=1   | $   20,613 | $12,824,735 | $    7,476,950
-    9 |   21,436 | 2x24c  k=1   | $        0 | $14,145,733 | $    7,694,342
-   10 |   23,579 | 2x24c  k=1   | $    7,949 | $15,604,490 | $    7,936,855
-  NPV: $69,395,671  (yillik esdeger $9,880,382)
-  seviyelendirilmis maliyet: $54.47 / TPS / ay
-    personel                                             $   67,655,478  (%97.5)
-    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      686,558  (% 1.0)
+    1 |   10,000 | 2x8c   k=1   | $  245,777 | $6,843,259 | $    6,641,346
+    2 |   11,000 | 2x12c  k=1   | $   10,307 | $7,590,595 | $    6,639,552
+    3 |   12,100 | 2x12c  k=1   | $        0 | $8,372,167 | $    6,834,182
+    4 |   13,310 | 2x12c  k=1   | $    9,936 | $9,249,475 | $    7,064,491
+    5 |   14,641 | 2x12c  k=1   | $        0 | $10,203,993 | $    7,275,306
+    6 |   16,105 | 2x16c  k=1   | $   13,358 | $11,277,584 | $    7,524,254
+    7 |   17,716 | 2x16c  k=1   | $   15,898 | $12,441,506 | $    7,758,538
+    8 |   19,487 | 2x24c  k=1   | $   20,613 | $13,783,501 | $    8,034,960
+    9 |   21,436 | 2x24c  k=1   | $        0 | $15,204,469 | $    8,270,224
+   10 |   23,579 | 2x24c  k=1   | $    7,949 | $16,773,619 | $    8,531,181
+  NPV: $74,574,033  (yillik esdeger $10,617,665)
+  seviyelendirilmis maliyet: $58.53 / TPS / ay
+    personel                                             $   72,833,841  (%97.7)
+    abonelikler (hipervizor, RHEL, OpenShift, PG destek) $      686,558  (% 0.9)
     uretim disi ortamlar                                 $      435,400  (% 0.6)
     storage + yedek bakimi                               $      159,421  (% 0.2)
     yedek alimi (nesne depolama)                         $      140,000  (% 0.2)
@@ -339,7 +339,7 @@ x86 NPV | vSphere / VM / PostgreSQL+Patroni | X1 | iskonto %7.0 | TPS buyumesi %
     enerji                                               $       39,895  (% 0.1)
     veri storage alimi (NVMe / AFA)                      $       29,925  (% 0.0)
 
---- mainframe --range: --input case_10_npv_ve_aralik.json --kosu 7  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 7effa621a892)
+--- mainframe --range: --input case_10_npv_ve_aralik.json --kosu 7  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 842cad6766f6)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -351,7 +351,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -361,11 +361,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,139,294
+     AYLIK maliyet: $1,179,197
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -375,35 +375,36 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
 
 
 ARALIK (aylik toplam, 10,000 TPS):
-  low   $     314,432  ($31.44/TPS)  M1 3931-438  yazilim $131,256  personel $134,376
-  mid   $   1,139,294  ($113.93/TPS)  M1 3931-524  yazilim $402,932  personel $521,333
+  low   $     339,749  ($33.97/TPS)  M1 3931-438  yazilim $131,256  personel $159,692
+  mid   $   1,179,197  ($117.92/TPS)  M1 3931-524  yazilim $402,932  personel $561,236
   high  $   5,659,518  ($565.95/TPS)  M2 3931-635  yazilim $1,728,927  personel $2,291,977
   Tek-parametre salinimi (digerleri mid):
-    Okuma SQL CPU, us (is yuku agirligi)       $     888,137 .. $   1,573,161
-    AWLC mutlak fiyat seviyesi (2004 = 1.0)    $     897,535 .. $   1,501,933
-    Personel FTE egrisi + taban ekip           $     904,970 .. $   1,494,493
-    Yuklu personel ucreti (ortak)              $   1,010,570 .. $   1,309,854
-    Uretim disi ortamlar (0 = kapsam disi)     $   1,037,240 .. $   1,292,376
-    Yazma SQL CPU, us (is yuku agirligi)       $   1,060,900 .. $   1,314,175
-    zIIP'e kayan CPU payi                      $   1,020,381 .. $   1,214,081
-    AWLC L4+ kademe dusus orani                $   1,090,166 .. $   1,264,163
-    Planli kesinti sikligi ve suresi           $   1,139,294 .. $   1,222,880
-    Donanim USD/PCI                            $   1,113,879 .. $   1,190,124
-    Aralik okuma / nokta okuma CPU orani (ortak, F) $   1,119,128 .. $   1,158,043
-    Donanim frame tabani, USD                  $   1,131,794 .. $   1,154,294
-    DS8900F liste fiyati indirimi              $   1,134,912 .. $   1,145,136
-    Yedek saklama suresi, hafta                $   1,138,431 .. $   1,141,020
-    On-prem nesne depolama aboneligi, USD/TB-ay $   1,137,568 .. $   1,139,729
-    Db2 buffer pool isabeti (I/O)              $   1,139,294 .. $   1,139,294
-    DR frame bedeli (CBU; 1 = tam ayna)        $   1,139,294 .. $   1,139,294
-    GDPS sabit bedel seviyesi                  $   1,139,294 .. $   1,139,294
-    Saha olayi sikligi ve suresi               $   1,139,294 .. $   1,139,294
-    Kurtarma suresi (RTO)                      $   1,139,294 .. $   1,139,294
-    TS7770 sikistirma orani                    $   1,139,294 .. $   1,139,294
-    TS7770 cache liste fiyati, USD/TB          $   1,139,294 .. $   1,139,294
-    On-prem nesne depolama donanimi, USD/TB    $   1,139,294 .. $   1,139,294
+    Okuma SQL CPU, us (is yuku agirligi)       $     918,151 .. $   1,630,262
+    Personel FTE egrisi + taban ekip           $     923,700 .. $   1,571,577
+    AWLC mutlak fiyat seviyesi (2004 = 1.0)    $     937,438 .. $   1,541,836
+    Yuklu personel ucreti (ortak)              $   1,040,620 .. $   1,362,811
+    Yazma SQL CPU, us (is yuku agirligi)       $   1,097,714 .. $   1,360,919
+    Uretim disi ortamlar (0 = kapsam disi)     $   1,077,143 .. $   1,332,279
+    AWLC L4+ kademe dusus orani                $   1,130,069 .. $   1,304,065
+    zIIP'e kayan CPU payi                      $   1,122,749 .. $   1,214,081
+    Planli kesinti sikligi ve suresi           $   1,179,197 .. $   1,264,778
+    Donanim USD/PCI                            $   1,153,782 .. $   1,230,027
+    Aralik okuma / nokta okuma CPU orani (ortak, F) $   1,158,269 .. $   1,198,702
+    Donanim frame tabani, USD                  $   1,171,697 .. $   1,194,197
+    DS8900F liste fiyati indirimi              $   1,174,815 .. $   1,185,039
+    Yedek saklama suresi, hafta                $   1,178,334 .. $   1,180,923
+    On-prem nesne depolama aboneligi, USD/TB-ay $   1,177,471 .. $   1,179,632
+    Db2 buffer pool isabeti (I/O)              $   1,179,197 .. $   1,179,197
+    DR frame bedeli (CBU; 1 = tam ayna)        $   1,179,197 .. $   1,179,197
+    GDPS sabit bedel seviyesi                  $   1,179,197 .. $   1,179,197
+    Saha olayi sikligi ve suresi               $   1,179,197 .. $   1,179,197
+    Kurtarma suresi (RTO)                      $   1,179,197 .. $   1,179,197
+    Gecisle maskelenemeyen platform kesintisi payi (ortak) $   1,179,197 .. $   1,179,197
+    TS7770 sikistirma orani                    $   1,179,197 .. $   1,179,197
+    TS7770 cache liste fiyati, USD/TB          $   1,179,197 .. $   1,179,197
+    On-prem nesne depolama donanimi, USD/TB    $   1,179,197 .. $   1,179,197
 
---- x86 --range --compare: --input case_10_npv_ve_aralik.json --kosu 8  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 6a52e0c5f137)
+--- x86 --range --compare: --input case_10_npv_ve_aralik.json --kosu 8  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": true, "range": true, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha 35a284624de3)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -413,92 +414,93 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %70.0)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $536,552  ($53.66/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $576,454  ($57.65/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $521,333  (38.6 FTE, oran 1)
+       personel: $561,236  (41.6 FTE, oran 1)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    536,552  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    536,552  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    540,170  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    540,170  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    549,737  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    557,855  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    572,281  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    593,133  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    576,454  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    576,454  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    580,073  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    580,073  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    589,639  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    597,758  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    612,184  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 
 ARALIK (x86 aylik toplam, 10,000 TPS):
-  low   $     220,075  ($22.01/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $212,599
-  mid   $     536,552  ($53.66/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $521,333
-  high  $   1,249,087  ($124.91/TPS)  OpenShift Virt / VM / PostgreSQL+Patroni X1 2x24c  personel $1,188,521
+  low   $     233,949  ($23.39/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $226,472
+  mid   $     576,454  ($57.65/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $561,236
+  high  $   1,353,609  ($135.36/TPS)  OpenShift Virt / VM / PostgreSQL+Patroni X1 2x24c  personel $1,293,043
   Tek-parametre salinimi (digerleri mid):
-    Personel egrisi + taban ekip (ortak)           $     302,228 .. $     891,750
-    Yuklu personel ucreti (ortak)                  $     407,827 .. $     707,111
-    Aralik / nokta okuma orani (ortak, F)          $     526,593 .. $     546,429
-    PostgreSQL ticari destek USD/cekirdek/yil      $     533,552 .. $     542,552
-    x86 uretim disi ortamlar (N)                   $     533,118 .. $     539,986
-    vSphere USD/cekirdek/yil                       $     535,552 .. $     540,170
-    x86 kopru: TPS / SPECint / cekirdek (K)        $     536,552 .. $     539,788
-    Dugum ici olceklenme ussu B_X86 (0,80-1,00)    $     536,552 .. $     538,170
-    Sanallastirma ek yuku                          $     536,552 .. $     538,170
-    x86 kullanim tavani (U)                        $     536,552 .. $     538,170
-    Yedek saklama suresi, hafta (ortak)            $     536,047 .. $     537,560
-    On-prem nesne depolama aboneligi (ortak)       $     535,543 .. $     536,695
-    Sunucu sasi/platform listesi, USD              $     536,145 .. $     537,161
-    Sunucu liste indirimi                          $     536,175 .. $     536,929
-    Yedek sikistirma (pgBackRest / RMAN)           $     536,216 .. $     536,888
-    DRAM / NVMe fiyati (secili donem, E)           $     536,382 .. $     536,858
-    PostgreSQL WAL full-page write carpani         $     536,479 .. $     536,697
-    PostgreSQL DB ek yuku (MVCC, WAL)              $     536,469 .. $     536,634
-    Dugum gucu yapilandirma carpani                $     536,518 .. $     536,586
-    Konteyner ek yuku                              $     536,552 .. $     536,552
-    Oracle / PostgreSQL verim (kalibre edilemez)   $     536,552 .. $     536,552
-    RAC olceklenme verimi                          $     536,552 .. $     536,552
-    Ag gidis-donus suresi (yalnizca latency hedefiyle) $     536,552 .. $     536,552
-    Islem basina gidis-donus: 1 (sakli yordam) / ifade sayisi $     536,552 .. $     536,552
-    SAN okuma servis suresi (yalnizca latency hedefiyle) $     536,552 .. $     536,552
-    OpenShift Virt. Engine USD/dugum/yil           $     536,552 .. $     536,552
-    OpenShift USD/cekirdek cifti/yil               $     536,552 .. $     536,552
-    Oracle liste indirimi                          $     536,552 .. $     536,552
-    AFA liste USD/etkin TB                         $     536,552 .. $     536,552
-    AFA teklifindeki veri azaltimi (geri cevirme)  $     536,552 .. $     536,552
-    Dugum arizasi sikligi ve failover              $     536,552 .. $     536,552
-    Saha olayi sikligi ve suresi (ortak)           $     536,552 .. $     536,552
-    Kurtarma suresi (RTO)                          $     536,552 .. $     536,552
-    Planli kesinti ve yama switchover'i            $     536,552 .. $     536,552
-    Tampon havuzu isabeti (ortak; I/O, gecikme)    $     536,552 .. $     536,552
-    On-prem nesne depolama donanimi (ortak)        $     536,552 .. $     536,552
+    Personel egrisi + taban ekip (ortak)           $     320,957 .. $     968,834
+    Yuklu personel ucreti (ortak)                  $     437,878 .. $     760,069
+    Aralik / nokta okuma orani (ortak, F)          $     565,734 .. $     587,088
+    PostgreSQL ticari destek USD/cekirdek/yil      $     573,454 .. $     582,454
+    x86 uretim disi ortamlar (N)                   $     573,020 .. $     579,888
+    vSphere USD/cekirdek/yil                       $     575,454 .. $     580,073
+    x86 kopru: TPS / SPECint / cekirdek (K)        $     576,454 .. $     579,691
+    Dugum ici olceklenme ussu B_X86 (0,80-1,00)    $     576,454 .. $     578,073
+    Sanallastirma ek yuku                          $     576,454 .. $     578,073
+    x86 kullanim tavani (U)                        $     576,454 .. $     578,073
+    Yedek saklama suresi, hafta (ortak)            $     575,950 .. $     577,463
+    On-prem nesne depolama aboneligi (ortak)       $     575,446 .. $     576,598
+    Sunucu sasi/platform listesi, USD              $     576,048 .. $     577,064
+    Sunucu liste indirimi                          $     576,077 .. $     576,832
+    Yedek sikistirma (pgBackRest / RMAN)           $     576,118 .. $     576,791
+    DRAM / NVMe fiyati (secili donem, E)           $     576,285 .. $     576,761
+    PostgreSQL WAL full-page write carpani         $     576,382 .. $     576,600
+    PostgreSQL DB ek yuku (MVCC, WAL)              $     576,372 .. $     576,537
+    Dugum gucu yapilandirma carpani                $     576,420 .. $     576,488
+    Konteyner ek yuku                              $     576,454 .. $     576,454
+    Oracle / PostgreSQL verim (kalibre edilemez)   $     576,454 .. $     576,454
+    RAC olceklenme verimi                          $     576,454 .. $     576,454
+    Ag gidis-donus suresi (yalnizca latency hedefiyle) $     576,454 .. $     576,454
+    Islem basina gidis-donus: 1 (sakli yordam) / ifade sayisi $     576,454 .. $     576,454
+    SAN okuma servis suresi (yalnizca latency hedefiyle) $     576,454 .. $     576,454
+    OpenShift Virt. Engine USD/dugum/yil           $     576,454 .. $     576,454
+    OpenShift USD/cekirdek cifti/yil               $     576,454 .. $     576,454
+    Oracle liste indirimi                          $     576,454 .. $     576,454
+    AFA liste USD/etkin TB                         $     576,454 .. $     576,454
+    AFA teklifindeki veri azaltimi (geri cevirme)  $     576,454 .. $     576,454
+    Dugum arizasi sikligi ve failover              $     576,454 .. $     576,454
+    Saha olayi sikligi ve suresi (ortak)           $     576,454 .. $     576,454
+    Kurtarma suresi (RTO)                          $     576,454 .. $     576,454
+    Planli kesinti ve yama switchover'i            $     576,454 .. $     576,454
+    Gecisle maskelenemeyen platform kesintisi payi (ortak) $     576,454 .. $     576,454
+    Tampon havuzu isabeti (ortak; I/O, gecikme)    $     576,454 .. $     576,454
+    On-prem nesne depolama donanimi (ortak)        $     576,454 .. $     576,454
 
 KARSILASTIRMA (10,000 TPS, ayni girdiler, fiyat donemi 2025-mid)
-  mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-  x86:       $     536,552/ay  ($53.66/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-  oran (mainframe / x86): 2.12
+  mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+  x86:       $     576,454/ay  ($57.65/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+  oran (mainframe / x86): 2.05
   personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
-  personel orani 1.25: x86 $666,885/ay ($66.69/TPS)
-  personel orani 2: x86 $1,057,884/ay ($105.79/TPS)
-  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $651,869/ay ($65.19/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
-  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $546,854/ay ($54.69/TPS)
-  basabas personel orani: 2.16  (x86 personeli, ayni is yuku icin mainframe personelinin 2.16 katindan azsa x86 ucuz)
+  personel orani 1.25: x86 $716,763/ay ($71.68/TPS)
+  personel orani 2: x86 $1,137,690/ay ($113.77/TPS)
+  konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $691,772/ay ($69.18/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
+  uretim disi stres senaryosu (NONPROD_FACTOR_X86=2, aralikta degil): x86 $586,756/ay ($58.68/TPS)
+  basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
 
 KARSILASTIRMA ARALIGI (10,000 TPS; eslestirilmis senaryolar, KB-18)
   senaryo            mainframe $/TPS   x86 $/TPS   oran   personel haric oran   basabas personel orani
-  x86_lehine                 383.08       52.95   7.23                401.23       7.33
-  orta                       113.93       53.66   2.12                 40.61       2.16
-  mainframe_lehine            70.49       57.92   1.22                  3.17       1.24
-  ortak_low                   81.86       22.66   3.61                 43.16       3.78
-  ortak_high                 181.78      120.54   1.51                 37.37       1.52
+  x86_lehine                 387.27       56.94   6.80                401.23       6.89
+  orta                       117.92       57.65   2.05                 40.61       2.07
+  mainframe_lehine            74.48       61.91   1.20                  3.17       1.22
+  ortak_low                   83.25       24.05   3.46                 43.16       3.61
+  ortak_high                 192.23      130.99   1.47                 37.37       1.47
     x86_lehine: x86'ya ozgu low, mainframe'e ozgu high, ortak mid
     orta: hepsi mid
     mainframe_lehine: x86'ya ozgu high, mainframe'e ozgu low, ortak mid

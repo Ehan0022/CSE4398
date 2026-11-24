@@ -459,6 +459,13 @@ STACKS = [Stack(h, p, d) for d in DATABASES for h in HYPERVISORS for p in PLACEM
 # (dugum kaybinda kume yeniden yapilandirmasi tum oturumlari kisa sure dondurur).
 NODE_EVENTS_PER_YEAR = {"low": 0.03, "mid": 0.10, "high": 0.30}   # [VISHWANATH-2010 asagi; high ASSUME]
 NODE_EVENT_LEVEL = "mid"
+# Platform kesintisi (Deg. #10, A karari): sunucu basina yillik plansiz kesinti,
+# mainframe CPC'si ile ayni kaynak [ITIC-2023]: Lenovo ThinkSystem Linux 31,5 sn
+# (low), Dell PowerEdge Linux 24 dk (mid; katalog R760 sinifi), white box Linux
+# 59 dk (high). Duzey NODE_EVENT_LEVEL ile birlikte secilir. Ortak formul:
+# common_model.platform_downtime_hours (kesen dugum x ITIC x u). Maskelenen pay
+# (1 - u) dugum olayi x failover suresiyle sayilir.
+X86_ITIC_DOWNTIME_MINUTES = {"low": 31.5 / 60.0, "mid": 24.0, "high": 59.0}   # [ITIC-2023]
 T_FAILOVER_SECONDS = {
     "postgresql": {"low": 15.0, "mid": 35.0, "high": 90.0},      # [PIGSTY-RTO] 27-41 sn
     "oracle":     {"low": 5.0, "mid": 15.0, "high": 300.0},      # [ORACLE-RAC-2024, ORACLE-MAA-2026]
@@ -543,7 +550,8 @@ class X86Topology:
         serving = 2 if self.code == "X4" else 1
         return k * serving
 
-    def annual_downtime_hours(self, db, k=2, site=None, recovery=None, planned=None, node=None):
+    def annual_downtime_hours(self, db, k=2, site=None, recovery=None, planned=None, node=None,
+                              supported=True, platform=None):
         t_rec = self.recovery_minutes(recovery) / 60.0
         unplanned = cm.site_downtime_hours(t_rec, site)
         p = planned or X86_PLANNED_LEVEL
@@ -551,16 +559,26 @@ class X86Topology:
                      * X86_PLANNED_OUTAGE_MINUTES[self.planned_group][p] / 60.0)
         rolling = X86_PATCH_SWITCHOVERS_PER_YEAR * X86_SWITCHOVER_SECONDS[db][p] / 3600.0
         nl = node or NODE_EVENT_LEVEL
-        node_h = (self.interrupting_nodes(db, k) * NODE_EVENTS_PER_YEAR[nl]
-                  * T_FAILOVER_SECONDS[db][nl] / 3600.0)
-        return unplanned + planned_h + rolling + node_h
+        n_int = self.interrupting_nodes(db, k)
+        u = cm.platform_downtime_hours(1.0, 1, True, platform)
+        node_h = (n_int * NODE_EVENTS_PER_YEAR[nl] * T_FAILOVER_SECONDS[db][nl] / 3600.0
+                  * (1.0 - u))
+        # Ticari destegi olmayan PostgreSQL yigini (B karari): ITIC'in high ucu.
+        il = nl if supported or db != "postgresql" else "high"
+        platform_h = cm.platform_downtime_hours(X86_ITIC_DOWNTIME_MINUTES[il] / 60.0,
+                                                interrupting=n_int, clustered=True,
+                                                level=platform,
+                                                layers=2 if self.code == "X4" else 1)
+        return unplanned + planned_h + rolling + node_h + platform_h
 
     def availability(self, db, k=2, **kw):
         return 1.0 - self.annual_downtime_hours(db, k, **kw) / cm.HOURS_PER_YEAR
 
-    def availability_range(self, db, k=2):
-        return (self.availability(db, k, site="high", recovery="high", planned="high", node="high"),
-                self.availability(db, k, site="low", recovery="low", planned="low", node="low"))
+    def availability_range(self, db, k=2, supported=True):
+        return (self.availability(db, k, site="high", recovery="high", planned="high", node="high",
+                                  supported=supported, platform="high"),
+                self.availability(db, k, site="low", recovery="low", planned="low", node="low",
+                                  supported=supported, platform="low"))
 
     def __repr__(self):
         return f"{self.code}: {self.name}"
@@ -620,6 +638,27 @@ ORACLE_DISCOUNT = 0.45       # [OLE-NET2026, REDRESS-PL2026] aralik 0,60 / 0,45 
 ORACLE_SUPPORT_RATE = 0.22   # [REDRESS-PL2026] net lisansin yillik %22'si
 # --- PostgreSQL --------------------------------------------------------------------
 PG_SUPPORT_USD_PER_CORE_YEAR = 500.0   # [ASSUME, kalibre edilemedi] 0 / 500 / 1.500
+# SLA'ya bagli zorunlu destek (Deg. #10, B karari, Emirhan 2026-11-24). EDB
+# magaza fiyatlari, cekirdek/yil, 8 cekirdek alt sinir, 1 yil [EDB-STORE-2026]:
+# Community $400, Business $1.600, Enterprise $2.400. Destek seviyeleri
+# [EDB-PLANS-2026]: Basic 10x5 (yalniz gelistirme/test), Production 7/24,
+# Premium 7/24 + siki SLO. Kural [ASSUME, esikler]:
+#   hedef < %99,99 ve RPO > 0  -> destek istege bagli (PG_SUPPORT_USD_PER_CORE_YEAR)
+#   hedef >= %99,99 ya da RPO 0 -> en az 7/24 uretim destegi (Business)
+#   hedef >= %99,999            -> Enterprise
+# Destek 0 ise (desteksiz yigin) platform kesintisi ITIC'in high ucundan sayilir.
+PG_SUPPORT_TIERS = ((0.99999, 2400.0), (0.9999, 1600.0))   # (hedef esigi, USD/cekirdek/yil)
+PG_SUPPORT_RPO0_FLOOR = 1600.0
+
+
+def pg_support_rate(availability=None, rpo_seconds=None):
+    """Hedefe gore PostgreSQL ticari destegi, USD/cekirdek/yil (0 = desteksiz)."""
+    floor = 0.0
+    if availability is not None:
+        floor = next((p for a, p in PG_SUPPORT_TIERS if availability >= a - 1e-12), 0.0)
+    if rpo_seconds is not None and rpo_seconds <= 0:
+        floor = max(floor, PG_SUPPORT_RPO0_FLOOR)
+    return max(PG_SUPPORT_USD_PER_CORE_YEAR, floor)
 
 
 def oracle_options(topology, rac):
@@ -913,7 +952,9 @@ def evaluate(tps, stack, topology, sku, k=1, workload=DEFAULT_WORKLOAD, latency_
         return None
     if db == "postgresql":
         k = 1
-    if availability is not None and topology.availability(db, k) < availability:
+    pg_rate = pg_support_rate(availability, rpo_seconds) if db == "postgresql" else 0.0
+    supported = db != "postgresql" or pg_rate > 0
+    if availability is not None and topology.availability(db, k, supported=supported) < availability:
         return None
     if rpo_seconds is not None and topology.rpo_seconds(db) > rpo_seconds:
         return None
@@ -957,7 +998,7 @@ def evaluate(tps, stack, topology, sku, k=1, workload=DEFAULT_WORKLOAD, latency_
                 rac = g["n"] > 1
                 g["oracle_net"] = g["n"] * oracle_license_net(g["sku"].cores, topology, rac)
             else:
-                g["pg_support_year"] = g["n"] * g["sku"].cores * PG_SUPPORT_USD_PER_CORE_YEAR
+                g["pg_support_year"] = g["n"] * g["sku"].cores * pg_rate
         g["software_m"] = ((sum(s.values()) + g["pg_support_year"]) / 12.0
                            + g["oracle_net"] / y12 + g["oracle_net"] * ORACLE_SUPPORT_RATE / 12.0)
         g["hw_m"] = g["hw_capex"] / y12
@@ -995,7 +1036,8 @@ def evaluate(tps, stack, topology, sku, k=1, workload=DEFAULT_WORKLOAD, latency_
         "dr_share": dr / total if total else 0.0, "app_share": app / total if total else 0.0,
         "oracle_monthly": oracle_m,
         "latency_s": (latency_at(per_core, d_fixed, rho, percentile) if rho < 1 else None),
-        "availability": topology.availability(db, k),
+        "availability": topology.availability(db, k, supported=supported),
+        "pg_support_rate": pg_rate,
         "hosts": sum(g["n"] for g in groups),
         "physical_cores": sum(g["n"] * g["sku"].cores for g in groups),
     }
@@ -1069,7 +1111,8 @@ def print_solution(r, tps, workload, latency_ms=None, latency_percentile=99):
     print(f"     kopru: {X86_TPS_PER_SPECINT_CORE:.1f} TPS / SPECint / cekirdek x "
           f"{X86_SPECINT_PER_CORE:.2f} SPECint/cekirdek")
     print(f"  -> SECILEN YIGIN: {st}")
-    a_lo, a_hi = topo.availability_range(st.db, r["k"])
+    a_lo, a_hi = topo.availability_range(st.db, r["k"], supported=st.db != "postgresql"
+                                         or r.get("pg_support_rate", 1.0) > 0)
     print(f"  -> SECILEN TOPOLOJI: {topo} [{topo.pattern}; "
           f"{topo.oracle_tier if st.db == 'oracle' else 'Patroni: ' + topo.patroni}]")
     print(f"     availability: {r['availability']:.5%} (aralik {a_lo:.5%} - {a_hi:.5%}) | "
@@ -1089,7 +1132,9 @@ def print_solution(r, tps, workload, latency_ms=None, latency_percentile=99):
     print(f"     toplam {r['hosts']} fiziksel sunucu, {r['physical_cores']} cekirdek")
     print(f"     AYLIK maliyet: ${r['total']:,.0f}  (${r['total'] / tps:,.2f}/TPS)")
     print(f"       yazilim/abonelik: ${r['software']:,.0f}"
-          + (f"  (Oracle ${r['oracle_monthly']:,.0f})" if st.db == "oracle" else ""))
+          + (f"  (Oracle ${r['oracle_monthly']:,.0f})" if st.db == "oracle" else
+             f"  (PostgreSQL destegi ${r.get('pg_support_rate', 0):,.0f}/cekirdek/yil"
+             + (", desteksiz" if r.get('pg_support_rate', 0) <= 0 else "") + ")"))
     print(f"       donanim:  ${r['hardware_amort']:,.0f}   bakim: ${r['maintenance']:,.0f}   "
           f"enerji: ${r['energy']:,.0f}")
     print(f"       personel: ${r['staff']:,.0f}  "
@@ -1144,6 +1189,7 @@ X86_RANGE_PARAMETERS = [
     ("SITE_EVENT_LEVEL", "low", "mid", "high", "Saha olayi sikligi ve suresi (ortak)"),
     ("X86_RECOVERY_LEVEL", "low", "mid", "high", "Kurtarma suresi (RTO)"),
     ("X86_PLANNED_LEVEL", "low", "mid", "high", "Planli kesinti ve yama switchover'i"),
+    ("PLATFORM_UNMASKED_SHARE", 0.05, 0.10, 0.20, "Gecisle maskelenemeyen platform kesintisi payi (ortak)"),
     ("STAFF_SCENARIO", "low", "mid", "high", "Personel egrisi + taban ekip (ortak)"),
     ("WAGE_LEVEL", "low", "mid", "high", "Yuklu personel ucreti (ortak)"),
     ("RANGE_READ_WEIGHT", 3.4, 3.65, 3.9, "Aralik / nokta okuma orani (ortak, F)"),
@@ -1560,8 +1606,13 @@ def print_compare(c, tps):
     m, x = c["mainframe"], c["x86"]
     print(f"\nKARSILASTIRMA ({tps:,.0f} TPS, ayni girdiler, fiyat donemi {cm.PRICE_EPOCH})")
     if m is None or x is None:
-        print(f"  mainframe: {'infeasible' if m is None else 'ok'} | x86: "
-              f"{'infeasible' if x is None else 'ok'}")
+        ms = ("infeasible" if m is None else
+              f"${m[2]['total']:,.0f}/ay (${m[2]['total'] / tps:,.2f}/TPS) {m[1].code} {m[0].model}")
+        xs = ("infeasible" if x is None else
+              f"${x['total']:,.0f}/ay (${x['total'] / tps:,.2f}/TPS) {x['stack']} {x['topology'].code}")
+        print(f"  mainframe: {ms} | x86: {xs}")
+        if (m is None) != (x is None):
+            print(f"  -> yalnizca {'mainframe' if x is None else 'x86'} bu kisitlari saglayabiliyor")
         return
     print(f"  mainframe: ${c['mf_total']:>12,.0f}/ay  (${c['mf_total'] / tps:,.2f}/TPS)  "
           f"{m[1].code} {m[0].model}")
@@ -1679,6 +1730,10 @@ def main(argv=None):
     p.add_argument("--allow-extrapolation", action="store_true",
                    help="96 / 128 cekirdekli dugumleri de dene (KB-06 duyarliligi)")
     p.add_argument("--staff-ratio", type=float, default=None, help="STAFF_RATIO_X86 (duyarlilik)")
+    p.add_argument("--pg-support", type=float, default=None,
+                   help="PG_SUPPORT_USD_PER_CORE_YEAR (0 = desteksiz; SLA tabani yine uygulanir)")
+    p.add_argument("--unmasked-share", type=float, default=None,
+                   help="PLATFORM_UNMASKED_SHARE (gecisle maskelenemeyen platform kesintisi payi)")
     p.add_argument("--range", action="store_true")
     p.add_argument("--npv", action="store_true")
     p.add_argument("--tps-growth", type=float, default=None)
@@ -1689,13 +1744,13 @@ def main(argv=None):
     p.add_argument("--avg-tps", type=float, default=10000)
     p.add_argument("--compare", action="store_true", help="mainframe ile karsilastir (KB-18)")
     p.add_argument("--calibration", action="store_true")
+    p.add_argument("--prices", type=str, default=None, metavar="DOSYA")
+    p.add_argument("--list-prices", action="store_true")
+    p.add_argument("--price-vintages", action="store_true")
     p.add_argument("--input", type=str, default=None, metavar="JSON",
         help="girdileri JSON case dosyasindan oku (sunum kopyasi)")
     p.add_argument("--kosu", type=int, default=None, metavar="N",
         help="--input dosyasindaki N. kosu (1'den baslar)")
-    p.add_argument("--prices", type=str, default=None, metavar="DOSYA")
-    p.add_argument("--list-prices", action="store_true")
-    p.add_argument("--price-vintages", action="store_true")
     # Sunum kopyasi: --input DOSYA [--kosu N] ile girdiler JSON dosyasindan okunur.
     if argv is None:
         argv = sys.argv[1:]
@@ -1707,6 +1762,10 @@ def main(argv=None):
         mod.ALLOW_EXTRAPOLATION = True
     if a.staff_ratio is not None:
         mod.STAFF_RATIO_X86 = a.staff_ratio
+    if a.pg_support is not None:
+        mod.PG_SUPPORT_USD_PER_CORE_YEAR = a.pg_support
+    if a.unmasked_share is not None:
+        cm.PLATFORM_UNMASKED_SHARE = a.unmasked_share
     if a.prices:
         try:
             applied = cm.apply_user_prices(cm.load_price_file(a.prices), _PARAM_MODULES)

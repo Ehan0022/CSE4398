@@ -1,4 +1,4 @@
-"""Sunum demosu: 10 senaryoyu modellere gercekten kosturur ve ciktilari kaydeder.
+"""Sunum demosu: 12 senaryoyu modellere gercekten kosturur ve ciktilari kaydeder.
 
 Kullanim (Work_Emirhan klasorunden):
     python sunum_demo/demo_calistir.py            # hepsini kostur, ciktilar/ altina yaz
@@ -71,6 +71,21 @@ CASES = [
      + [("mainframe --range", MF, "--tps 10000 --range"),
         ("x86 --range --compare", X86, "--tps 10000 --range --compare")],
      r"NPV:|seviyelendirilmis|^\s+\d+ \|\s+[\d,]+ \| 3931|^\s+(low|mid|high)\s|x86_lehine|^\s+orta\s|mainframe_lehine|ortak_(low|high)"),
+    # Degerlendirme #10: mainframe'in kazandigi bolgeler
+    (11, "availability_kazanan", "Yuksek availability: %99,999 + RPO 0'da yalniz mainframe; u ve destek duyarliligi",
+     [("%99,999 + RPO 0 (x86 kurulamaz)", X86, "--tps 10000 --availability 0.99999 --rpo-seconds 0 --compare"),
+      ("%99,999, RPO serbest, 50K (x86 Oracle X4)", X86, "--tps 50000 --availability 0.99999 --compare"),
+      ("mainframe %99,999 + RPO 0 dokum, 3K", MF, "--tps 3000 --availability 0.99999 --rpo-seconds 0"),
+      ("u = 0,05 duyarliligi", X86,
+       "--tps 10000 --availability 0.99999 --rpo-seconds 0 --unmasked-share 0.05 --compare"),
+      ("desteksiz PostgreSQL, %99,9", X86, "--tps 10000 --pg-support 0 --compare"),
+      ("kazanan haritasi (hizli)", "tools/kazanan_haritasi.py", "--hizli")],
+     r"SECILEN TOPOLOJI|availability:|mainframe:|x86: |oran \(|basabas|SONUC|destegi|^\s+%99|^\s+hedef|Senaryo:|u=0"),
+    (12, "maliyet_kazanan", "Maliyette kazanan bolge: 30K / 50K'da eslestirilmis senaryolar ve personel orani 2,5",
+     [("30K --range --compare", X86, "--tps 30000 --range --compare"),
+      ("50K --range --compare", X86, "--tps 50000 --range --compare"),
+      ("50K, personel orani 2,5", X86, "--tps 50000 --staff-ratio 2.5 --compare")],
+     r"mainframe:|x86: |oran \(|basabas|x86_lehine|^\s+orta\s|mainframe_lehine|ortak_(low|high)"),
 ]
 
 

@@ -1,319 +1,321 @@
 ==============================================================================
 CASE 1: Referans nokta: 10K TPS, oltp_rw, %99,9, 20 TB
 ==============================================================================
---- x86 + karsilastirma: python src/x86_model.py --tps 10000 --compare  (cikis kodu 0, sha 879cb1178cb7)
+--- x86 + karsilastirma: python src/x86_model.py --tps 10000 --compare  (cikis kodu 0, sha e09afb48fc9e)
      -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
      -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-        AYLIK maliyet: $536,552  ($53.66/TPS)
-          personel: $521,333  (38.6 FTE, oran 1)
-     mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-     x86:       $     536,552/ay  ($53.66/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 2.12
+        AYLIK maliyet: $576,454  ($57.65/TPS)
+          personel: $561,236  (41.6 FTE, oran 1)
+     mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+     x86:       $     576,454/ay  ($57.65/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 2.05
      personel haric: mainframe $617,961 | x86 $15,219 (oran 40.61)
-     konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $651,869/ay ($65.19/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
-     basabas personel orani: 2.16  (x86 personeli, ayni is yuku icin mainframe personelinin 2.16 katindan azsa x86 ucuz)
+     konsolide edilmemis park senaryosu (tavan %17.5, ana aralikta degil): x86 $691,772/ay ($69.18/TPS), personel haric $130,536; vSphere / VM / Oracle X1 2x12c k=4
+     basabas personel orani: 2.07  (x86 personeli, ayni is yuku icin mainframe personelinin 2.07 katindan azsa x86 ucuz)
    -> tam cikti: sunum_demo/ciktilar/case_01_referans.txt
 
 ==============================================================================
 CASE 2: TPS olcegi: 1K / 3K / 30K / 50K (10K = Case 1)
 ==============================================================================
---- 1000 TPS: python src/x86_model.py --tps 1000 --compare  (cikis kodu 0, sha 866295d4e510)
-     mainframe: $     291,887/ay  ($291.89/TPS)  M1 3931-407
-     x86:       $     118,977/ay  ($118.98/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 2.45
-     basabas personel orani: 2.66  (x86 personeli, ayni is yuku icin mainframe personelinin 2.66 katindan azsa x86 ucuz)
---- 3000 TPS: python src/x86_model.py --tps 3000 --compare  (cikis kodu 0, sha 3e0db25dee17)
-     mainframe: $     547,562/ay  ($182.52/TPS)  M1 3931-424
-     x86:       $     239,455/ay  ($79.82/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 2.29
-     basabas personel orani: 2.37  (x86 personeli, ayni is yuku icin mainframe personelinin 2.37 katindan azsa x86 ucuz)
---- 30000 TPS: python src/x86_model.py --tps 30000 --compare  (cikis kodu 0, sha 599294fb8a22)
-     mainframe: $   2,349,206/ay  ($78.31/TPS)  M1 3931-732
-     x86:       $   1,152,173/ay  ($38.41/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x32c
-     oran (mainframe / x86): 2.04
-     basabas personel orani: 2.06  (x86 personeli, ayni is yuku icin mainframe personelinin 2.06 katindan azsa x86 ucuz)
---- 50000 TPS: python src/x86_model.py --tps 50000 --compare  (cikis kodu 0, sha 1f8adc11cb69)
-     mainframe: $   3,444,304/ay  ($68.89/TPS)  M1 3931-759
-     x86:       $   1,762,640/ay  ($35.25/TPS)  vSphere / VM / Oracle X1 2x8c
-     oran (mainframe / x86): 1.95
-     basabas personel orani: 2.05  (x86 personeli, ayni is yuku icin mainframe personelinin 2.05 katindan azsa x86 ucuz)
+--- 1000 TPS: python src/x86_model.py --tps 1000 --compare  (cikis kodu 0, sha b0f09ef72414)
+     mainframe: $     299,849/ay  ($299.85/TPS)  M1 3931-407
+     x86:       $     126,939/ay  ($126.94/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 2.36
+     basabas personel orani: 2.54  (x86 personeli, ayni is yuku icin mainframe personelinin 2.54 katindan azsa x86 ucuz)
+--- 3000 TPS: python src/x86_model.py --tps 3000 --compare  (cikis kodu 0, sha 64303b26aa2f)
+     mainframe: $     564,741/ay  ($188.25/TPS)  M1 3931-424
+     x86:       $     256,634/ay  ($85.54/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 2.20
+     basabas personel orani: 2.28  (x86 personeli, ayni is yuku icin mainframe personelinin 2.28 katindan azsa x86 ucuz)
+--- 30000 TPS: python src/x86_model.py --tps 30000 --compare  (cikis kodu 0, sha 6e1b44353d1c)
+     mainframe: $   2,435,304/ay  ($81.18/TPS)  M1 3931-732
+     x86:       $   1,238,271/ay  ($41.28/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x32c
+     oran (mainframe / x86): 1.97
+     basabas personel orani: 1.99  (x86 personeli, ayni is yuku icin mainframe personelinin 1.99 katindan azsa x86 ucuz)
+--- 50000 TPS: python src/x86_model.py --tps 50000 --compare  (cikis kodu 0, sha 737683f6da77)
+     mainframe: $   3,567,412/ay  ($71.35/TPS)  M1 3931-759
+     x86:       $   1,885,748/ay  ($37.71/TPS)  vSphere / VM / Oracle X1 2x8c
+     oran (mainframe / x86): 1.89
+     basabas personel orani: 1.97  (x86 personeli, ayni is yuku icin mainframe personelinin 1.97 katindan azsa x86 ucuz)
    -> tam cikti: sunum_demo/ciktilar/case_02_tps_olcegi.txt
 
 ==============================================================================
 CASE 3: Latency hedefi: yok / p99 50 ms / 20 ms / 10 ms (mainframe kademesi)
 ==============================================================================
---- hedef yok: python src/mainframe_model.py --tps 10000  (cikis kodu 0, sha 2ce739cf888b)
+--- hedef yok: python src/mainframe_model.py --tps 10000  (cikis kodu 0, sha df00e88d7e0e)
             latency hedefi: yok -> default %90 utilization tavani
      -> SECILEN KADEME: 3931-524 (24 CP, 16,380 PCI, 1,971 MSU) (birincil frame)
         dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
         utilization: 88.9%  (x1 frame)
-        AYLIK maliyet: $1,139,294
---- p99 50 ms: python src/mainframe_model.py --tps 10000 --latency-ms 50  (cikis kodu 0, sha fdb6d93668a7)
+        AYLIK maliyet: $1,179,197
+--- p99 50 ms: python src/mainframe_model.py --tps 10000 --latency-ms 50  (cikis kodu 0, sha 371f2a9080d1)
      -> SECILEN KADEME: 3931-614 (14 CP, 16,703 PCI, 2,009 MSU) (birincil frame)
         dinamik utilization tavani: %88.7 (latency hedefinden turetildi)
         bu yukte tahmini p99 latency: 44.26 ms (hedef: 50 ms)
         utilization: 87.2%  (x1 frame)
-        AYLIK maliyet: $1,141,120
---- p99 20 ms: python src/mainframe_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha 4eea28882b24)
+        AYLIK maliyet: $1,181,023
+--- p99 20 ms: python src/mainframe_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha 64cba82f7e4d)
      -> SECILEN KADEME: 3931-710 (10 CP, 18,787 PCI, 2,253 MSU) (birincil frame)
         dinamik utilization tavani: %81.9 (latency hedefinden turetildi)
         bu yukte tahmini p99 latency: 16.16 ms (hedef: 20 ms)
         utilization: 77.5%  (x1 frame)
-        AYLIK maliyet: $1,152,860
---- p99 10 ms: python src/mainframe_model.py --tps 10000 --latency-ms 10  (cikis kodu 0, sha c8bc2f67a254)
+        AYLIK maliyet: $1,192,763
+--- p99 10 ms: python src/mainframe_model.py --tps 10000 --latency-ms 10  (cikis kodu 0, sha a9c679f751a8)
      -> SECILEN KADEME: 3931-714 (14 CP, 24,850 PCI, 2,953 MSU) (birincil frame)
         dinamik utilization tavani: %61.2 (latency hedefinden turetildi)
         bu yukte tahmini p99 latency: 9.40 ms (hedef: 10 ms)
         utilization: 58.6%  (x1 frame)
-        AYLIK maliyet: $1,190,268
---- x86, p99 20 ms: python src/x86_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha a0591add9a5a)
+        AYLIK maliyet: $1,230,171
+--- x86, p99 20 ms: python src/x86_model.py --tps 10000 --latency-ms 20  (cikis kodu 0, sha e35833256857)
         cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %69.6)
         sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms (hedef 20 ms)
-        AYLIK maliyet: $536,552  ($53.66/TPS)
+        AYLIK maliyet: $576,454  ($57.65/TPS)
    -> tam cikti: sunum_demo/ciktilar/case_03_latency.txt
 
 ==============================================================================
 CASE 4: Availability / RPO / RTO: (%99,9 = Case 1) -> M2-X2 -> M4-X3 ve infeasible sinir
 ==============================================================================
---- %99,99 + RPO 0 + RTO 120 dk: python src/x86_model.py --tps 10000 --availability 0.9999 --rpo-seconds 0 --rto-minutes 120 --compare  (cikis kodu 0, sha 0a34977f0b23)
+--- %99,99 + RPO 0 + RTO 120 dk: python src/x86_model.py --tps 10000 --availability 0.9999 --rpo-seconds 0 --rto-minutes 120 --compare  (cikis kodu 0, sha 006d2a6a51f1)
      -> SECILEN YIGIN: vSphere / VM / Oracle
      -> SECILEN TOPOLOJI: X2: Tek site HA + uzak DR, elle gecis [Failover capable; Silver + Data Guard (Max Availability)]
-        availability: 99.99538% (aralik 99.97745% - 99.99929%) | RPO 0 s, RTO 105 dk
+        availability: 99.99446% (aralik 99.97308% - 99.99928%) | RPO 0 s, RTO 105 dk
           donanim:  $1,305   bakim: $326   enerji: $264
-        DR payi %2.2; uygulama katmani payi %0.6
-     mainframe: $   1,222,880/ay  ($122.29/TPS)  M2 3931-524
-     x86:       $     611,894/ay  ($61.19/TPS)  vSphere / VM / Oracle X2 2x8c
-     oran (mainframe / x86): 2.00
---- %99,999: python src/x86_model.py --tps 10000 --availability 0.99999 --compare  (cikis kodu 0, sha 006498683ba9)
-     -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
-     -> SECILEN TOPOLOJI: X3: Iki site, otomatik gecis [Fault tolerant; Patroni: coklu site, uzak senkron, DCS 3 sitede]
-        availability: 99.99917% (aralik 99.99663% - 99.99978%) | RPO 0 s, RTO 2 dk
+        DR payi %2.1; uygulama katmani payi %0.6
+     mainframe: $   1,264,778/ay  ($126.48/TPS)  M2 3931-524
+     x86:       $     653,792/ay  ($65.38/TPS)  vSphere / VM / Oracle X2 2x8c
+     oran (mainframe / x86): 1.93
+--- %99,999: python src/x86_model.py --tps 10000 --availability 0.99999 --compare  (cikis kodu 0, sha 1d9e3ef78328)
+     -> SECILEN YIGIN: vSphere / VM / Oracle
+     -> SECILEN TOPOLOJI: X4: Iki site aktif-aktif [Adaptive continuity; Platinum (GoldenGate aktif-aktif)]
+        availability: 99.99941% (aralik 99.99479% - 99.99997%) | RPO 5 s, RTO 0.25 dk
           donanim:  $1,678   bakim: $420   enerji: $340
-        DR payi %1.0; uygulama katmani payi %0.6
-     mainframe: $   1,439,712/ay  ($143.97/TPS)  M4 3931-524
-     x86:       $     618,331/ay  ($61.83/TPS)  vSphere / VM / PostgreSQL+Patroni X3 2x8c
-     oran (mainframe / x86): 2.33
---- mainframe %99,999 + RPO 0 + RTO 30 dk: python src/mainframe_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --rto-minutes 30  (cikis kodu 1, sha 1e06a3455c4c)
-     -> SONUC: hicbir topoloji bu uptime hedefini saglayamiyor
-   Feasible konfigurasyon yok (yukaridaki SONUC satirina bakin).
---- mainframe %99,999 dokum: python src/mainframe_model.py --tps 10000 --availability 0.99999  (cikis kodu 0, sha fecd3eb98ad4)
-     -> SECILEN TOPOLOJI: M4: GDPS Continuous Availability (geo-redundant)
-        availability: 99.99994% (0.01 saat/yil kesinti; aralik 99.99976% - 99.99998%)
+        DR payi %4.6; uygulama katmani payi %0.5
+     mainframe: $   1,383,467/ay  ($138.35/TPS)  M3 3931-524
+     x86:       $     797,664/ay  ($79.77/TPS)  vSphere / VM / Oracle X4 2x8c
+     oran (mainframe / x86): 1.73
+--- mainframe %99,999 + RPO 0 + RTO 30 dk: python src/mainframe_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --rto-minutes 30  (cikis kodu 0, sha 000cbfee1738)
+     -> SECILEN TOPOLOJI: M3: Fault-tolerant + GDPS Metro/Global
+        availability: 99.99975% (0.02 saat/yil kesinti; aralik 99.99786% - 99.99997%)
           donanim:  $97,216  (1 frame + 1 DR frame (CBU, x0.50); 1 zIIP, f=0.10)
-          GDPS:     $100,000  (ca)
+          GDPS:     $50,000  (metro_global)
+--- mainframe %99,999 dokum: python src/mainframe_model.py --tps 10000 --availability 0.99999  (cikis kodu 0, sha 8e915cdef6ad)
+     -> SECILEN TOPOLOJI: M3: Fault-tolerant + GDPS Metro/Global
+        availability: 99.99975% (0.02 saat/yil kesinti; aralik 99.99786% - 99.99997%)
+          donanim:  $97,216  (1 frame + 1 DR frame (CBU, x0.50); 1 zIIP, f=0.10)
+          GDPS:     $50,000  (metro_global)
    -> tam cikti: sunum_demo/ciktilar/case_04_availability.txt
 
 ==============================================================================
 CASE 5: Veri hacmi: 10 / 100 / 500 TB (storage ve yedek ekseni)
 ==============================================================================
---- 10 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 10  (cikis kodu 0, sha 79b6f13d2cc3)
-        AYLIK maliyet: $1,134,938
+--- 10 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 10  (cikis kodu 0, sha 4004305d82dd)
+        AYLIK maliyet: $1,174,841
           storage:  $4,464  (birincil: 1x DS8910F-993 (38 TB ham))
           yedekleme: $4,917  (on-prem nesne depolama: 2 site x 101 TB; image copy 72 TB + log 29 TB; geri donus ~1.4 sa)
---- 100 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 100  (cikis kodu 0, sha de1e17424edd)
-        AYLIK maliyet: $1,174,412
+--- 100 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 100  (cikis kodu 0, sha 4064465648bd)
+        AYLIK maliyet: $1,214,315
           storage:  $31,749  (birincil: 1x DS8910F-993 (380 TB ham))
           yedekleme: $11,648  (on-prem nesne depolama: 2 site x 747 TB; image copy 718 TB + log 29 TB; geri donus ~10.4 sa)
---- 500 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 500  (cikis kodu 0, sha fb8c0358d55f)
-        AYLIK maliyet: $1,383,956
+--- 500 TB, mainframe: python src/mainframe_model.py --tps 10000 --data-tb 500  (cikis kodu 0, sha 4d8dc3e67d2a)
+        AYLIK maliyet: $1,423,859
           storage:  $153,226  (birincil: 1x DS8910F-994 (1,901 TB ham))
           yedekleme: $75,420  (TS7770 sanal teyp: 4x TS7770 (2 site), site basina 1,820 TB cache; image copy 3,589 TB + log 29 TB; geri donus ~31.4 sa)
---- 10 TB, x86: python src/x86_model.py --tps 10000 --data-tb 10 --compare  (cikis kodu 0, sha 2eb7a5c6668a)
+--- 10 TB, x86: python src/x86_model.py --tps 10000 --data-tb 10 --compare  (cikis kodu 0, sha 1cb06fe20bfc)
      -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
-        AYLIK maliyet: $535,983  ($53.60/TPS)
+        AYLIK maliyet: $575,886  ($57.59/TPS)
           storage:  $166  (site A: 3 dugum x 6 x 3.84 TB NVMe)
           yedekleme: $4,555  (aws_s3, site basina 65 TB)
-     mainframe: $   1,134,938/ay  ($113.49/TPS)  M1 3931-524
-     x86:       $     535,983/ay  ($53.60/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
---- 100 TB, x86: python src/x86_model.py --tps 10000 --data-tb 100 --compare  (cikis kodu 0, sha 506af41fc252)
+     mainframe: $   1,174,841/ay  ($117.48/TPS)  M1 3931-524
+     x86:       $     575,886/ay  ($57.59/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+--- 100 TB, x86: python src/x86_model.py --tps 10000 --data-tb 100 --compare  (cikis kodu 0, sha f2af5f863bad)
      -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
-        AYLIK maliyet: $541,120  ($54.11/TPS)
+        AYLIK maliyet: $581,023  ($58.10/TPS)
           storage:  $1,435  (site A: 3 dugum x 13 x 15.36 TB NVMe)
           yedekleme: $7,788  (cos_onprem, site basina 388 TB)
-     mainframe: $   1,174,412/ay  ($117.44/TPS)  M1 3931-524
-     x86:       $     541,120/ay  ($54.11/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
---- 500 TB, x86: python src/x86_model.py --tps 10000 --data-tb 500 --compare  (cikis kodu 0, sha 4eddad5fd858)
+     mainframe: $   1,214,315/ay  ($121.43/TPS)  M1 3931-524
+     x86:       $     581,023/ay  ($58.10/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+--- 500 TB, x86: python src/x86_model.py --tps 10000 --data-tb 500 --compare  (cikis kodu 0, sha 653c5fb55d47)
      -> SECILEN YIGIN: vSphere / VM / Oracle
-        AYLIK maliyet: $614,783  ($61.48/TPS)
+        AYLIK maliyet: $654,685  ($65.47/TPS)
           storage:  $14,274  (site A: 1 AFA (1,901 TB ham))
           yedekleme: $28,216  (cos_onprem, site basina 1,809 TB)
-     mainframe: $   1,383,956/ay  ($138.40/TPS)  M1 3931-524
-     x86:       $     614,783/ay  ($61.48/TPS)  vSphere / VM / Oracle X1 2x8c
+     mainframe: $   1,423,859/ay  ($142.39/TPS)  M1 3931-524
+     x86:       $     654,685/ay  ($65.47/TPS)  vSphere / VM / Oracle X1 2x8c
    -> tam cikti: sunum_demo/ciktilar/case_05_veri_hacmi.txt
 
 ==============================================================================
 CASE 6: Is yuku profili: redp_light / tpcb_like / (oltp_rw = Case 1, 3) / oltp_heavy
 ==============================================================================
---- redp_light: python src/mainframe_model.py --tps 10000 --workload redp_light  (cikis kodu 0, sha 530b45d39d92)
+--- redp_light: python src/mainframe_model.py --tps 10000 --workload redp_light  (cikis kodu 0, sha f77ae902e411)
         is yuku profili: redp_light: 0 nokta okuma + 0 yazma SQL, w=1.00, sync I/O=0.05, IOPS=0.11
         -> 7.94 islem / s / PCI (zIIP payi f=0.00 haric)
      -> SECILEN KADEME: 3931-601 (1 CP, 1,496 PCI, 185 MSU) (birincil frame)
         AYLIK maliyet: $265,149
           yazilim:  $108,083  (z/OS + CICS TS + Db2, AWLC kademeli)
         I/O: 1,090 IOPS, I/O basina 90 us, islem basina D_io = 0.00 ms
---- tpcb_like: python src/mainframe_model.py --tps 10000 --workload tpcb_like  (cikis kodu 0, sha 6afdcb30eb55)
+--- tpcb_like: python src/mainframe_model.py --tps 10000 --workload tpcb_like  (cikis kodu 0, sha 06dc2bd23058)
         is yuku profili: tpcb_like: 1 nokta okuma + 4 yazma SQL, w=4.61, sync I/O=1.20, IOPS=3.20
         -> 1.72 islem / s / PCI (zIIP payi f=0.10 haric)
      -> SECILEN KADEME: 3931-429 (29 CP, 5,876 PCI, 720 MSU) (birincil frame)
-        AYLIK maliyet: $608,811
+        AYLIK maliyet: $628,277
           yazilim:  $235,897  (z/OS + CICS TS + Db2, AWLC kademeli)
         I/O: 32,000 IOPS, I/O basina 85 us, islem basina D_io = 0.10 ms
---- oltp_heavy: python src/mainframe_model.py --tps 10000 --workload oltp_heavy  (cikis kodu 0, sha 716def924785)
+--- oltp_heavy: python src/mainframe_model.py --tps 10000 --workload oltp_heavy  (cikis kodu 0, sha 1dfb63877848)
         is yuku profili: oltp_heavy: 30 nokta okuma + 6 yazma SQL, w=16.37, sync I/O=7.00, IOPS=10.00
         -> 0.49 islem / s / PCI (zIIP payi f=0.10 haric)
      -> SECILEN KADEME: 3931-532 (32 CP, 20,924 PCI, 2,507 MSU) (birincil frame)
-        AYLIK maliyet: $1,328,424
+        AYLIK maliyet: $1,375,687
           yazilim:  $454,763  (z/OS + CICS TS + Db2, AWLC kademeli)
         I/O: 100,000 IOPS, I/O basina 65 us, islem basina D_io = 0.45 ms
---- tpcb_like, x86: python src/x86_model.py --tps 10000 --workload tpcb_like --compare  (cikis kodu 0, sha 3ac41e832471)
+--- tpcb_like, x86: python src/x86_model.py --tps 10000 --workload tpcb_like --compare  (cikis kodu 0, sha 3c3258395f9e)
         is yuku profili: tpcb_like: 1 nokta + 0 aralik okuma + 4 yazma, x86 goreli agirlik=0.44, IOPS=3.20
      -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
-        AYLIK maliyet: $269,535  ($26.95/TPS)
-     mainframe: $     608,811/ay  ($60.88/TPS)  M1 3931-429
-     x86:       $     269,535/ay  ($26.95/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
---- oltp_heavy, x86: python src/x86_model.py --tps 10000 --workload oltp_heavy --compare  (cikis kodu 0, sha a5396965d14a)
+        AYLIK maliyet: $289,000  ($28.90/TPS)
+     mainframe: $     628,277/ay  ($62.83/TPS)  M1 3931-429
+     x86:       $     289,000/ay  ($28.90/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+--- oltp_heavy, x86: python src/x86_model.py --tps 10000 --workload oltp_heavy --compare  (cikis kodu 0, sha 4a85760f602a)
         is yuku profili: oltp_heavy: 30 nokta + 0 aralik okuma + 6 yazma, x86 goreli agirlik=1.31, IOPS=10.00
      -> VERITABANI DUGUMU: R760-sinifi 2x12c (24 cekirdek); site basina {'A': 3}; tek yazici (birincil)
-        AYLIK maliyet: $634,460  ($63.45/TPS)
-     mainframe: $   1,328,424/ay  ($132.84/TPS)  M1 3931-532
-     x86:       $     634,460/ay  ($63.45/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x12c
+        AYLIK maliyet: $681,723  ($68.17/TPS)
+     mainframe: $   1,375,687/ay  ($137.57/TPS)  M1 3931-532
+     x86:       $     681,723/ay  ($68.17/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x12c
    -> tam cikti: sunum_demo/ciktilar/case_06_is_yuku.txt
 
 ==============================================================================
 CASE 7: Yedek hedefi: 100 TB'ta zorlanan hedefler (auto = Case 5) ve 500 TB'ta kisit
 ==============================================================================
---- 100 TB, ts7770: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target ts7770  (cikis kodu 0, sha 62ed81b2d869)
-        AYLIK maliyet: $1,183,514
+--- 100 TB, ts7770: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target ts7770  (cikis kodu 0, sha 8458cd9af0de)
+        AYLIK maliyet: $1,223,417
           yedekleme: $20,750  (TS7770 sanal teyp: 2x TS7770 (2 site), site basina 380 TB cache; image copy 718 TB + log 29 TB; geri donus ~13.0 sa)
---- 100 TB, aws_s3: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target aws_s3  (cikis kodu 0, sha c1207a0b79d2)
-        AYLIK maliyet: $1,180,551
+--- 100 TB, aws_s3: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target aws_s3  (cikis kodu 0, sha 95f9725e9dd9)
+        AYLIK maliyet: $1,220,454
           yedekleme: $17,787  (AWS S3 (hibrit): 747 TB Standard-IA, 2x 10G DX; image copy 718 TB + log 29 TB; geri donus ~25.9 sa)
---- 500 TB, cos_onprem zorla: python src/mainframe_model.py --tps 10000 --data-tb 500 --backup-target cos_onprem  (cikis kodu 0, sha fd5a45cb204a)
-        AYLIK maliyet: $1,383,956
+--- 500 TB, cos_onprem zorla: python src/mainframe_model.py --tps 10000 --data-tb 500 --backup-target cos_onprem  (cikis kodu 0, sha de7fba1498f9)
+        AYLIK maliyet: $1,423,859
           yedekleme: $75,420  (TS7770 sanal teyp: 4x TS7770 (2 site), site basina 1,820 TB cache [cos_onprem kisiti karsilamadi]; image copy 3,589 TB + log 29 TB; geri donus ~31.4 sa)
    -> tam cikti: sunum_demo/ciktilar/case_07_yedek_hedefi.txt
 
 ==============================================================================
 CASE 8: Fiyatlama stratejileri A / B / C (yillik mod, 3 preset)
 ==============================================================================
---- steady_oltp: python src/mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000  (cikis kodu 0, sha 5d38bbfbb401)
+--- steady_oltp: python src/mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000  (cikis kodu 0, sha aa7a881ab898)
    Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
      Base kademe:       3931-532 (32 CP, 20,924 PCI, 2,507 MSU)  [Max39]
      Corridor tavani:   3931-632 (32 CP, 32,963 PCI, 3,864 MSU)
-     TOPLAM:                         $   17,231,666
+     TOPLAM:                         $   17,867,655
    Alternatif: Strateji A: Permanent peak kademe
      Base kademe:       3931-539 (39 CP, 24,827 PCI, 2,950 MSU)  [Max39]
-     TOPLAM:                         $   17,600,326
-     -> secilen strateji bundan $368,660 (%2.1) ucuz
+     TOPLAM:                         $   18,236,315
+     -> secilen strateji bundan $368,660 (%2.0) ucuz
    Alternatif: Strateji B: Base kademe + On/Off CoD
      Base kademe:       3931-538 (38 CP, 24,274 PCI, 2,890 MSU)  [Max39]
      CoD tepe kademe:   3931-539 (39 CP, 24,827 PCI, 2,950 MSU)  (261 gun / 365)
-     TOPLAM:                         $   17,619,825
-     -> secilen strateji bundan $388,159 (%2.2) ucuz
---- batch_heavy: python src/mainframe_model.py --yearly --preset batch_heavy --avg-tps 10000  (cikis kodu 0, sha dc289552fdd4)
+     TOPLAM:                         $   18,255,814
+     -> secilen strateji bundan $388,159 (%2.1) ucuz
+--- batch_heavy: python src/mainframe_model.py --yearly --preset batch_heavy --avg-tps 10000  (cikis kodu 0, sha 85c8b82be116)
    Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
      Base kademe:       3931-619 (19 CP, 21,303 PCI, 2,552 MSU)  [Max39]
      Corridor tavani:   3931-625 (25 CP, 26,704 PCI, 3,157 MSU)
      CoD tepe kademe:   3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  (21 gun / 365)
-     TOPLAM:                         $   23,509,802
+     TOPLAM:                         $   24,419,179
    Alternatif: Strateji B: Base kademe + On/Off CoD
      Base kademe:       3931-624 (24 CP, 25,806 PCI, 3,059 MSU)  [Max39]
      CoD tepe kademe:   3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  (30 gun / 365)
-     TOPLAM:                         $   23,741,710
-     -> secilen strateji bundan $231,908 (%1.0) ucuz
+     TOPLAM:                         $   24,651,087
+     -> secilen strateji bundan $231,908 (%0.9) ucuz
    Alternatif: Strateji A: Permanent peak kademe
      Base kademe:       3931-726 (26 CP, 40,800 PCI, 4,783 MSU)  [Max39]
-     TOPLAM:                         $   24,688,556
-     -> secilen strateji bundan $1,178,755 (%4.8) ucuz
---- retail_bursty: python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000  (cikis kodu 0, sha 8eb0921526a8)
+     TOPLAM:                         $   25,597,933
+     -> secilen strateji bundan $1,178,755 (%4.6) ucuz
+--- retail_bursty: python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000  (cikis kodu 0, sha 8ae267926c44)
    Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
      Base kademe:       3931-717 (17 CP, 28,938 PCI, 3,404 MSU)  [Max39]
      Corridor tavani:   3931-722 (22 CP, 35,537 PCI, 4,166 MSU)
      CoD tepe kademe:   3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  (20 gun / 365)
-     TOPLAM:                         $   29,275,316
+     TOPLAM:                         $   30,426,205
    Alternatif: Strateji B: Base kademe + On/Off CoD
      Base kademe:       3931-717 (17 CP, 28,938 PCI, 3,404 MSU)  [Max39]
      CoD tepe kademe:   3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  (20 gun / 365)
-     TOPLAM:                         $   29,316,230
+     TOPLAM:                         $   30,467,119
      -> secilen strateji bundan $40,914 (%0.1) ucuz
    Alternatif: Strateji A: Permanent peak kademe
      Base kademe:       3931-739 (39 CP, 57,733 PCI, 6,768 MSU)  [Max39]
-     TOPLAM:                         $   31,204,290
-     -> secilen strateji bundan $1,928,974 (%6.2) ucuz
+     TOPLAM:                         $   32,355,179
+     -> secilen strateji bundan $1,928,974 (%6.0) ucuz
    -> tam cikti: sunum_demo/ciktilar/case_08_fiyatlama_abc.txt
 
 ==============================================================================
 CASE 9: Personel orani (STAFF_RATIO_X86): (1,0 = Case 1) / 1,25 / 2,16 / 3,0
 ==============================================================================
---- oran 1.25: python src/x86_model.py --tps 10000 --staff-ratio 1.25 --compare  (cikis kodu 0, sha 18495a854e04)
-          personel: $651,666  (48.3 FTE, oran 1.25)
-     mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-     x86:       $     666,885/ay  ($66.69/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 1.71
---- oran 2.16: python src/x86_model.py --tps 10000 --staff-ratio 2.16 --compare  (cikis kodu 0, sha f85b8ea9d615)
-          personel: $1,126,079  (83.4 FTE, oran 2.16)
-     mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-     x86:       $   1,141,298/ay  ($114.13/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 1.00
---- oran 3.0: python src/x86_model.py --tps 10000 --staff-ratio 3.0 --compare  (cikis kodu 0, sha ac305da87c69)
-          personel: $1,563,999  (115.9 FTE, oran 3)
-     mainframe: $   1,139,294/ay  ($113.93/TPS)  M1 3931-524
-     x86:       $   1,579,217/ay  ($157.92/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
-     oran (mainframe / x86): 0.72
+--- oran 1.25: python src/x86_model.py --tps 10000 --staff-ratio 1.25 --compare  (cikis kodu 0, sha 2bead8d1d46e)
+          personel: $701,545  (52.0 FTE, oran 1.25)
+     mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+     x86:       $     716,763/ay  ($71.68/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 1.65
+--- oran 2.16: python src/x86_model.py --tps 10000 --staff-ratio 2.16 --compare  (cikis kodu 0, sha 422de32b1086)
+          personel: $1,212,269  (89.8 FTE, oran 2.16)
+     mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+     x86:       $   1,227,488/ay  ($122.75/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 0.96
+--- oran 3.0: python src/x86_model.py --tps 10000 --staff-ratio 3.0 --compare  (cikis kodu 0, sha eb589433e7f5)
+          personel: $1,683,707  (124.7 FTE, oran 3)
+     mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+     x86:       $   1,698,926/ay  ($169.89/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 0.69
    -> tam cikti: sunum_demo/ciktilar/case_09_personel_orani.txt
 
 ==============================================================================
 CASE 10: NPV ufku (3 / 5 / 10 yil) ve belirsizlik araligi (--range)
 ==============================================================================
---- mainframe NPV 3 yil: python src/mainframe_model.py --tps 10000 --npv --years 3  (cikis kodu 0, sha 03720ddaef54)
-       1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-       2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-       3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-     NPV: $41,900,879   (indirgenmemis $47,346,660; yillik esdeger $15,966,400)
-     seviyelendirilmis maliyet: $121.11 / TPS / ay
---- mainframe NPV 5 yil: python src/mainframe_model.py --tps 10000 --npv --years 5  (cikis kodu 0, sha b7e907bc0aea)
-       1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-       2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-       3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-       4 |   13,310 | 3931-534  | $  770,069 | $16,726,309 | $   13,389,027
-       5 |   14,641 | 3931-537  | $  401,520 | $18,270,395 | $   13,332,857
-     NPV: $68,622,763   (indirgenmemis $83,514,953; yillik esdeger $16,736,453)
-     seviyelendirilmis maliyet: $115.70 / TPS / ay
---- mainframe NPV 10 yil: python src/mainframe_model.py --tps 10000 --npv --years 10  (cikis kodu 0, sha a238d2cde11c)
-       1 |   10,000 | 3931-524  | $5,161,654 | $12,115,754 | $   16,484,788
-       2 |   11,000 | 3931-527  | $  411,600 | $13,975,965 | $   12,591,822
-       3 |   12,100 | 3931-530  | $  408,480 | $15,273,207 | $   12,824,269
-       4 |   13,310 | 3931-534  | $  828,584 | $16,733,982 | $   13,442,647
-       5 |   14,641 | 3931-537  | $  401,520 | $18,278,298 | $   13,338,492
-       6 |   16,105 | 3931-637  | $3,285,360 | $20,339,278 | $   15,895,336
-       7 |   17,716 | 3931-637  | $  233,674 | $22,217,544 | $   13,991,677
-       8 |   19,487 | 3931-637  | $        0 | $24,261,122 | $   14,120,194
-       9 |   21,436 | 3931-637  | $        0 | $26,525,149 | $   14,427,923
-      10 |   23,579 | 3931-638  | $  314,984 | $29,085,866 | $   14,957,110
-     NPV: $142,074,257   (indirgenmemis $209,852,022; yillik esdeger $20,228,178)
-     seviyelendirilmis maliyet: $111.51 / TPS / ay
---- x86 NPV 3 yil: python src/x86_model.py --tps 10000 --npv --years 3  (cikis kodu 0, sha ebc8756693e1)
-     NPV: $18,729,095  (yillik esdeger $7,136,753)
-     seviyelendirilmis maliyet: $54.14 / TPS / ay
---- x86 NPV 5 yil: python src/x86_model.py --tps 10000 --npv --years 5  (cikis kodu 0, sha 9e755935f4f4)
-     NPV: $32,066,094  (yillik esdeger $7,820,622)
-     seviyelendirilmis maliyet: $54.07 / TPS / ay
---- x86 NPV 10 yil: python src/x86_model.py --tps 10000 --npv --years 10  (cikis kodu 0, sha 1de8ae8f9f77)
-     NPV: $69,395,671  (yillik esdeger $9,880,382)
-     seviyelendirilmis maliyet: $54.47 / TPS / ay
---- mainframe --range: python src/mainframe_model.py --tps 10000 --range  (cikis kodu 0, sha 7effa621a892)
-     low   $     314,432  ($31.44/TPS)  M1 3931-438  yazilim $131,256  personel $134,376
-     mid   $   1,139,294  ($113.93/TPS)  M1 3931-524  yazilim $402,932  personel $521,333
+--- mainframe NPV 3 yil: python src/mainframe_model.py --tps 10000 --npv --years 3  (cikis kodu 0, sha fc92a1e69c66)
+       1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+       2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+       3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+     NPV: $43,286,865   (indirgenmemis $48,938,155; yillik esdeger $16,494,532)
+     seviyelendirilmis maliyet: $125.12 / TPS / ay
+--- mainframe NPV 5 yil: python src/mainframe_model.py --tps 10000 --npv --years 5  (cikis kodu 0, sha df7cc8814e0e)
+       1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+       2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+       3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+       4 |   13,310 | 3931-534  | $  770,069 | $17,371,089 | $   13,880,926
+       5 |   14,641 | 3931-537  | $  401,520 | $18,982,406 | $   13,840,511
+     NPV: $71,008,302   (indirgenmemis $86,463,239; yillik esdeger $17,318,264)
+     seviyelendirilmis maliyet: $119.73 / TPS / ay
+--- mainframe NPV 10 yil: python src/mainframe_model.py --tps 10000 --npv --years 10  (cikis kodu 0, sha fbd988fd341c)
+       1 |   10,000 | 3931-524  | $5,161,654 | $12,594,589 | $   16,932,298
+       2 |   11,000 | 3931-527  | $  411,600 | $14,504,728 | $   13,053,664
+       3 |   12,100 | 3931-530  | $  408,480 | $15,857,104 | $   13,300,903
+       4 |   13,310 | 3931-534  | $  828,584 | $17,378,762 | $   13,934,546
+       5 |   14,641 | 3931-537  | $  401,520 | $18,990,309 | $   13,846,145
+       6 |   16,105 | 3931-637  | $3,285,360 | $21,125,530 | $   16,419,249
+       7 |   17,716 | 3931-637  | $  233,674 | $23,085,779 | $   14,532,370
+       8 |   19,487 | 3931-637  | $        0 | $25,219,887 | $   14,678,204
+       9 |   21,436 | 3931-637  | $        0 | $27,583,884 | $   15,003,805
+      10 |   23,579 | 3931-638  | $  314,984 | $30,254,995 | $   15,551,436
+     NPV: $147,252,620   (indirgenmemis $217,641,424; yillik esdeger $20,965,460)
+     seviyelendirilmis maliyet: $115.57 / TPS / ay
+--- x86 NPV 3 yil: python src/x86_model.py --tps 10000 --npv --years 3  (cikis kodu 0, sha 76984d7dee6b)
+     NPV: $20,115,080  (yillik esdeger $7,664,885)
+     seviyelendirilmis maliyet: $58.14 / TPS / ay
+--- x86 NPV 5 yil: python src/x86_model.py --tps 10000 --npv --years 5  (cikis kodu 0, sha 0296cbb30081)
+     NPV: $34,451,633  (yillik esdeger $8,402,433)
+     seviyelendirilmis maliyet: $58.09 / TPS / ay
+--- x86 NPV 10 yil: python src/x86_model.py --tps 10000 --npv --years 10  (cikis kodu 0, sha d209cd536255)
+     NPV: $74,574,033  (yillik esdeger $10,617,665)
+     seviyelendirilmis maliyet: $58.53 / TPS / ay
+--- mainframe --range: python src/mainframe_model.py --tps 10000 --range  (cikis kodu 0, sha 842cad6766f6)
+     low   $     339,749  ($33.97/TPS)  M1 3931-438  yazilim $131,256  personel $159,692
+     mid   $   1,179,197  ($117.92/TPS)  M1 3931-524  yazilim $402,932  personel $561,236
      high  $   5,659,518  ($565.95/TPS)  M2 3931-635  yazilim $1,728,927  personel $2,291,977
---- x86 --range --compare: python src/x86_model.py --tps 10000 --range --compare  (cikis kodu 0, sha 6a52e0c5f137)
-     low   $     220,075  ($22.01/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $212,599
-     mid   $     536,552  ($53.66/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $521,333
-     high  $   1,249,087  ($124.91/TPS)  OpenShift Virt / VM / PostgreSQL+Patroni X1 2x24c  personel $1,188,521
-     x86_lehine                 383.08       52.95   7.23                401.23       7.33
-     orta                       113.93       53.66   2.12                 40.61       2.16
-     mainframe_lehine            70.49       57.92   1.22                  3.17       1.24
-     ortak_low                   81.86       22.66   3.61                 43.16       3.78
-     ortak_high                 181.78      120.54   1.51                 37.37       1.52
+--- x86 --range --compare: python src/x86_model.py --tps 10000 --range --compare  (cikis kodu 0, sha 35a284624de3)
+     low   $     233,949  ($23.39/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $226,472
+     mid   $     576,454  ($57.65/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c  personel $561,236
+     high  $   1,353,609  ($135.36/TPS)  OpenShift Virt / VM / PostgreSQL+Patroni X1 2x24c  personel $1,293,043
+     x86_lehine                 387.27       56.94   6.80                401.23       6.89
+     orta                       117.92       57.65   2.05                 40.61       2.07
+     mainframe_lehine            74.48       61.91   1.20                  3.17       1.22
+     ortak_low                   83.25       24.05   3.46                 43.16       3.61
+     ortak_high                 192.23      130.99   1.47                 37.37       1.47
        x86_lehine: x86'ya ozgu low, mainframe'e ozgu high, ortak mid
        mainframe_lehine: x86'ya ozgu high, mainframe'e ozgu low, ortak mid
        ortak_low: ortak parametreler low (iki taraf birlikte), ozgu mid
@@ -321,4 +323,111 @@ CASE 10: NPV ufku (3 / 5 / 10 yil) ve belirsizlik araligi (--range)
    -> tam cikti: sunum_demo/ciktilar/case_10_npv_ve_aralik.txt
 
 ==============================================================================
-Dogrulama: 42 komutun hepsi birbirinden farkli cikti verdi.
+CASE 11: Yuksek availability: %99,999 + RPO 0'da yalniz mainframe; u ve destek duyarliligi
+==============================================================================
+--- %99,999 + RPO 0 (x86 kurulamaz): python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --compare  (cikis kodu 1, sha 12c0a5d3d947)
+     -> SONUC: infeasible (hicbir yigin / topoloji kisitlari saglamiyor)
+     mainframe: $1,383,467/ay ($138.35/TPS) M3 3931-524 | x86: infeasible
+--- %99,999, RPO serbest, 50K (x86 Oracle X4): python src/x86_model.py --tps 50000 --availability 0.99999 --compare  (cikis kodu 0, sha 22561b30bc41)
+     -> SECILEN TOPOLOJI: X4: Iki site aktif-aktif [Adaptive continuity; Platinum (GoldenGate aktif-aktif)]
+        availability: 99.99911% (aralik 99.99073% - 99.99997%) | RPO 5 s, RTO 0.25 dk
+     mainframe: $   4,116,822/ay  ($82.34/TPS)  M3 3931-759
+     x86:       $   2,481,068/ay  ($49.62/TPS)  vSphere / VM / Oracle X4 2x12c
+     oran (mainframe / x86): 1.66
+     basabas personel orani: 1.76  (x86 personeli, ayni is yuku icin mainframe personelinin 1.76 katindan azsa x86 ucuz)
+--- mainframe %99,999 + RPO 0 dokum, 3K: python src/mainframe_model.py --tps 3000 --availability 0.99999 --rpo-seconds 0  (cikis kodu 0, sha 5ce4c59807fc)
+     -> SECILEN TOPOLOJI: M3: Fault-tolerant + GDPS Metro/Global
+        availability: 99.99975% (0.02 saat/yil kesinti; aralik 99.99786% - 99.99997%)
+--- u = 0,05 duyarliligi: python src/x86_model.py --tps 10000 --availability 0.99999 --rpo-seconds 0 --unmasked-share 0.05 --compare  (cikis kodu 0, sha a7c6e13dcb2a)
+     -> SECILEN TOPOLOJI: X3: Iki site, otomatik gecis [Fault tolerant; Gold (RAC + ADG + FSFO)]
+        availability: 99.99910% (aralik 99.99234% - 99.99996%) | RPO 0 s, RTO 2 dk
+     mainframe: $   1,383,467/ay  ($138.35/TPS)  M3 3931-524
+     x86:       $     736,920/ay  ($73.69/TPS)  vSphere / VM / Oracle X3 2x8c
+     oran (mainframe / x86): 1.88
+     basabas personel orani: 2.00  (x86 personeli, ayni is yuku icin mainframe personelinin 2.00 katindan azsa x86 ucuz)
+--- desteksiz PostgreSQL, %99,9: python src/x86_model.py --tps 10000 --pg-support 0 --compare  (cikis kodu 0, sha 231730690dc2)
+     -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
+        availability: 99.98163% (aralik 99.91549% - 99.99739%) | RPO 86400 s, RTO 4320 dk
+          yazilim/abonelik: $3,210  (PostgreSQL destegi $0/cekirdek/yil, desteksiz)
+     mainframe: $   1,179,197/ay  ($117.92/TPS)  M1 3931-524
+     x86:       $     573,454/ay  ($57.35/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x8c
+     oran (mainframe / x86): 2.06
+     basabas personel orani: 2.08  (x86 personeli, ayni is yuku icin mainframe personelinin 2.08 katindan azsa x86 ucuz)
+--- kazanan haritasi (hizli): python src/tools/kazanan_haritasi.py --hizli  (cikis kodu 0, sha 346fdd13a12c)
+   KAZANAN HARITASI (personel orani 1,0; hucre: kazanan oran/basabas personel orani)
+     oran = mainframe / x86 aylik maliyet; basabas = x86 personeli bu katin uzerindeyse mainframe ucuz; 'MF tek' = yalnizca mainframe kurulabiliyor
+   Senaryo: orta  (x86'ya ozgu mid, mainframe'e ozgu mid, ortak mid)
+     hedef                   1,000         10,000         50,000
+     %99,9           x86 2.36/2.54  x86 2.05/2.07  x86 1.89/1.97
+     %99,99          x86 2.22/2.52  x86 2.04/2.10  x86 1.89/2.00
+     %99,99 RPO0     x86 2.11/2.33  x86 1.93/2.04  x86 1.89/2.00
+     %99,995 RPO0    x86 2.59/2.91  x86 2.06/2.10  x86 1.81/1.92
+     %99,999         x86 1.70/2.17  x86 1.73/1.84  x86 1.66/1.76
+     %99,999 RPO0           MF tek         MF tek         MF tek
+     %99,9995               MF tek         MF tek         MF tek
+   Senaryo: mainframe_lehine  (x86'ya ozgu high, mainframe'e ozgu low, ortak mid)
+     hedef                   1,000         10,000         50,000
+     %99,9           x86 1.20/1.26  x86 1.20/1.22   MF 0.81/0.70
+     %99,99          x86 1.13/1.17  x86 1.11/1.12   MF 0.59/0.28
+     %99,99 RPO0     x86 1.13/1.17  x86 1.11/1.12         MF tek
+     %99,995 RPO0    x86 1.13/1.17  x86 1.11/1.12         MF tek
+     %99,999                MF tek         MF tek         MF tek
+     %99,999 RPO0           MF tek         MF tek         MF tek
+     %99,9995               MF tek         MF tek         MF tek
+   Senaryo: x86_lehine  (x86'ya ozgu low, mainframe'e ozgu high, ortak mid)
+     hedef                   1,000         10,000         50,000
+     %99,9           x86 6.28/6.65  x86 6.80/6.89  x86 9.71/9.76
+     %99,99          x86 6.36/7.34  x86 6.63/6.83  x86 9.18/9.43
+     %99,99 RPO0     x86 5.97/7.21  x86 6.46/6.81  x86 9.16/9.43
+     %99,995 RPO0    x86 5.97/7.21  x86 6.46/6.81  x86 9.16/9.43
+     %99,999         x86 6.54/7.55  x86 6.28/6.48  x86 8.50/8.75
+     %99,999 RPO0          x86 tek        x86 tek        x86 tek
+     %99,9995        x86 6.54/7.55  x86 6.28/6.48  x86 8.50/8.75
+     u=0.0   %99,999: x86 (x86 X3 postgresql) | %99,999 RPO0: x86 (x86 X3 postgresql) | %99,9995: x86 (x86 X3 oracle)
+     u=0.05  %99,999: x86 (x86 X3 oracle) | %99,999 RPO0: x86 (x86 X3 oracle) | %99,9995: x86 (x86 X4 oracle)
+     u=0.1   %99,999: x86 (x86 X4 oracle) | %99,999 RPO0: MF tek (x86 yok) | %99,9995: MF tek (x86 yok)
+     u=0.2   %99,999: MF tek (x86 yok) | %99,999 RPO0: MF tek (x86 yok) | %99,9995: MF tek (x86 yok)
+   -> tam cikti: sunum_demo/ciktilar/case_11_availability_kazanan.txt
+
+==============================================================================
+CASE 12: Maliyette kazanan bolge: 30K / 50K'da eslestirilmis senaryolar ve personel orani 2,5
+==============================================================================
+--- 30K --range --compare: python src/x86_model.py --tps 30000 --range --compare  (cikis kodu 0, sha e889542ecf58)
+     mainframe: $   2,435,304/ay  ($81.18/TPS)  M1 3931-732
+     x86:       $   1,238,271/ay  ($41.28/TPS)  vSphere / VM / PostgreSQL+Patroni X1 2x32c
+     oran (mainframe / x86): 1.97
+     basabas personel orani: 1.99  (x86 personeli, ayni is yuku icin mainframe personelinin 1.99 katindan azsa x86 ucuz)
+     senaryo            mainframe $/TPS   x86 $/TPS   oran   personel haric oran   basabas personel orani
+     x86_lehine                 349.01       40.65   8.59               1067.17       8.64
+     orta                        81.18       41.28   1.97                 44.83       1.99
+     mainframe_lehine            50.85       58.99   0.86                  0.56       0.80
+     ortak_low                   54.52       15.44   3.53                 46.94       3.68
+     ortak_high                 145.53      104.79   1.39                 41.88       1.39
+       x86_lehine: x86'ya ozgu low, mainframe'e ozgu high, ortak mid
+       mainframe_lehine: x86'ya ozgu high, mainframe'e ozgu low, ortak mid
+       ortak_low: ortak parametreler low (iki taraf birlikte), ozgu mid
+       ortak_high: ortak parametreler high (iki taraf birlikte), ozgu mid
+--- 50K --range --compare: python src/x86_model.py --tps 50000 --range --compare  (cikis kodu 0, sha cbbc5eaf3ae7)
+     mainframe: $   3,567,412/ay  ($71.35/TPS)  M1 3931-759
+     x86:       $   1,885,748/ay  ($37.71/TPS)  vSphere / VM / Oracle X1 2x8c
+     oran (mainframe / x86): 1.89
+     basabas personel orani: 1.97  (x86 personeli, ayni is yuku icin mainframe personelinin 1.97 katindan azsa x86 ucuz)
+     senaryo            mainframe $/TPS   x86 $/TPS   oran   personel haric oran   basabas personel orani
+     x86_lehine                 338.31       34.83   9.71               1513.25       9.76
+     orta                        71.35       37.71   1.89                 11.90       1.97
+     mainframe_lehine            43.06       53.44   0.81                  0.45       0.70
+     ortak_low                   47.67       14.95   3.19                 11.71       3.75
+     ortak_high                 131.34       96.84   1.36                 12.03       1.37
+       x86_lehine: x86'ya ozgu low, mainframe'e ozgu high, ortak mid
+       mainframe_lehine: x86'ya ozgu high, mainframe'e ozgu low, ortak mid
+       ortak_low: ortak parametreler low (iki taraf birlikte), ozgu mid
+       ortak_high: ortak parametreler high (iki taraf birlikte), ozgu mid
+--- 50K, personel orani 2,5: python src/x86_model.py --tps 50000 --staff-ratio 2.5 --compare  (cikis kodu 0, sha f5faa3e34594)
+     mainframe: $   3,567,412/ay  ($71.35/TPS)  M1 3931-759
+     x86:       $   4,483,009/ay  ($89.66/TPS)  vSphere / VM / Oracle X1 2x8c
+     oran (mainframe / x86): 0.80
+     basabas personel orani: 1.97  (x86 personeli, ayni is yuku icin mainframe personelinin 1.97 katindan azsa x86 ucuz)
+   -> tam cikti: sunum_demo/ciktilar/case_12_maliyet_kazanan.txt
+
+==============================================================================
+Dogrulama: 51 komutun hepsi birbirinden farkli cikti verdi.

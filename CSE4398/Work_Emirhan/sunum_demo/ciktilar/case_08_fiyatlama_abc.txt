@@ -1,4 +1,4 @@
---- steady_oltp: python src/mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000  (cikis kodu 0, sha 5d38bbfbb401)
+--- steady_oltp: python src/mainframe_model.py --yearly --preset steady_oltp --avg-tps 10000  (cikis kodu 0, sha aa7a881ab898)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -19,10 +19,10 @@ Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
   Donanim + bakim + enerji:       $    1,504,566
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $    8,309,219
+  Personel (mid):                 $    8,945,209
   Uretim disi ortamlar:           $    1,474,352
   TFP corridor kullanimi:         $        6,977
-  TOPLAM:                         $   17,231,666
+  TOPLAM:                         $   17,867,655
 
 Alternatif: Strateji A: Permanent peak kademe
   Topoloji:          M1: Single-frame sysplex (ICF)
@@ -32,10 +32,10 @@ Alternatif: Strateji A: Permanent peak kademe
   Donanim + bakim + enerji:       $    1,738,746
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $    8,309,219
+  Personel (mid):                 $    8,945,209
   Uretim disi ortamlar:           $    1,536,958
-  TOPLAM:                         $   17,600,326
-  -> secilen strateji bundan $368,660 (%2.1) ucuz
+  TOPLAM:                         $   18,236,315
+  -> secilen strateji bundan $368,660 (%2.0) ucuz
 
 Alternatif: Strateji B: Base kademe + On/Off CoD
   Topoloji:          M1: Single-frame sysplex (ICF)
@@ -46,14 +46,14 @@ Alternatif: Strateji B: Base kademe + On/Off CoD
   Donanim + bakim + enerji:       $    1,705,566
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $    8,309,219
+  Personel (mid):                 $    8,945,209
   Uretim disi ortamlar:           $    1,530,322
   On/Off CoD:                     $       59,315
-  TOPLAM:                         $   17,619,825
-  -> secilen strateji bundan $388,159 (%2.2) ucuz
+  TOPLAM:                         $   18,255,814
+  -> secilen strateji bundan $388,159 (%2.1) ucuz
 
 
---- batch_heavy: python src/mainframe_model.py --yearly --preset batch_heavy --avg-tps 10000  (cikis kodu 0, sha dc289552fdd4)
+--- batch_heavy: python src/mainframe_model.py --yearly --preset batch_heavy --avg-tps 10000  (cikis kodu 0, sha 85c8b82be116)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -75,11 +75,11 @@ Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
   Donanim + bakim + enerji:       $    1,561,101
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   11,881,037
+  Personel (mid):                 $   12,790,414
   Uretim disi ortamlar:           $    1,900,984
   TFP corridor kullanimi:         $       31,852
   On/Off CoD:                     $      121,650
-  TOPLAM:                         $   23,509,802
+  TOPLAM:                         $   24,419,179
 
 Alternatif: Strateji B: Base kademe + On/Off CoD
   Topoloji:          M1: Single-frame sysplex (ICF)
@@ -90,11 +90,11 @@ Alternatif: Strateji B: Base kademe + On/Off CoD
   Donanim + bakim + enerji:       $    1,831,281
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   11,881,037
+  Personel (mid):                 $   12,790,414
   Uretim disi ortamlar:           $    1,943,099
   On/Off CoD:                     $      132,722
-  TOPLAM:                         $   23,741,710
-  -> secilen strateji bundan $231,908 (%1.0) ucuz
+  TOPLAM:                         $   24,651,087
+  -> secilen strateji bundan $231,908 (%0.9) ucuz
 
 Alternatif: Strateji A: Permanent peak kademe
   Topoloji:          M1: Single-frame sysplex (ICF)
@@ -104,13 +104,13 @@ Alternatif: Strateji A: Permanent peak kademe
   Donanim + bakim + enerji:       $    2,730,921
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   11,881,037
+  Personel (mid):                 $   12,790,414
   Uretim disi ortamlar:           $    2,123,027
-  TOPLAM:                         $   24,688,556
-  -> secilen strateji bundan $1,178,755 (%4.8) ucuz
+  TOPLAM:                         $   25,597,933
+  -> secilen strateji bundan $1,178,755 (%4.6) ucuz
 
 
---- retail_bursty: python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000  (cikis kodu 0, sha 8eb0921526a8)
+--- retail_bursty: python src/mainframe_model.py --yearly --preset retail_bursty --avg-tps 10000  (cikis kodu 0, sha 8ae267926c44)
 ======================================================================
 MAINFRAME YILLIK SIMULASYON MODELI
 ======================================================================
@@ -132,11 +132,11 @@ Secilen strateji: Strateji C: Tailored Fit Pricing (base + corridor + CoD)
   Donanim + bakim + enerji:       $    2,019,201
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   15,036,404
+  Personel (mid):                 $   16,187,293
   Uretim disi ortamlar:           $    2,337,557
   TFP corridor kullanimi:         $       13,270
   On/Off CoD:                     $      130,943
-  TOPLAM:                         $   29,275,316
+  TOPLAM:                         $   30,426,205
 
 Alternatif: Strateji B: Base kademe + On/Off CoD
   Topoloji:          M1: Single-frame sysplex (ICF)
@@ -147,10 +147,10 @@ Alternatif: Strateji B: Base kademe + On/Off CoD
   Donanim + bakim + enerji:       $    2,019,201
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   15,036,404
+  Personel (mid):                 $   16,187,293
   Uretim disi ortamlar:           $    2,337,548
   On/Off CoD:                     $      185,181
-  TOPLAM:                         $   29,316,230
+  TOPLAM:                         $   30,467,119
   -> secilen strateji bundan $40,914 (%0.1) ucuz
 
 Alternatif: Strateji A: Permanent peak kademe
@@ -161,9 +161,9 @@ Alternatif: Strateji A: Permanent peak kademe
   Donanim + bakim + enerji:       $    3,746,901
   Storage (DS8900F):              $       89,947  [birincil: 1x DS8910F-993 (76 TB ham)]
   Yedekleme:                      $       69,356  [on-prem nesne depolama: 2 site x 187 TB; image copy 144 TB + log 44 TB; geri donus ~2.6 sa]
-  Personel (mid):                 $   15,036,404
+  Personel (mid):                 $   16,187,293
   Uretim disi ortamlar:           $    2,683,088
-  TOPLAM:                         $   31,204,290
-  -> secilen strateji bundan $1,928,974 (%6.2) ucuz
+  TOPLAM:                         $   32,355,179
+  -> secilen strateji bundan $1,928,974 (%6.0) ucuz
 
 

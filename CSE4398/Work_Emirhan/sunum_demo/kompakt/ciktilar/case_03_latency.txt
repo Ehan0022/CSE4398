@@ -1,4 +1,4 @@
---- hedef yok: --input case_03_latency.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 2ce739cf888b)
+--- hedef yok: --input case_03_latency.json --kosu 1  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": null, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha df00e88d7e0e)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -10,7 +10,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -20,11 +20,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,139,294
+     AYLIK maliyet: $1,179,197
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -33,7 +33,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 50 ms: --input case_03_latency.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 50, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha fdb6d93668a7)
+--- p99 50 ms: --input case_03_latency.json --kosu 2  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 50, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 371f2a9080d1)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -45,7 +45,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -56,11 +56,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      bu kademenin max TPS'i (latency altinda): 10,169
      bu yukte tahmini p99 latency: 44.26 ms (hedef: 50 ms)
      utilization: 87.2%  (x1 frame)
-     AYLIK maliyet: $1,141,120
+     AYLIK maliyet: $1,181,023
        yazilim:  $402,839  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $65,888  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,944
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -69,7 +69,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 20 ms: --input case_03_latency.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 4eea28882b24)
+--- p99 20 ms: --input case_03_latency.json --kosu 3  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha 64cba82f7e4d)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -81,7 +81,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -92,11 +92,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      bu kademenin max TPS'i (latency altinda): 10,563
      bu yukte tahmini p99 latency: 16.16 ms (hedef: 20 ms)
      utilization: 77.5%  (x1 frame)
-     AYLIK maliyet: $1,152,860
+     AYLIK maliyet: $1,192,763
        yazilim:  $402,203  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $72,834  (1 frame; 1 zIIP, f=0.10)
        bakim:    $36,417
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -105,7 +105,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- p99 10 ms: --input case_03_latency.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 10, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha c8bc2f67a254)
+--- p99 10 ms: --input case_03_latency.json --kosu 4  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 10, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "backup_target": "auto", "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "peak_ratio": null, "peak_days": null, "csv": null, "prices": null}]  (cikis kodu 0, sha a9c679f751a8)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -117,7 +117,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -128,11 +128,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      bu kademenin max TPS'i (latency altinda): 10,438
      bu yukte tahmini p99 latency: 9.40 ms (hedef: 10 ms)
      utilization: 58.6%  (x1 frame)
-     AYLIK maliyet: $1,190,268
+     AYLIK maliyet: $1,230,171
        yazilim:  $400,244  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $94,922  (1 frame; 2 zIIP, f=0.10)
        bakim:    $47,461
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $7,496  (birincil: 1x DS8910F-993 (76 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -141,7 +141,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- x86, p99 20 ms: --input case_03_latency.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha a0591add9a5a)
+--- x86, p99 20 ms: --input case_03_latency.json --kosu 5  [{"tps": 10000, "workload": "oltp_rw", "availability": 0.999, "rpo_seconds": null, "rto_minutes": null, "latency_ms": 20, "latency_percentile": 99, "data_tb": 20, "data_growth": 0.15, "sql_reads": null, "sql_range_reads": null, "sql_writes": null, "staff_ratio": 1.0, "pg_support": null, "unmasked_share": null, "db": null, "hypervisor": null, "placement": null, "price_epoch": "2025-mid", "allow_extrapolation": false, "compare": false, "range": false, "npv": false, "years": 5, "discount_rate": 0.07, "tps_growth": 0.1, "yearly": false, "preset": null, "avg_tps": 10000, "prices": null}]  (cikis kodu 0, sha e35833256857)
 ======================================================================
 x86 FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -151,29 +151,29 @@ x86 FEASIBILITY MODELI (STATIK)
      kopru: 91.0 TPS / SPECint / cekirdek x 9.81 SPECint/cekirdek
   -> SECILEN YIGIN: vSphere / VM / PostgreSQL+Patroni
   -> SECILEN TOPOLOJI: X1: Tek site HA kumesi [Reliable base; Patroni: 3 dugum, 1 senkron replika]
-     availability: 99.98275% (aralik 99.91772% - 99.99795%) | RPO 86400 s, RTO 4320 dk
+     availability: 99.98230% (aralik 99.91549% - 99.99794%) | RPO 86400 s, RTO 4320 dk
   -> VERITABANI DUGUMU: R760-sinifi 2x8c (16 cekirdek); site basina {'A': 3}; tek yazici (birincil)
      cekirdek basina 927 TPS; yuku tasiyan ham verim 14,828 TPS; kullanim %67.4 (tavan %69.6)
      sabit gecikme (ag + I/O + replikasyon) 3.66 ms; p99 ~ 18.93 ms (hedef 20 ms)
      uygulama katmani: 0.9 mesgul cekirdek -> site basina 2 x 2x8c
      toplam 5 fiziksel sunucu, 80 cekirdek
-     AYLIK maliyet: $536,552  ($53.66/TPS)
-       yazilim/abonelik: $5,210
+     AYLIK maliyet: $576,454  ($57.65/TPS)
+       yazilim/abonelik: $5,210  (PostgreSQL destegi $500/cekirdek/yil)
        donanim:  $932   bakim: $233   enerji: $189
-       personel: $521,333  (38.6 FTE, oran 1)
+       personel: $561,236  (41.6 FTE, oran 1)
        storage:  $304  (site A: 3 dugum x 11 x 3.84 TB NVMe)
        yedekleme: $4,917  (cos_onprem, site basina 101 TB)
        uretim disi: $3,434  (NONPROD_FACTOR_X86=0.5)
      DR payi %0.0; uygulama katmani payi %0.3
      fiyat modu: kaynakli fiyat seti
   Yigin secim motoru (yigin basina en ucuz):
-     $    536,552  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
-     $    536,552  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
-     $    540,170  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
-     $    540,170  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
-     $    549,737  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
-     $    557,855  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
-     $    572,281  vSphere / VM / Oracle                      X1 2x8c k=2
-     $    593,133  OpenShift Virt / VM / Oracle               X1 2x12c k=2
+     $    576,454  vSphere / VM / PostgreSQL+Patroni          X1 2x8c
+     $    576,454  vSphere / K8s / PostgreSQL+Patroni         X1 2x8c
+     $    580,073  OpenShift Virt / VM / PostgreSQL+Patroni   X1 2x12c
+     $    580,073  OpenShift Virt / K8s / PostgreSQL+Patroni  X1 2x12c
+     $    589,639  vSphere / OpenShift / PostgreSQL+Patroni   X1 2x8c
+     $    597,758  OpenShift Virt / OpenShift / PostgreSQL+Patroni X1 2x12c
+     $    612,184  vSphere / VM / Oracle                      X1 2x8c k=2
+     $    633,036  OpenShift Virt / VM / Oracle               X1 2x12c k=2
 
 

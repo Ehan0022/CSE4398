@@ -1,4 +1,4 @@
---- 100 TB, ts7770: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target ts7770  (cikis kodu 0, sha 62ed81b2d869)
+--- 100 TB, ts7770: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target ts7770  (cikis kodu 0, sha 8458cd9af0de)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -10,7 +10,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -20,11 +20,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,183,514
+     AYLIK maliyet: $1,223,417
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $31,749  (birincil: 1x DS8910F-993 (380 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -33,7 +33,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 100 TB, aws_s3: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target aws_s3  (cikis kodu 0, sha c1207a0b79d2)
+--- 100 TB, aws_s3: python src/mainframe_model.py --tps 10000 --data-tb 100 --backup-target aws_s3  (cikis kodu 0, sha 95f9725e9dd9)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -45,7 +45,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -55,11 +55,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,180,551
+     AYLIK maliyet: $1,220,454
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $31,749  (birincil: 1x DS8910F-993 (380 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms
@@ -68,7 +68,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      fiyat modu: kaynakli fiyat seti
 
 
---- 500 TB, cos_onprem zorla: python src/mainframe_model.py --tps 10000 --data-tb 500 --backup-target cos_onprem  (cikis kodu 0, sha fd5a45cb204a)
+--- 500 TB, cos_onprem zorla: python src/mainframe_model.py --tps 10000 --data-tb 500 --backup-target cos_onprem  (cikis kodu 0, sha de7fba1498f9)
 ======================================================================
 MAINFRAME FEASIBILITY MODELI (STATIK)
 ======================================================================
@@ -80,7 +80,7 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
   -> Feasible topolojiler (olay tabanli availability + RPO/RTO):
        M1: availability 99.96193% (aralik 99.83903% - 99.99267%) | RPO 86400 s, RTO 4320 dk
        M2: availability 99.99372% (aralik 99.97717% - 99.99872%) | RPO 0 s, RTO 120 dk
-       M3: availability 99.99819% (aralik 99.99144% - 99.99989%) | RPO 0 s, RTO 30 dk
+       M3: availability 99.99975% (aralik 99.99786% - 99.99997%) | RPO 0 s, RTO 2 dk
        M4: availability 99.99994% (aralik 99.99976% - 99.99998%) | RPO 5 s, RTO 0.5 dk
   -> SECILEN TOPOLOJI: M1: Single-frame sysplex (ICF)
      Tek mainframe + icindeki ICF ile sysplex. Tek site; saha olayinda hizmet olay suresince durur.
@@ -90,11 +90,11 @@ MAINFRAME FEASIBILITY MODELI (STATIK)
      dinamik utilization tavani: %90.0 (latency hedefinden turetildi)
      bu kademenin max TPS'i (latency altinda): 10,119
      utilization: 88.9%  (x1 frame)
-     AYLIK maliyet: $1,383,956
+     AYLIK maliyet: $1,423,859
        yazilim:  $402,932  (z/OS + CICS TS + Db2, AWLC kademeli)
        donanim:  $64,811  (1 frame; 1 zIIP, f=0.10)
        bakim:    $32,405
-       personel: $521,333  (38.6 FTE, senaryo=mid)
+       personel: $561,236  (41.6 FTE, senaryo=mid)
        enerji:   $2,628
        storage:  $153,226  (birincil: 1x DS8910F-994 (1,901 TB ham))
      I/O: 58,000 IOPS, I/O basina 68 us, islem basina D_io = 0.26 ms

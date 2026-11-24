@@ -362,19 +362,19 @@ Yeni yöntem kesintiyi, **kesinti doğuran olayların sıklığı ile topolojini
 |---|---|---|---|---|---|---|---|
 | M1 | Reliable base | Tek CPC üzerinde sysplex (ICF); tek site | yok | 1 | 1 | 24 saat (günlük yedek) [ASSUME] | Alternatif site yok: hizmet olay süresince durur |
 | M2 | Failover capable | Birincil CPC + metro mesafede DR CPC (CBU), Metro Mirror; geçiş otomasyonsuz | yok | 1 + 1 | 2 | 0 (senkron) | 2 saat (1–4 saat) [SG24-6374, SG24-8446] |
-| M3 | Fault tolerant | M2 + GDPS Metro Global otomasyonu ve HyperSwap; uzak bölgede Global Mirror kopyası | Metro Global | 1 + 1 | 4 | 0 (Metro Mirror); bölgesel felakette 2–5 sn [GDPS-2026] | 30 dk (2–60 dk) [GDPS-2026] |
+| M3 | Fault tolerant | M2 + GDPS Metro Global otomasyonu ve HyperSwap; sysplex iki siteye yayılır (çok siteli iş yükü); uzak bölgede Global Mirror kopyası | Metro Global | 1 + 1 | 4 | 0 (Metro Mirror); bölgesel felakette 2–5 sn [GDPS-2026] | 2 dk (1–5 dk) [GDPS-2026] |
 | M4 | Adaptive continuity | İki coğrafi site, GDPS Continuous Availability, yazılım replikasyonu | CA | 1 + 1 | 4 | 0–5 sn, model 5 sn (yazılım replikasyonu) [GDPS-2026] | 30 sn (20–60 sn) [GDPS-2026] |
 
 RPO, tek bir sitenin (veri merkezinin) kaybı için tanımlıdır; bu, saha olayı parametrelerinin de tanımıdır. Bölgesel felaket (metro mesafedeki iki sitenin birlikte kaybı) ayrı bir senaryodur: M2 buna karşı korumaz (RPO son yedek kadar), M3 Global Mirror bacağıyla 2–5 sn, M4 0–5 sn kaybeder. Model bölgesel felaketi ayrıca hesaplamaz (Bölüm 6.8).
 
-Saf tek-imaj (sysplex'siz) kurulum production'da temsil edici olmadığı için dışarıda bırakıldı. Kurtarma süreleri IBM GDPS geliştirme ekibinin 2026 sunumundan alındı: GDPS Metro'da RTO çok-siteli iş yükünde ~2 dakika, tek siteli iş yükünde 1 saatin altında; GDPS CA'da 20–30 saniye (portföy slaytında 60 saniyenin altı) [GDPS-2026]. GDPS'siz kurtarma için SG24-8446 "2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister" der; SG24-6374 depolama replikasyonlu uzak sitede RTO'yu "bir veya daha fazla saat" olarak verir.
+Saf tek-imaj (sysplex'siz) kurulum production'da temsil edici olmadığı için dışarıda bırakıldı. Kurtarma süreleri IBM GDPS geliştirme ekibinin 2026 sunumundan alındı: GDPS Metro'da RTO çok-siteli iş yükünde ~2 dakika, tek siteli iş yükünde 1 saatin altında; M3 çok siteli iş yükü olarak modellenir, çünkü karşılığı olan x86 X3 de iki sitede etkin bir kümedir ve otomatik geçişle 1 / 2 / 5 dk alır (Değerlendirme #10 eşitlik düzeltmesi; önceki sürüm tek siteli iş yükünün 2 / 30 / 60 dk değerini kullanıyordu ve bu, %99,999 + RPO 0 + RTO ≤ 30 dk hedefinde mainframe'i x86 kurulabilirken kurulamaz gösteriyordu). Çok siteli iş yükü ikinci sitede düşük kapasiteli etkin z/OS imajları gerektirir; bunların küçük kalıcı MSU faturası, CBU kuralındaki DR faturası gibi ihmal edilir (Bölüm 6.7). GDPS CA'da 20–30 saniye (portföy slaytında 60 saniyenin altı) [GDPS-2026]. GDPS'siz kurtarma için SG24-8446 "2 saatin altı GDPS otomasyonu ve test edilmiş süreç ister" der; SG24-6374 depolama replikasyonlu uzak sitede RTO'yu "bir veya daha fazla saat" olarak verir.
 
 ### 6.3. Formül
 
 ```
 D(topo) = λ_saha × [ (1 − p_uzun) × min(d_kısa, T_rec) + p_uzun × min(d_uzun, T_rec) ]
         + λ_planlı × T_planlı(topo)
-        + D_cpc                                    (yalnızca tek CPC'li M1)
+        + D_platform = ITIC_CPC × u^katman         (tek CPC'de u = 1; M2–M3 bir, M4 iki katman)
 
 A(topo) = 1 − D / 8.760 saat
 ```
@@ -382,7 +382,7 @@ A(topo) = 1 − D / 8.760 saat
 - **Saha olayı (λ_saha, d_kısa, d_uzun, p_uzun):** veri merkezi düzeyinde hizmeti kesen olayın yıllık sıklığı ve süresi. Olaylar iki sınıfa ayrılır: çoğunluk kısa (saatler), küçük bir pay uzun (gün ve üstü).
 - **Kurtarma süresi (T_rec):** hizmetin alternatif CPC'de ya da sitede geri gelme süresi. Olay kurtarma süresinden kısa sürerse kesinti olay süresi kadardır, uzun sürerse kurtarma süresi kadar (`min`). M1'de alternatif site olmadığı için T_rec sonsuzdur; kesinti olayın kendisi kadar sürer.
 - **Planlı kesinti (λ_planlı, T_planlı):** CPC düzeyinde hizmet durdurmayı gerektiren planlı işlemler: power-on reset, donanım nesil geçişi, kapasite planı dışında kalan bir upgrade. z/OS, CICS ve Db2 bakımı sysplex içinde rolling IPL ile yapılır ve kesinti doğurmaz; bu yüzden M1 bile tek CPC üzerinde sysplex olarak tanımlıdır. M2 ve M3'te planlı işlem önce iş yükünü DR CPC'ye taşır, kesinti geçiş süresi kadardır. M4'te geçiş saniyeler sürer.
-- **CPC donanım kesintisi (D_cpc):** ITIC'in ölçtüğü sunucu donanım kesintisi. Yalnızca tek CPC'li M1'de hizmeti keser; diğerlerinde ikinci CPC devralır. Yılda 0,03–3 saniye olduğu için toplamda ihmal edilebilir. Modelde, bu kalemin hizmet availability'sini belirlemediğini açıkça göstermek için tutulur.
+- **Platform kesintisi (D_platform):** ITIC'in ölçtüğü sunucu başına yıllık plansız kesinti (donanım + işletim sistemi). Kural iki tarafta aynıdır (`common_model.platform_downtime_hours`, Değerlendirme #10): tek CPC'de maskeleyecek bir eş yoktur ve kesinti doğrudan hizmete yansır (M1); çok CPC'li topolojide kesintinin otomatik geçişin maskeleyemediği payı `u` kadarı yansır (`PLATFORM_UNMASKED_SHARE`, ortak parametre, 0,05 / 0,10 / 0,20 [ASSUME]); aktif-aktif iki sitede (M4) ikinci site de maskeler, pay u². z16 için ITIC değeri yılda 0,03–3 saniyedir; bu yüzden mainframe tarafında toplamda ihmal edilebilir. Aynı formül x86'da sunucu başına 0,5 / 24 / 59 dakikayla çalışır ve orada belirleyicidir (x86 dokümanı §6.4). Mainframe'in "9 nine" donanım güvenilirliği bu terim üzerinden karşılaştırmaya girer.
 
 Sistem içi yazılım arızaları (bir LPAR'ın, z/OS'un ya da bir Db2 üyesinin çökmesi) Parallel Sysplex ve Db2 data sharing ile diğer üyelere aktarılır ve modelde maskelenmiş sayılır. Bu bir basitleştirmedir (Bölüm 6.8).
 
@@ -398,13 +398,14 @@ Her parametre low / mid / high aralığıdır. **low** mainframe lehine uçtur, 
 | | d_uzun (saat) | 24 | 48 | 72 | Üst uç SG24-8446'nın GDPS'siz DR aralığının (2–72 saat) üst sınırı |
 | | D_cpc (sn/yıl) | 0,03 | 0,32 | 3,15 | z16 9 nine / IBM ortalaması 8 nine / z13–z15 7 nine [ITIC-2023] |
 | Kurtarma süresi | T_rec, M2 = elle geçiş karar süresi + teknik geçiş | 1 saat (45 + 15 dk) | 2 saat (90 + 30 dk) | 4 saat (180 + 60 dk) | Toplam: [SG24-6374] "bir veya daha fazla saat"; [SG24-8446] GDPS'siz < 2 saat yok. Ayrıştırma [ASSUME]: karar süresi (felaketin ilanı, onay zinciri, uygulama yönlendirme) iki tarafta ortak parametredir (`MANUAL_FAILOVER_DECISION_MINUTES`, ortak modül); teknik süre platforma özgüdür |
-| | T_rec, M3 | 2 dk | 30 dk | 60 dk | [GDPS-2026] |
+| | T_rec, M3 | 1 dk | 2 dk | 5 dk | [GDPS-2026] çok siteli iş yükü ~2 dk; x86 X3 ile aynı aralık (Değ. #10) |
 | | T_rec, M4 | 20 sn | 30 sn | 60 sn | [GDPS-2026] |
 | Planlı kesinti | λ_planlı (olay/yıl) | 0,25 | 0,5 | 1 | [ASSUME] 4 yılda bir nesil geçişi ile yılda bir kesintili işlem arası |
 | | T_planlı, M1 | 2 saat | 4 saat | 8 saat | [ASSUME] tek CPC durur |
 | | T_planlı, M2 | 15 dk | 30 dk | 60 dk | [ASSUME] planlı, elle geçiş |
-| | T_planlı, M3 | 2 dk | 10 dk | 30 dk | [ASSUME] GDPS ile planlı site geçişi |
+| | T_planlı, M3 | 30 sn | 2 dk | 10 dk | [ASSUME] GDPS ile planlı site geçişi, çok siteli iş yükü; x86 X3–X4 ile aynı aralık (Değ. #10) |
 | | T_planlı, M4 | 20 sn | 30 sn | 60 sn | Bir banka örneğinde planlı kesinti "4 saatten 30 saniyenin altına" indi [GDPS-CA-2021] |
+| Platform | u (geçişin maskeleyemediği pay, ortak) | 0,05 | 0,10 | 0,20 | [ASSUME] Nitel dayanak: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [YUAN-2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [GUNAWI-2016]. Sayısal kaynak yok; %99,999 sınırı bu parametreye hassastır (Bölüm 7.12) |
 
 Saha olayı parametreleri (λ_saha, d_kısa, d_uzun, p_uzun) ortak modüldedir ve x86 tarafında aynı değerlerle kullanılır: iki platform aynı veri merkezinde durur. Uptime verisi veri merkezi operatörleri genelindedir; mainframe'e özgü değildir. Mainframe veri merkezlerinin ortalamadan daha iyi işletildiği düşünülebilir. Bu yüzden düşük uç (yalnızca ciddi olaylar) ayrıca taranır.
 
@@ -416,20 +417,20 @@ Saha olayı parametreleri (λ_saha, d_kısa, d_uzun, p_uzun) ortak modüldedir v
 |---|---|---|---|---|---|---|
 | M1 | 1,335 | 2,000 | 0,32 | 3,34 | %99,962 | %99,839 – %99,993 |
 | M2 | 0,300 | 0,250 | — | 0,55 | %99,994 | %99,977 – %99,999 |
-| M3 | 0,075 | 0,083 | — | 0,16 | %99,998 | %99,991 – %99,9999 |
+| M3 | 0,005 | 0,017 | — | 0,02 | %99,9998 | %99,998 – %99,99997 |
 | M4 | 0,001 | 0,004 | — | 0,005 | %99,99994 | %99,9998 – %99,99998 |
 
 Tek grup salınımı (diğerleri mid):
 
 | Grup | M1 | M2 | M3 | M4 |
 |---|---|---|---|---|
-| Saha olayı | %99,976 – %99,908 | %99,997 – %99,991 | %99,999 – %99,998 | %99,99995 – %99,99993 |
-| Kurtarma süresi | etkisiz | %99,995 – %99,993 | %99,999 – %99,997 | %99,99994 – %99,99992 |
-| Planlı kesinti | %99,979 – %99,893 | %99,996 – %99,985 | %99,999 – %99,993 | %99,99997 – %99,99980 |
+| Saha olayı | %99,976 – %99,908 | %99,997 – %99,991 | %99,9998 – %99,9997 | %99,99995 – %99,99993 |
+| Kurtarma süresi | etkisiz | %99,995 – %99,993 | %99,9998 – %99,9997 | %99,99994 – %99,99992 |
+| Planlı kesinti | %99,979 – %99,893 | %99,996 – %99,985 | %99,9999 – %99,998 | %99,99997 – %99,99980 |
 
 Yorum:
 
-- **Topolojiler arasındaki fark mertebe düzeyindedir.** Yıllık kesinti M1'den M2'ye ~6 kat, M2'den M3'e ~3,5 kat, M3'ten M4'e ~30 kat azalır. M1'de 3,3 saat olan kesinti M4'te ~20 saniyeye iner.
+- **Topolojiler arasındaki fark mertebe düzeyindedir.** Yıllık kesinti M1'den M2'ye ~6 kat, M2'den M3'e ~25 kat (çok siteli iş yükü, Değ. #10), M3'ten M4'e ~4 kat azalır. M1'de 3,3 saat olan kesinti M4'te ~20 saniyeye iner.
 - **M1'de kesintinin çoğu planlıdır** (mid'de 3,3 saatin 2 saati). Bu, Precisely'nin "kesintinin büyük kısmı planlıdır" gözlemiyle aynı yöndedir [PRECISELY]; ancak model bu payı bir çarpanla vermez, olaylardan türetir. M1'in availability'sini en çok planlı kesinti varsayımı oynatır.
 - **CPC donanım arızası hiçbir topolojide belirleyici değildir.** Yılda 0,3 saniye, M1'in toplam kesintisinin on binde birinden azdır. Mainframe'in "9 nine" donanım güvenilirliği, hizmet availability'sinin belirleyicisi değildir; belirleyici olan site ve kurtarma mimarisidir.
 - **Kurtarma süresi M1'i etkilemez** (alternatif site yok). M2–M4'te etkisi, saha olayı ve planlı kesinti gruplarından küçüktür.
@@ -442,15 +443,15 @@ Bir topoloji üç koşulu da sağlıyorsa aday olur:
 2. Topolojinin RPO'su ≤ `rpo_seconds` (girdi verilmişse).
 3. Topolojinin RTO'su ≤ `rto_minutes` (girdi verilmişse). M2–M4 için RTO, geçerli senaryodaki kurtarma süresidir. M1 için yedekten geri dönüş varsayılır ve SG24-8446'nın GDPS'siz DR aralığının üst ucu olan 72 saat alınır.
 
-10K TPS, %99,9 hedefinde girdilerin etkisi:
+10K TPS, %99,9 hedefinde girdilerin etkisi (Değerlendirme #10 sonrası, `availability_sensitivity.py`):
 
 | RPO / RTO girdisi | Seçim | Aylık toplam |
 |---|---|---|
-| yok | M1 | $846.187 |
-| RPO = 0 | M2 (yalnızca senkron replikasyon RPO 0 verir) | $912.935 |
-| RTO ≤ 60 dk | M3 (GDPS'siz kurtarma 2 saatin altına inmez) | $1.017.144 |
-| RPO = 0 ve RTO ≤ 60 dk | M3 | $1.017.144 |
-| RTO ≤ 1 dk | M4 | $1.108.787 |
+| yok | M1 | $1.179.197 |
+| RPO = 0 | M2 (yalnızca senkron replikasyon RPO 0 verir) | $1.264.778 |
+| RTO ≤ 60 dk | M3 (GDPS'siz kurtarma 2 saatin altına inmez) | $1.383.467 |
+| RPO = 0 ve RTO ≤ 60 dk | M3 | $1.383.467 |
+| RTO ≤ 1 dk | M4 | $1.489.591 |
 | RPO = 0 ve RTO ≤ 1 dk | infeasible | — |
 
 Son satır gerçek bir sınırı gösterir: saniye düzeyinde kurtarma yalnızca GDPS CA'nın yazılım replikasyonuyla elde edilir ve o da asenkron olduğu için RPO 0 vermez [GDPS-2026].
@@ -478,14 +479,14 @@ CBU'nun fiyatı yayımlanmaz. DR frame'inin bedeli bu yüzden tam bir frame'in o
 
 | Hedef | Mid seçim | Aylık toplam (mid) | $/TPS/ay low / mid / high |
 |---|---|---|---|
-| %99,9 | M1 | $846.187 | 27,06 (M1) / 84,62 (M1) / 338,09 (M2) |
-| %99,95 | M1 | $846.187 | 27,06 (M1) / 84,62 (M1) / 338,09 (M2) |
-| %99,99 | M2 | $912.935 | 27,06 (M1) / 91,29 (M2) / 366,25 (M3) |
-| %99,995 | M3 | $1.017.144 | 29,12 (M2) / 101,71 (M3) / 392,33 (M4) |
-| %99,999 | M4 | $1.108.787 | 33,42 (M3) / 110,88 (M4) / 392,33 (M4) |
-| %99,9999 | M4 | $1.108.787 | 37,08 (M4) / 110,88 (M4) / infeasible |
+| %99,9 | M1 | $1.179.197 | 33,97 (M1) / 117,92 (M1) / 565,95 (M2) |
+| %99,95 | M1 | $1.179.197 | 33,97 (M1) / 117,92 (M1) / 565,95 (M2) |
+| %99,99 | M2 | $1.264.778 | 33,97 (M1) / 126,48 (M2) / 599,85 (M3) |
+| %99,995 | M3 | $1.383.467 | 36,51 (M2) / 138,35 (M3) / 599,85 (M3) |
+| %99,999 | M3 | $1.383.467 | 41,26 (M3) / 138,35 (M3) / 631,68 (M4) |
+| %99,9999 | M4 | $1.489.591 | 41,26 (M3) / 148,96 (M4) / infeasible |
 
-%99,9'dan %99,999'a çıkmak mid'de maliyeti %31 artırır. Artışın kaynakları: GDPS $100K, personel +$104K (topoloji çarpanı), DR frame donanım + bakım + enerji +$40K, storage +$19K. Yazılım değişmez (CBU kuralı). Hedef %99,9999'a çıktığında high senaryoda hiçbir topoloji yetmez.
+%99,9'dan %99,999'a çıkmak mid'de maliyeti %17 artırır (M1 → M3). Artışın kaynakları: GDPS $50K, personel (topoloji çarpanı ×1,15), DR frame donanım + bakım + enerji, storage kopyaları. Yazılım değişmez (CBU kuralı). M3 çok siteli iş yükü olduğundan %99,999 artık M4 gerektirmez; M4'e %99,9999'da ya da RTO ≤ 1 dk'da geçilir. Hedef %99,9999'a çıktığında high senaryoda hiçbir topoloji yetmez.
 
 ### 6.8. Geçerlilik tehditleri ve sınırlamalar
 
@@ -494,6 +495,7 @@ CBU'nun fiyatı yayımlanmaz. DR frame'inin bedeli bu yüzden tam bir frame'in o
 - **RPO tanımı:** RPO tek site kaybı için verilir; bölgesel felakette M2 korumasızdır. Bölgesel felaket senaryosu eklenirse M2'nin RPO avantajı daralır.
 - **Yapı geçerliliği:** Model beklenen değeri hesaplar. Kesintinin dağılımı (bir yılda hiç olmaması ya da tek bir uzun olay) yoktur; SLA ihlali olasılığı için stokastik model gerekir. Sistem içi yazılım arızaları sysplex ile tamamen maskelenmiş sayılır. Bölgesel felaket (iki metro sitenin birden kaybı) ayrıca modellenmez; M2'nin RPO 0 değeri yalnızca metro mesafedeki felaket için geçerlidir.
 - **Maliyet:** CBU ve GDPS fiyatları yayımlanmıyor. İkisi de aralık parametresidir ve tornado çıktısında görünür.
+- **Platform terimi ve u (Değ. #10):** Platform kesintisi iki tarafta ITIC'ten gelir. ITIC kendi seçilen katılımcılarla yapılan bir web anketidir ve üretici bağımsız doğrulaması yoktur; mutlak değerler değil, platformlar arası mertebe farkı (z16 milisaniye, x86 dakika) kullanılmalıdır. Maskelenemeyen pay u kaynakla daraltılamadı; tezde "%99,999'da yalnız mainframe" sonucu u'nun 0,05–0,10 arasındaki bir eşiğe bağlı olarak, aralık halinde raporlanmalıdır (Bölüm 7.12).
 - **Eşit derinlik:** Clustered taraf aynı denklemi kendi kurtarma süreleriyle kullanmalıdır: düğüm arızasının replikasyonla maskelenmesi, saha olayında başka bir bölgeye geçiş süresi ve planlı yükseltmelerin rolling yapılıp yapılamadığı. Saha olayı parametreleri iki tarafta ortaktır.
 
 ## 7. Maliyet Modeli
@@ -718,11 +720,11 @@ Topoloji çarpanı: M1 1,00 · M2 1,05 (ikinci CEC, sysplex) · M3 1,15 (GDPS, i
 **Adım 7, P kararı (Emirhan, 2026-11-16): girdi kurulu kademe değil, iş yükü.** Eğri ve senaryolar değişmedi, ama eğrinin girdisi artık kademenin PCI'si değil, iş yükünün sürekli PCI eşdeğeridir. Aynı eğri x86 tarafına da uygulanır (`common_model.staff_fte`, ortak modül §12; `kopruler_v1.md` KB-13):
 
 ```
-PCI_eşdeğer(TPS) = TPS × w(profil) × (1 − f) / 7,939 / 0,90          (sürekli, kademe basamağı yok)
+PCI_eşdeğer(TPS) = TPS × w(profil) / 7,939 / 0,90          (sürekli, kademe basamağı yok; zIIP işi dahil)
 FTE = max(taban, FTE_1000 × (PCI_eşdeğer / 1000)^b) × topoloji_çarpanı
 ```
 
-Gerekçe: iki platformun personeli aynı sürücüyle ölçülmezse crossover'ı teknoloji değil ölçüm farkı belirler (Değ. #8 §2.1). Latency için alınan boş kapasite personeli büyütmez. Yıllık modda tepe TPS kullanılır. 10K TPS oltp_rw'de PCI eşdeğeri 16.187, mid 38,6 FTE'dir. `STAFF_BASIS` = "installed" eski kuralı yalnızca regresyon testi için yeniden üretir.
+Gerekçe: iki platformun personeli aynı sürücüyle ölçülmezse crossover'ı teknoloji değil ölçüm farkı belirler (Değ. #8 §2.1). Latency için alınan boş kapasite personeli büyütmez. Yıllık modda tepe TPS kullanılır. zIIP'e kayan iş de yönetilen iştir: Değerlendirme #10'a kadar girdi (1 − f) ile çarpılıyordu ve bu, ortak personel eğrisini (dolayısıyla x86 personelini) bir mainframe faturalama ayrıntısına bağlıyordu. 10K TPS oltp_rw'de PCI eşdeğeri 17.985, mid 41,6 FTE'dir (Değ. #10 öncesi 16.187 ve 38,6). `STAFF_BASIS` = "installed" eski kuralı yalnızca regresyon testi için yeniden üretir.
 
 #### 7.7.4. Etkisi
 
@@ -932,6 +934,64 @@ Platformlar arası tutarlılık kontrolü (KB-04) F'den sonra 1 CP ≈ 1,56 R760
 #### 7.11.5. Karşılaştırmada tarafsızlık: `CROSS_BRIDGE_WEIGHTS`
 
 Eşleştirilmiş karşılaştırmada (x86 dokümanı §16) bir taraf lehine senaryo, o tarafa özgü parametreleri bir uca, diğer tarafa özgü olanları öbür uca çeker. Mainframe'in CPU ağırlıkları (okuma ve yazma SQL CPU'su, zIIP payı) iki ortak türetmeyi de besler: personelin PCI eşdeğeri ve x86 uygulama katmanının TM payı. Bu bağ kesilmezse "x86 lehine" senaryoda mainframe CPU'su yükselirken x86'nın personeli ve uygulama katmanı da büyür; ilk sürümde x86 maliyeti bu yüzden $53,66'dan $89,49'a çıkmıştı. `CROSS_BRIDGE_WEIGHTS` = "reference" iken iki ortak türetme CPU ağırlıklarının mid değerlerini kullanır (`mainframe_model.bridge_reference`); mainframe'in kendi kapasite, yazılım ve donanım hesabı senaryonun değerlerini kullanmaya devam eder. Mainframe tek başına çalıştırıldığında varsayılan "current"tir ve sonuçlar değişmez.
+
+### 7.12. Karşılaştırmada Kim Nerede Kazanıyor (Değerlendirme #10)
+
+Bu bölüm, demo çıktılarında mainframe'in ana senaryoda hiç kazanmaması üzerine yapılan incelemenin (Emirhan, 2026-11-24; `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`) model tarafındaki sonucudur.
+
+#### 7.12.1. Ana senaryoda neden kazanmıyor
+
+10K TPS, oltp_rw, %99,9, 20 TB, personel oranı 1,0 (aylık):
+
+| Kalem | Mainframe (M1 3931-524) | x86 (X1 Patroni 2x8c) | Fark | Farkın payı |
+|---|---|---|---|---|
+| Yazılım | $402.932 | $5.210 | $397.722 | %66 |
+| Donanım + bakım + enerji | $99.844 | $1.354 | $98.490 | %16 |
+| Üretim dışı | $102.054 | $3.434 | $98.620 | %16 |
+| Storage + yedek | $13.131 | $5.221 | $7.910 | %1 |
+| Personel | $561.236 | $561.236 | 0 | — |
+| Toplam | $1.179.197 | $576.454 | $602.743 | |
+
+Personel iki tarafta aynı olduğu için fark tamamen personel dışıdır ve x86'nın personel dışı maliyeti neredeyse sıfırdır (5 sunucu, açık kaynak yığın). Bu yapı, başabaş personel oranını kapalı biçimde verir:
+
+```
+başabaş oranı = 1 + (MF_personel_dışı − x86_personel_dışı) / personel
+             = 1 + (617.961 − 15.219) / 561.236 = 2,07
+```
+
+Mainframe'in personel dışı maliyeti personeline kabaca eşit olduğundan oran her TPS'te ~2 civarında kalır (1K: 2,54; 10K: 2,07; 50K: 1,97; 100K: 2,09). Personel oranı 1,0'dayken hiçbir altyapı ekseni (veri hacmi, latency, iş yükü, fiyatlama A/B/C) bu farkı kapatmaz. Bu bir model hatası değil, iki kararın (P: personel nötr; açık kaynak x86 yığını aday) ve tek iş yükü kurgusunun sonucudur. İnceleme sırasında bulunan üç asimetri düzeltildi (M3 RTO eşitliği, platform kesintisi terimi, personel girdisinde zIIP); hiçbiri ana senaryonun kazananını değiştirmez.
+
+#### 7.12.2. Kazanan haritası
+
+`python src/tools/kazanan_haritasi.py` (hücre: kazanan, mainframe/x86 oranı / başabaş personel oranı; "MF tek" = yalnızca mainframe kurulabiliyor):
+
+| Hedef (orta senaryo) | 1K | 10K | 50K | 100K |
+|---|---|---|---|---|
+| %99,9 | x86 2,36 / 2,54 | x86 2,05 / 2,07 | x86 1,89 / 1,97 | x86 1,99 / 2,09 |
+| %99,99 | x86 2,22 / 2,52 | x86 2,04 / 2,10 | x86 1,89 / 2,00 | x86 1,98 / 2,13 |
+| %99,99 + RPO 0 | x86 2,11 / 2,33 | x86 1,93 / 2,04 | x86 1,89 / 2,00 | x86 1,98 / 2,13 |
+| %99,995 + RPO 0 | x86 2,59 / 2,91 | x86 2,06 / 2,10 | x86 1,81 / 1,92 | x86 1,87 / 2,02 |
+| %99,999 | x86 1,70 / 2,17 | x86 1,73 / 1,84 | x86 1,66 / 1,76 | x86 1,72 / 1,84 |
+| %99,999 + RPO 0 | MF tek | MF tek | MF tek | MF tek |
+| %99,9995 | MF tek | MF tek | MF tek | MF tek |
+
+Eşleştirilmiş "mainframe_lehine" senaryoda (mainframe'e özgü low, x86'ya özgü high, ortak mid) mainframe 30K TPS'ten itibaren maliyette de kazanır (30K: oran 0,86; 50K: 0,81) ve 100K'da x86 kurulamaz. Neden: x86'ya özgü high uçta (çapa 60 TPS/SPECint, RAC verimi 0,8, kullanım tavanı 0,5) Patroni'nin tek yazıcısı yetmez ve x86 çekirdek başı lisanslı Oracle RAC'a geçer. Personel oranı başabaşın üstündeyse (Case 9'da 3,0; Case 12'de 50K'da 2,5) mainframe her senaryoda ucuzdur.
+
+Yorum:
+
+1. **Availability eksenindeki kazanç mimari kaynaklıdır.** %99,999 + RPO 0'da x86'nın tek RPO 0 iki site seçeneği X3'tür (Patroni ya da Oracle Gold) ve platform kesintisi terimi (sunucu başına 24 dk × u) onu bütçenin (5,26 dk/yıl) üstüne iter. RPO serbestken x86 Oracle Platinum (X4, GoldenGate, RPO 5 sn) ile kurulur ve ucuzdur. Mainframe M3 (GDPS Metro çok siteli iş yükü) her ikisini de sağlar.
+2. **Sınır u'ya hassastır.** 10K TPS'te u = 0 ve 0,05'te x86 %99,999 + RPO 0'ı X3 ile sağlar; u = 0,10 ve 0,20'de sağlayamaz. Tez sonucu "u ≥ ~0,1 ise beş dokuz + RPO 0 yalnızca mainframe'de" biçiminde koşullu raporlanmalıdır.
+3. **Maliyet eksenindeki kazanç yüksek TPS'te ve x86'nın ticari kümelemeye zorlandığı köşededir.** Bu, ölçek-yayma (scale-out) OLTP'nin yazma ölçeklemesinin ticari lisanslı kümeleme gerektirdiği literatür gözlemiyle tutarlıdır.
+
+#### 7.12.3. Literatürle ilişki
+
+IBM Eagle'ın 97 çalışmasında dağıtık alternatif ortalama 2,2 kat pahalı çıkar [IBM-EAGLE-2013]. Bu model ana senaryoda ters yönde ~2 kat sonuç verir. Fark, Eagle çalışmalarını çeviren etkenlerin (sunucu yayılması, düşük kullanım, çekirdek başı ticari lisans, sunucu başına personel, göç maliyeti) bu modelin tek iş yüküne ve açık kaynağa dayanan kurgusunda bulunmamasıdır. Model, Eagle ile Barroso & Hölzle / Appuswamy çizgisini şu koşullarla uzlaştırır: mainframe (a) x86 personeli mainframe personelinin ~2 katını aştığında, (b) x86'nın yazma ölçeklemesi ticari kümelemeye zorlandığında (yüksek TPS + elverişsiz x86 köprüsü) ve (c) %99,999 + RPO 0 gibi hedeflerde kazanır.
+
+#### 7.12.4. Sınırlamalar
+
+- Kesinti maliyeti TCO'ya girmez; availability yalnızca kısıttır. Saat başı $500K kesinti maliyetinde bile M4 ile X3 arasındaki ~4 dk/yıl fark ayda ~$3K eder ve sonucu değiştirmez.
+- Mainframe lehine olup kapsam dışı kalan etkenler: çok iş yükü konsolidasyonu ve batch, mevcut uygulama mirasının göç maliyeti, Parallel Sysplex data sharing, Linux on Z. Bunlar tezde sınırlama olarak yazılmalıdır.
+- Mainframe tek yığınla (z/OS + CICS TS + Db2) modellenir; x86 sekiz yığın arasından seçer. Db2 DDF + dağıtık uygulama katmanı (CICS yok, zIIP payı %40–60) denendi: mainframe toplamı ~%30 düşer, başabaş oranı ~2,0'a iner. Bu seçenek Emirhan'ın kararıyla modele eklenmedi (Değ. #10).
 
 ## 8. Storage Katmanı — IBM DS8900F
 
@@ -1634,7 +1694,9 @@ Bazı testler tasarım gereği tautolojiktir: örneğin kademe tablosunun kendi 
 - **[GDPS-PRICE] —** Mainframe Licensing Experts (bağımsız alıcı tarafı danışmanlık), GDPS ürün ve yenileme sayfaları: GDPS lisanslı otomasyon kodu ile IBM hizmetlerinin birleşimi; fiyat otomatikleştirilen sistem, sysplex ve site kapsamına bağlı, MSU'ya değil. Rakam vermez; yalnızca fiyatlama yapısının dayanağı. https://mainframelicensingexperts.pages.dev/products/ibm/gdps/
 - **[UPTIME-2025] —** Uptime Institute, Annual Outage Analysis 2025 (basın bülteni ve Data Center Knowledge haberi): operatörlerin %53'ü son üç yılda kesinti bildirdi (2020'de %78); 2024'te olayların %9'u ciddi/ağır; etkili kesintilerin %54'ü güç kaynaklı, %23'ü BT/ağ; insan hatası tüm kesintilerin üçte ikisi–dörtte üçünde rol oynar. https://www.datacenterknowledge.com/outages/data-center-outages-decline-for-fourth-straight-year-but-issues-persist
 - **[UPTIME-2022] —** Uptime Institute, Annual Outage Analysis 2022 (Data Center Frontier haberi): kamuya yansıyan kesintilerin 24 saatten uzun süren payı 2017'de %8, 2021'de ~%30. https://www.datacenterfrontier.com/uptime-longer-data-center-outages-are-becoming-more-common
-- **[ITIC-2023] —** ITIC 2023 Global Server Hardware, Server OS Reliability Survey (~1.900 kurum): 200+ z16 kullanıcısının %96'sı 9 nine (sunucu başına yılda 31,56 ms plansız kesinti, sunucu donanımının kendi arızaları); z13–z15 ortalaması 7–8 nine; IBM'e göre IBM Z ortalaması 8 nine. Yalnızca D_cpc terimi için. https://itic-corp.com/?p=3107
+- **[ITIC-2023] —** ITIC 2023 Global Server Hardware, Server OS Reliability Survey (~1.900 kurum): 200+ z16 kullanıcısının %96'sı 9 nine (sunucu başına yılda 31,56 ms plansız kesinti); z13–z15 ortalaması 7–8 nine; IBM'e göre IBM Z ortalaması 8 nine. IT Jungle özetine göre x86 Linux platformları: Lenovo ThinkSystem 31,5 sn, Cisco/HPE/Huawei ~1,3 dk, Dell PowerEdge 24 dk, HPE ProLiant 39 dk, white box 59 dk. Kesinti nedenleri: güvenlik (%84), insan hatası (%67; yanlış yapılandırma dahil). İki taraftaki D_platform teriminin kaynağı (Değ. #10). Kendi seçilen katılımcılarla web anketi; bağımsız doğrulama yok. https://itic-corp.com/?p=3107 ; https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
+- **[YUAN-2014] —** D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures: An Analysis of Production Failures in Distributed Data-Intensive Systems", OSDI 2014: katastrofik hataların %92'si önemsiz hataların yanlış işlenmesinden. u parametresinin nitel dayanağı.
+- **[GUNAWI-2016] —** H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", ACM SoCC 2016: kesintilerde kurtarma/geçiş mekanizmalarının kendisinin hata üretmesi. u parametresinin nitel dayanağı.
 - **[ITIC-2024] —** ITIC 2024 anketi (TechChannel haberi): z16 9 nine; Lenovo ThinkSystem'in güncel x86 sunucuları 8 nine (yılda 315 ms). Sunucu güvenilirliğinin iki platformda da hizmet availability'sinin belirleyicisi olmadığının dayanağı. https://techchannel.com/industry-news/server-reliability-survey-2024/
 - **[PRECISELY] —** Precisely, High Availability tanımı: toplam kesintinin büyük kısmı (~%90) planlıdır. Artık çarpan olarak kullanılmıyor; yalnızca olay tabanlı sonucun yön kontrolü. https://www.precisely.com/glossary/high-availability-ha/
 

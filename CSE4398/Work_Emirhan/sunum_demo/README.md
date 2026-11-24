@@ -6,8 +6,8 @@
 
 | Dosya | Ne |
 |---|---|
-| `DEMO_SENARYOLARI.md` | 10 demo senaryosu: komut, çıktı özeti, neyin neden değiştiği, sunum akışı |
-| `demo_calistir.py` | 10 senaryoyu (42 komut) modellere koşturan ve çıktıların birbirinden farklı olduğunu doğrulayan betik |
+| `DEMO_SENARYOLARI.md` | 12 demo senaryosu: komut, çıktı özeti, neyin neden değiştiği, sunum akışı |
+| `demo_calistir.py` | 12 senaryoyu (51 komut) modellere koşturan ve çıktıların birbirinden farklı olduğunu doğrulayan betik |
 | `ciktilar/` | Her case'in tam model çıktısı (`case_NN_*.txt`) ve betiğin özet çıktısı (`demo_ozet.txt`) |
 | `kompakt/` | Sunumda kod üzerinde göstermek için: girdileri `inputs/*.json`'dan okuyan model kopyası ve case'leri sırayla çalıştıran `calistir.py` (ayrıntı `kompakt/README.md`) |
 | `slaytlar/01_giris_ve_mainframe.md` | Giriş (3 slayt) + mainframe katmanları (14 katman × 2 = 28 slayt) |

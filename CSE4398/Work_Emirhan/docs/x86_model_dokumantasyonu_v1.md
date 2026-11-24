@@ -400,15 +400,24 @@ Saha olayları iki tarafta ortaktır (`common_model` §2). x86'ya özgü terimle
 D(yıl) = D_saha(T_kurtarma)                                         ← ortak
        + λ_planlı × T_planlı                                         ← büyük sürüm, bakım
        + X86_PATCH_SWITCHOVERS_PER_YEAR × T_switchover               ← aylık OS / hipervizör yaması
-       + N_kesen × λ_düğüm × T_failover                              ← düğüm arızası
+       + N_kesen × λ_düğüm × T_failover × (1 − u)                    ← düğüm arızası, geçişle maskelenen
+       + N_kesen × ITIC_sunucu × u^katman                            ← platform kesintisi (ortak formül)
 A = 1 − D / 8.760
 ```
+
+**Platform kesintisi (Değerlendirme #10, A kararı, Emirhan 2026-11-24).** Mainframe tarafı CPC kesintisini ITIC'ten alıyordu; x86 tarafı ise yalnızca donanım arızası × failover süresini sayıyor ve sunucunun kendi (donanım + işletim sistemi) kesintisini, ayrıca geçişin başarısız olduğu durumları hiç saymıyordu. Bu, x86'yı en yüksek hedeflerde iyimser gösteriyordu: X3 Patroni yılda 4,4 dk ile %99,999'u tutturuyordu. Artık iki taraf aynı formülü (`common_model.platform_downtime_hours`) aynı kaynakla kullanır: sunucu başına ITIC yıllık plansız kesintisi × geçişin maskeleyemediği pay u (`PLATFORM_UNMASKED_SHARE`, ortak parametre). Tek CPC'de u = 1, kümede u, aktif-aktif iki sitede (M4 / X4) u². x86 ITIC değerleri [ITIC-2023]: Lenovo ThinkSystem Linux 31,5 sn (low), Dell PowerEdge Linux 24 dk (mid; katalogdaki sunucu R760 sınıfıdır), white box Linux 59 dk (high); düzey `NODE_EVENT_LEVEL` ile birlikte seçilir. z16 için aynı terim yılda 0,03–3 saniyedir.
+
+u kaynakla daraltılamadı [ASSUME]: dağıtık sistemlerde katastrofik hataların %92'si hata işleme yolundan çıkar [YUAN-2014]; bulut kesintilerinde kurtarma mekanizmasının kendisi sık sık hata üretir [GUNAWI-2016]; Uptime 2025'e göre büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon ya da değişiklik yönetimi vardır [UPTIME-2025]. Bu kaynaklar yönü destekler, sayıyı vermez. Sonuç u'ya hassastır (§16.5).
+
+**Desteksiz PostgreSQL (B kararı).** Ticari desteği olmayan bir PostgreSQL yığınında (`PG_SUPPORT_USD_PER_CORE_YEAR` = 0) platform kesintisi ITIC'in high ucundan (59 dk) sayılır [ASSUME]: sürüm hatasında üretici eskalasyonu yoktur. Desteğin SLA'ya bağlı zorunluluğu §9.2'dedir.
 
 N_kesen: arızası hizmeti kesen düğüm sayısı. Patroni'de yalnızca birincildir (replika arızası hizmeti kesmez). RAC'ta hizmeti taşıyan her düğümdür (düğüm kaybında küme yeniden yapılandırması bütün oturumları kısa süre dondurur).
 
 | Parametre | low | mid | high | Dayanak |
 |---|---|---|---|---|
 | NODE_EVENTS_PER_YEAR | 0,03 | 0,10 | 0,30 | [VISHWANATH-2010] aşağı; high [ASSUME] |
+| X86_ITIC_DOWNTIME_MINUTES (sunucu başına, dk/yıl) | 0,525 | 24 | 59 | [ITIC-2023] Lenovo / Dell / white box Linux |
+| PLATFORM_UNMASKED_SHARE u (ortak) | 0,05 | 0,10 | 0,20 | [ASSUME]; nitel dayanak [YUAN-2014], [GUNAWI-2016] |
 | T_FAILOVER PostgreSQL (sn) | 15 | 35 | 90 | [PIGSTY-RTO] 27–41 sn |
 | T_FAILOVER Oracle (sn) | 5 | 15 | 300 | [ORACLE-RAC-2024], [ORACLE-MAA-2026] |
 | X86_PLANNED_EVENTS_PER_YEAR | 0,25 | 0,5 | 1,0 | mainframe ile aynı aralık [ASSUME] |
@@ -425,10 +434,12 @@ N_kesen: arızası hizmeti kesen düğüm sayısı. Patroni'de yalnızca birinci
 
 | Topoloji | PostgreSQL | Oracle (k = 2) | Mainframe karşılığı | RPO / RTO |
 |---|---|---|---|---|
-| X1 | %99,98275 (99,91772 – 99,99795); 1,51 sa/yıl | %99,98313 | M1 %99,96193 | 24 sa / 72 sa |
-| X2 | %99,99499 (99,97737 – 99,99909) | %99,99538 | M2 %99,99372 | PG 5 sn, Oracle 0 / 105 dk |
-| X3 | %99,99917 (99,99663 – 99,99978) | %99,99955 | M3 %99,99819 | 0 / 2 dk |
-| X4 | infeasible | %99,99959 (99,99636 – 99,99997) | M4 %99,99994 | 5 sn / 15 sn |
+| X1 | %99,98230 (99,91549 – 99,99794); 1,55 sa/yıl | %99,98222 | M1 %99,96193 | 24 sa / 72 sa |
+| X2 | %99,99454 (99,97514 – 99,99909) | %99,99446 | M2 %99,99372 | PG 5 sn, Oracle 0 / 105 dk |
+| X3 | %99,99872 (99,99440 – 99,99977); 6,7 dk/yıl | %99,99864 (99,99234 – 99,99996) | M3 %99,99975 | 0 / 2 dk |
+| X4 | infeasible | %99,99941 (99,99479 – 99,99997) | M4 %99,99994 | 5 sn / 15 sn |
+
+Değerlendirme #10 sonrası değerler. Desteksiz PostgreSQL X1: %99,98163. X3 artık %99,999'un (5,26 dk/yıl) altında kalır: RPO 0 isteyen beş dokuz hedefini x86 sağlayamaz, mainframe M3 sağlar (§16.5).
 
 X1'in M1'den biraz yüksek çıkması planlı kesintiden gelir: tek frame'li M1'de yıllık planlı kesinti daha uzundur; Patroni kümesinde yamalar saniyeler süren switchover'larla yapılır. Kesintinin baskın terimi iki tarafta da ortak saha olayıdır (X1'de 1,34 saatin tamamı). Bu, Bölüm 1.2'deki ilkenin sonucudur: iki taraf aynı saha olayına aynı fizikle maruz kalır, fark yalnızca kurtarma süresinden ve planlı işlemlerden gelir.
 
@@ -449,7 +460,9 @@ Mainframe yazılımı tüketilen MSU'nun aylık R4HA tepesinden faturalanır ve 
 | RHEL for Virtual Datacenters | düğüm başına yıllık; sınırsız misafir | — | $2.904 | — | [CCSP-RH] hizmet sağlayıcı listesi |
 | OpenShift Container Platform | sanal düğümde 2 çekirdek başına yıllık; RHEL dahil; kontrol düzlemi sayılmaz | $2.000 | $3.000 | $4.200 | [RH-OCP-GUIDE], [SWEXPRESS-OCP], [VENDORBENCH-OCP] |
 | Oracle EE + seçenekler | işlemci = çekirdek × 0,5 (yukarı yuvarlanır); net = liste × (1 − indirim); destek net lisansın yıllık %22'si | indirim 0,60 | 0,45 | 0,20 | [ORACLE-CORE], [REDRESS-PL2026], [OLE-NET2026] |
-| PostgreSQL ticari destek | çekirdek başına yıllık | $0 | $500 | $1.500 | [ASSUME, kalibre edilemedi] |
+| PostgreSQL ticari destek | çekirdek başına yıllık; SLA tabanı aşağıda | $0 | $500 | $1.500 | [ASSUME]; EDB mağaza fiyatlarıyla aynı mertebe [EDB-STORE-2026] |
+
+**SLA'ya bağlı zorunlu PostgreSQL desteği (Değerlendirme #10, B kararı).** EDB mağaza fiyatları (çekirdek/yıl, en az 8 çekirdek, 1 yıl): Community $400, Business $1.600, Enterprise $2.400 [EDB-STORE-2026]. Destek seviyeleri: Basic 10x5 (yalnız geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO [EDB-PLANS-2026]. Kural (`pg_support_rate`; eşikler [ASSUME]): hedef < %99,99 ve RPO > 0 ise destek isteğe bağlıdır (aralık parametresi); hedef ≥ %99,99 ya da RPO 0 ise en az $1.600 (7/24 üretim desteği); hedef ≥ %99,999 ise $2.400 (Enterprise). Maliyet etkisi küçüktür (10K TPS'te ayda $5–13K); asıl etkisi, desteksiz yığının yalnız düşük hedeflerde seçilebilmesi ve availability'sinin ITIC'in high ucundan sayılmasıdır (§8.3). Düzenleyici boyut (ör. AB DORA'nın kritik fonksiyonlarda sözleşmeli ICT tedarikçisi beklentisi) modele girmez, tezde nitel olarak yazılır.
 
 vSphere'in asgarileri küçük düğümlerde belirleyicidir: 2 × 8 çekirdekli bir sunucu 32 çekirdek olarak lisanslanır ve tek düğümlük bir sipariş 72 çekirdeğe tamamlanır. Model sipariş asgarisini grupların lisanslı çekirdeklerine oranla dağıtır. Test: `test_platform_subscriptions`.
 
@@ -706,21 +719,24 @@ Mainframe'in CoD/TFP avantajı (dalgalı yükte düşük ortalama fatura) burada
 
 | Availability | TPS | Mainframe $/TPS | x86 $/TPS | Başabaş oranı | Personel hariç (MF / x86) | x86, oran 1,25 | x86, oran 2,0 |
 |---|---|---|---|---|---|---|---|
-| %99,9 | 1.000 | 291,89 (M1, 407) | 118,98 (PG X1) | 2,66 | 187,87 / 14,96 | 144,98 | 223,00 |
-| %99,9 | 10.000 | 113,93 (M1, 524) | 53,66 (PG X1) | 2,16 | 61,80 / 1,52 | 66,69 | 105,79 |
-| %99,9 | 50.000 | 68,89 (M1, 759) | 35,25 (Oracle X1, k = 7) | 2,05 | 36,72 / 3,08 | 43,29 | 67,42 |
-| %99,9 | 100.000 | 59,59 (M1, 7E1) | 29,03 (Oracle X1, k = 7) | 2,17 | 33,46 / 2,90 | 35,56 | 55,15 |
-| %99,99 | 10.000 | 122,29 (M2) | 56,78 (PG X2) | 2,20 | 67,55 / 2,04 | 70,47 | 111,52 |
-| %99,99 | 50.000 | 75,04 (M2) | 38,57 (Oracle X2) | 2,08 | 41,26 / 4,80 | 47,02 | 72,35 |
-| %99,999 | 1.000 | 451,37 (M4) | 138,16 (PG X3) | 3,62 | 321,34 / 18,54 | 168,06 | 257,78 |
-| %99,999 | 10.000 | 143,97 (M4) | 61,83 (PG X3) | 2,37 | 78,80 / 1,88 | 76,82 | 121,79 |
-| %99,999 | 50.000 | 83,72 (M4) | 42,70 (Oracle X3) | 2,11 | 43,51 / 5,71 | 51,95 | 79,69 |
+| %99,9 | 1.000 | 299,85 (M1, 407) | 126,94 (PG X1) | 2,54 | 187,87 / 14,96 | 154,93 | 238,92 |
+| %99,9 | 10.000 | 117,92 (M1, 524) | 57,65 (PG X1) | 2,07 | 61,80 / 1,52 | 71,68 | 113,77 |
+| %99,9 | 50.000 | 71,35 (M1, 759) | 37,71 (Oracle X1, k = 7) | 1,97 | 36,72 / 3,08 | 46,37 | 72,35 |
+| %99,9 | 100.000 | 61,59 (M1, 7E1) | 31,03 (Oracle X1, k = 7) | 2,09 | 33,46 / 2,90 | 38,06 | 59,15 |
+| %99,99 | 10.000 | 126,48 (M2) | 61,92 (PG X2) | 2,10 | 67,55 / 2,99 | 76,66 | 120,85 |
+| %99,99 | 50.000 | 77,62 (M2) | 41,16 (Oracle X2) | 2,00 | 41,26 / 4,80 | 50,25 | 77,52 |
+| %99,999 | 1.000 | 400,12 (M3) | 235,97 (Oracle X4, k = 2) | 2,17 | 271,34 / 95,99 | 270,96 | 375,94 |
+| %99,999 | 10.000 | 138,35 (M3) | 79,77 (Oracle X4, k = 2) | 1,84 | 73,80 / 9,61 | 97,31 | 149,92 |
+| %99,999 | 50.000 | 82,34 (M3) | 49,62 (Oracle X4, k = 5) | 1,76 | 42,51 / 6,33 | 60,44 | 92,91 |
+| %99,999 + RPO 0 | her TPS | M3 | infeasible | — | — | — | — |
+
+Değerlendirme #10 sonrası (M3 eşitliği, platform terimi, destek kuralı, personel girdisinde zIIP).
 
 **Okuma.**
 
-1. **Mid'de x86 bütün noktalarda ucuzdur ve başabaş personel oranı 2,0–3,6 arasındadır.** IBM'in konsolide/sanallaştırılmış vakaları (~1,25) bu eşiğin altında, bütün FTE vakalarının geometrik ortalaması (2,0) eşiğin hemen altındadır. Yani mid varsayımlarla mainframe'in kazanması için x86 personelinin, IBM'in kendi vakalarındaki dağınık parklar kadar (≥ 2) kalabalık olması gerekir.
+1. **Mid'de x86 kurulabildiği bütün noktalarda ucuzdur ve başabaş personel oranı 1,8–2,6 arasındadır.** IBM'in konsolide/sanallaştırılmış vakaları (~1,25) bu eşiğin altında, bütün FTE vakalarının geometrik ortalaması (2,0) eşiğin hemen altındadır. Yani mid varsayımlarla mainframe'in kazanması için x86 personelinin, IBM'in kendi vakalarındaki dağınık parklar kadar (≥ 2) kalabalık olması gerekir.
 2. **Personel hariç fark 8–42 kattır** (PostgreSQL bölgesinde 13–42, Oracle bölgesinde 8–12). Kaynağı neredeyse bütünüyle yazılım lisans modelidir: mainframe 10K TPS'te AWLC $402.932 + üretim dışı ortamlar $102.054 öderken PostgreSQL yığını abonelikler için $5.210 öder. Bu, araştırmanın en büyük yapısal bulgusudur ve tezde personelden ayrı yazılmalıdır.
-3. **%99,999'da M4 ile X3'ün maliyet farkı daha büyüktür.** Mainframe'de GDPS CA ve DR frame'i eklenir; x86'da PostgreSQL X3 iki sitede 2 + 2 düğüm ve bir tanık düğümüdür. Not: X3-PG'nin availability'si (%99,99917) M4'ünkünden (%99,99994) düşüktür ama %99,999 hedefini sağlar.
+3. **%99,999'da x86 Oracle Platinum'a (X4) zorlanır ve fark daralır** (başabaş 1,76–2,17). Platform terimiyle X3 (PG ya da Oracle Gold) beş dokuzu tutturamaz; X4 GoldenGate ile RPO 5 sn verir. RPO 0 da istenirse x86 kurulamaz ve yalnızca mainframe M3 kalır (§16.5).
 
 ### 16.3. Eşleştirilmiş senaryolar (`--compare --range`)
 
@@ -739,25 +755,44 @@ Sonuçlar (%99,9; $/TPS/ay; BE = başabaş personel oranı; PH = personel hariç
 
 | TPS | x86_lehine MF / x86 (BE) | orta (BE) | mainframe_lehine MF / x86 (BE, PH) | ortak_low (BE) | ortak_high (BE) |
 |---|---|---|---|---|---|
-| 1.000 | 744,59 / 112,02 (7,08) | 291,89 / 118,98 (2,66) | 166,13 / 136,67 (1,28; 1,9) | 237,93 / 67,44 (4,19) | 380,13 / 204,54 (1,93) |
-| 5.000 | 434,49 / 65,80 (6,74) | 149,32 / 67,20 (2,28) | 89,64 / 72,00 (1,27; 3,3) | 111,56 / 30,86 (3,88) | 223,42 / 139,82 (1,61) |
-| 10.000 | 383,08 / 52,95 (7,33) | 113,93 / 53,66 (2,16) | 70,49 / 57,92 (1,24; 3,2) | 81,86 / 22,66 (3,78) | 181,78 / 120,54 (1,52) |
-| 30.000 | 345,99 / 37,78 (9,22) | 78,31 / 38,41 (2,06) | **47,98 / 56,12 (0,78; 0,6)** | 53,62 / 14,55 (3,85) | 137,14 / 96,40 (1,43) |
-| 50.000 | 335,72 / 32,37 (10,43) | 68,89 / 35,25 (2,05) | **40,60 / 50,98 (0,68; 0,4)** | 46,94 / 14,22 (3,93) | 123,77 / 89,27 (1,40) |
-| 100.000 | MF infeasible | 59,59 / 29,03 (2,17) | x86 infeasible | 41,02 / 11,34 (4,51) | 109,30 / 77,94 (1,42) |
+| 1.000 | 752,95 / 119,98 (6,65) | 299,85 / 126,94 (2,54) | 174,10 / 144,63 (1,26; 1,9) | 241,42 / 70,93 (4,00) | 396,70 / 221,10 (1,86) |
+| 5.000 | 439,65 / 70,71 (6,34) | 154,23 / 72,11 (2,19) | 94,55 / 76,91 (1,26; 3,3) | 113,39 / 32,69 (3,70) | 235,43 / 151,82 (1,56) |
+| 10.000 | 387,27 / 56,94 (6,89) | 117,92 / 57,65 (2,07) | 74,48 / 61,91 (1,22; 3,2) | 83,25 / 24,05 (3,61) | 192,23 / 130,99 (1,47) |
+| 30.000 | 349,01 / 40,65 (8,64) | 81,18 / 41,28 (1,99) | **50,85 / 58,99 (0,80; 0,6)** | 54,52 / 15,44 (3,68) | 145,53 / 104,79 (1,39) |
+| 50.000 | 338,31 / 34,83 (9,76) | 71,35 / 37,71 (1,97) | **43,06 / 53,44 (0,70; 0,4)** | 47,67 / 14,95 (3,75) | 131,34 / 96,84 (1,37) |
+| 100.000 | MF infeasible | 61,59 / 31,03 (2,09) | x86 infeasible | 41,57 / 11,89 (4,29) | 115,90 / 84,54 (1,38) |
 
 **Okuma (crossover bölgesi).**
 
-1. **Mainframe lehine senaryoda crossover vardır ve Patroni tavanına bağlıdır.** 10K TPS'te mainframe lehine bütün özgü belirsizlikler bile x86'yı ancak 1,24'lük personel oranıyla mainframe'e eşitler. 30K ve 50K'da ise mainframe personel nötrken de ucuzdur (BE < 1). Neden: x86'nın high köşesinde (köprü 60, tavan 0,50, sanallaştırma high) Patroni tavanı ~15K TPS'e iner. Bunun üstünde Oracle RAC zorunlu olur ve Oracle'ın high köşesi (indirim 0,20, verim 0,80, RAC verimi 0,80) lisans maliyetini personel hariç mainframe'in üstüne çıkarır.
+1. **Mainframe lehine senaryoda crossover vardır ve Patroni tavanına bağlıdır.** 10K TPS'te mainframe lehine bütün özgü belirsizlikler bile x86'yı ancak 1,22'lik personel oranıyla mainframe'e eşitler. 30K ve 50K'da ise mainframe personel nötrken de ucuzdur (BE < 1). Neden: x86'nın high köşesinde (köprü 60, tavan 0,50, sanallaştırma high) Patroni tavanı ~15K TPS'e iner. Bunun üstünde Oracle RAC zorunlu olur ve Oracle'ın high köşesi (indirim 0,20, verim 0,80, RAC verimi 0,80) lisans maliyetini personel hariç mainframe'in üstüne çıkarır.
 2. **Ortak parametreler oranı değiştirir ama yönü değiştirmez.** Ortak low'da (personel ucuz) x86'nın üstünlüğü büyür (BE 3,8–4,5). Ortak high'da (personel pahalı) küçülür (BE 1,4–1,9). Personel nötr olduğu için personel ne kadar pahalıysa personel hariç farkın oranı o kadar sulanır.
 3. **Tezin başlık cümlesi:** "Mid varsayımlarla ve nötr personelle kümelenmiş x86 bütün hacimlerde ~2 kat ucuzdur; mainframe'in kazandığı bölge (a) x86 personelinin mainframe personelinin ~2 katını aşması ya da (b) bütün platforma özgü belirsizliklerin mainframe lehine çözülmesi ve yükün ~15–36K TPS'lik Patroni tavanını aşmasıdır."
 
 ### 16.4. Uzlaştırma senaryoları (ana aralıkta değil)
 
+(Bu alt bölümdeki rakamlar Değerlendirme #10 öncesine aittir; yön ve sonuç değişmedi.)
+
 - **Konsolide edilmemiş park** (`X86_UNCONSOLIDATED_CEILING` = 0,175; [SHEDLETSKY-2008] ve `benzer_calismalar_v1` B1'deki %15–20 dağıtık kullanım). IBM'in U_R iddiasıyla uzlaştırma içindir. 10K TPS'te x86 $65,19/TPS'e çıkar ve Oracle RAC'a (2×12c, k = 4) geçer, çünkü Patroni düğümü bu kullanımda yükü taşıyamaz. Personel hariç $130.536'dır, mainframe'in $617.961'inin hâlâ beşte biri. 50K'da $44,99; 100K'da infeasible. Yani IBM'in kullanım oranı etkisi bile tek başına sıralamayı çevirmez; çeviren personel oranıdır.
 - **Üretim dışı stres** (`NONPROD_FACTOR_X86` = 2,0; IBM'in "dağıtıkta +%200" iddiası): 10K TPS'te $54,69 (+%1,9). x86'nın üretim dışı tabanı küçük olduğu için etkisi de küçüktür.
 
 ---
+
+### 16.5. Kim nerede kazanıyor (Değerlendirme #10)
+
+`python src/tools/kazanan_haritasi.py` TPS × availability/RPO hedefi × eşleştirilmiş senaryo ızgarasını çözer ve `data/out/kazanan_haritasi.csv` yazar. Orta senaryo, personel oranı 1,0 (hücre: kazanan, MF/x86 oranı / başabaş personel oranı):
+
+| Hedef | 1K | 10K | 50K | 100K |
+|---|---|---|---|---|
+| %99,9 | x86 2,36 / 2,54 | x86 2,05 / 2,07 | x86 1,89 / 1,97 | x86 1,99 / 2,09 |
+| %99,99 + RPO 0 | x86 2,11 / 2,33 | x86 1,93 / 2,04 | x86 1,89 / 2,00 | x86 1,98 / 2,13 |
+| %99,995 + RPO 0 | x86 2,59 / 2,91 | x86 2,06 / 2,10 | x86 1,81 / 1,92 | x86 1,87 / 2,02 |
+| %99,999 | x86 1,70 / 2,17 | x86 1,73 / 1,84 | x86 1,66 / 1,76 | x86 1,72 / 1,84 |
+| %99,999 + RPO 0 | yalnız MF | yalnız MF | yalnız MF | yalnız MF |
+| %99,9995 | yalnız MF | yalnız MF | yalnız MF | yalnız MF |
+
+**u hassasiyeti (10K TPS, %99,999 + RPO 0):** u = 0 ve 0,05'te x86 X3 ile kurulur (0,05'te Oracle Gold, ayda ~$737K); u = 0,10 ve 0,20'de kurulamaz. "Beş dokuz + RPO 0'da yalnız mainframe" sonucu bu yüzden koşulludur ve tezde u aralığıyla birlikte raporlanmalıdır.
+
+**Neden ana senaryoda x86 kazanıyor:** başabaş oranı = 1 + (MF personel dışı − x86 personel dışı) / personel. x86'nın personel dışı maliyeti 10K TPS'te $15K, mainframe'inki $618K; personel $561K olduğundan oran 2,07'dir ve TPS ile pek değişmez. Ayrıntı: mainframe v3 §7.12.
 
 ## 17. Köprülerden Sapmalar ve Düzeltmeler
 
@@ -801,7 +836,7 @@ Ayrıca iki ek kural kodlandı. Köprüler dokümanında yoktular:
 
 ## 19. Testler
 
-`python src/test_x86_model.py` — 24 test (yalnızca standart kütüphane):
+`python src/test_x86_model.py` — 29 test (yalnızca standart kütüphane):
 
 - **Köprü ve iş yükü:** çapa 91 ± 0,5, R760 893 ± 2, KB-04 oranı 1,52–1,60, S(64) < 1 < S(16); oltp_rw 20 ifade ve ağırlık 1, ağır profil > 1 > TPC-B, redp_light reddedilir, `RANGE_READ_WEIGHT` ortak; ölçeklenme köşelerinin yön tutarlılığı; sanallaştırma ve konteyner ek yükü sırası, 8 yığın.
 - **Tavan ve latency:** ρ ≤ tavan; sıkı hedef asla daha ucuz değil; sabit gecikmenin altı infeasible; tavan yükseldikçe maliyet artmıyor; saklı yordam ağ terimini 1 gidiş-dönüşe indiriyor; uzak senkron kopya gecikme ekliyor.
@@ -812,6 +847,7 @@ Ayrıca iki ek kural kodlandı. Köprüler dokümanında yoktular:
 - **Personel ve karşılaştırma:** oran 1'de mainframe ile aynı FTE; başabaş oranında toplamlar eşit (< %0,1); 2,0 > 1,25 > ana; uzlaştırma senaryoları ≥ ana; eşleştirilmiş senaryoların yönü ve köprü ağırlıklarının ayrışması.
 - **Üretim dışı, fiyat dönemi, aralık, NPV, yıllık:** doğrusal ve personel/yedeği etkilemiyor; 2026-Q3 pahalı; low ≤ mid ≤ high (statik ve NPV); tornado; NPV = 60 × statik (iki DB, X1/X3); iskonto yönü; yalnızca yükselen düğüm; yıllık = 12 × tepe.
 - **Ortak modül ve CLI:** ortak adların tek sahibi; fiyat dosyası modu; CLI bayrakları.
+- **Değerlendirme #10:** M3 ile X3 kurtarma ve planlı kesinti aralıkları aynı; ortak platform kesintisi formülü (tek CPC'de u'dan bağımsız, u artınca kümede availability düşer, aktif-aktifte u²); SLA'ya bağlı destek tabanı ve desteksiz yığının availability cezası; personel girdisi zIIP payından bağımsız; %99,999 + RPO 0'da yalnızca mainframe, RPO serbestken x86 Oracle X4.
 
 Mainframe testleri (30) F ve P ile birlikte geçer; altın sonuç kümesi eski kurallarla (RANGE_READ_WEIGHT = 1, personel kurulu kademeden, NONPROD = 0) birebir yeniden üretilir.
 
@@ -835,6 +871,12 @@ Kaynakların tamamı ve modeldeki yerleri `acik_sistem_arastirma_plani_v1.md` §
 - [PGCON-2016] — https://www.pgcon.org/2016/schedule/attachments/399_postgresql-96-scalability-perf-improvements.pdf
 
 **Availability ve topoloji**
+- [ITIC-2023] ITIC 2023 Global Server Hardware, Server OS Reliability (IT Jungle özeti): sunucu başına yıllık plansız kesinti, Lenovo ThinkSystem Linux 31,5 sn, Dell PowerEdge Linux 24 dk, HPE ProLiant Linux 39 dk, white box Linux 59 dk; z16 31,56 ms. Kendi seçilen katılımcılarla web anketi. — https://itic-corp.com/?p=3107 · https://itjungle.com/2024/10/21/ibm-nears-the-end-of-the-road-for-server-reliability-improvements
+- [YUAN-2014] D. Yuan vd., "Simple Testing Can Prevent Most Critical Failures", OSDI 2014 (katastrofik hataların %92'si hata işleme yolunda).
+- [GUNAWI-2016] H. S. Gunawi vd., "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages", SoCC 2016.
+- [UPTIME-2025] Uptime Institute Annual Outage Analysis 2025: BT ve ağ kaynaklı kesintiler etkili kesintilerin %23'ü; büyük BT/yazılım kesintilerinin %62'sinde konfigürasyon / değişiklik yönetimi (Network World özeti). — https://www.businesswire.com/news/home/20250506733553/en/Uptime-Announces-Annual-Outage-Analysis-Report-2025 · https://www.networkworld.com/article/3980366/networking-errors-pose-threat-to-data-center-reliability.html
+- [EDB-STORE-2026] EDB mağazası: Community $400, Business $1.600, Enterprise $2.400 / çekirdek / yıl; 8 çekirdek alt sınır, 1 yıl. — https://enterprisedb.com/store
+- [EDB-PLANS-2026] EDB plan karşılaştırması: Basic 10x5 (geliştirme/test), Production 7/24, Premium 7/24 + sıkı SLO. — https://enterprisedb.com/products/plans-comparison
 - [PATRONI-REPL] — https://patroni.readthedocs.io/en/latest/replication_modes.html
 - [PATRONI-MULTIDC] Patroni, "Multi DC HA" — https://patroni.readthedocs.io/en/latest/ha_multi_dc.html · "Asynchronous Replication" başlığı; "With only two data centers it would be better to have two independent etcd clusters and run Patroni standby cluster in the second data center."; "To have a multi DC cluster that can automatically tolerate a zone drop, a minimum of 3 is required."
 - [PIGSTY-RTO] — https://doc.pigsty.io/docs/concept/ha/rto/

@@ -1,5 +1,7 @@
 # Slayt İçeriği — Bölüm 1: Giriş ve Mainframe Katmanları
 
+> **Güncelleme notu (2026-11-24, Değerlendirme #10):** Bu dosyadaki sayılar Değ #10 öncesidir (ör. 10K TPS'te $113,93 / $53,66, başabaş 2,16). Güncel değerler: mainframe $117,92, x86 $57,65, başabaş 2,07; %99,999 + RPO 0'da yalnızca mainframe kurulabilir. Ayrıntı: `evaluations/2026-11-24_degerlendirme_10_kazanan_bolgeler.md`, `sunum_demo/DEMO_SENARYOLARI.md` Case 11-12. Slayt sayıları ayrıca yenilenecek.
+
 *Her slayt: başlık, maddeler, kullanılan veri/kaynak, tasarım gerekçesi, konuşmacı notu. Sayılar `main` dalındaki modellerin 2026-11-23 koşusundan; demo case numaraları `sunum_demo/DEMO_SENARYOLARI.md`'ye atıftır. Kaynak etiketleri ([REDP], [LSPR] …) `docs/mainframe_model_documentation_v3.md` §11 ve `docs/kopruler_v1.md` §20'deki listeye karşılık gelir.*
 
 ---

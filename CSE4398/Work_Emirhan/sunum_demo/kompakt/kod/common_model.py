@@ -124,6 +124,35 @@ def manual_failover_minutes(technical_minutes, level):
     return MANUAL_FAILOVER_DECISION_MINUTES[level] + technical_minutes
 
 
+# Platform kesintisi (Degerlendirme #10, A karari, Emirhan 2026-11-24). Sunucunun
+# kendi plansiz kesintisi (donanim + isletim sistemi + platform yazilimi) iki
+# tarafta AYNI kaynaktan ve AYNI formulle girer: ITIC sunucu basina yillik
+# kesinti [ITIC-2023, ITIC-2024]. Kumelenmis / cok-CPC'li topolojide bu
+# kesintinin cogu otomatik gecisle maskelenir; maskelenemeyen pay u ortak bir
+# parametredir. Tek CPC'de (M1) maskeleyecek bir es yoktur: u = 1.
+#   D_platform = N_kesen x ITIC_sunucu x u
+# u kaynakla daraltilamadi [ASSUME]: kurtarma yolunun kendisinin hata
+# uretmesi dagitik sistemlerde baskin katastrofik hata kaynagidir
+# (Yuan vd. OSDI 2014: katastrofik hatalarin %92'si hata isleme yolunda;
+# Gunawi vd. SoCC 2016: yuzlerce bulut kesintisinde kurtarma mekanizmasi
+# hatalari). Aralik 0,05 / 0,10 / 0,20; %99,999 siniri bu parametreye hassastir.
+PLATFORM_UNMASKED_SHARE = 0.10   # [ASSUME; YUAN-2014, GUNAWI-2016 nitel] aralik 0,05-0,20
+PLATFORM_UNMASKED_SHARE_RANGE = {"low": 0.05, "mid": 0.10, "high": 0.20}
+
+
+def platform_downtime_hours(per_server_hours, interrupting=1, clustered=True, level=None,
+                            layers=1):
+    """Platform (sunucu) kesintisinin hizmete yansiyan yillik payi, saat.
+    level verilirse u aralik tablosundan (availability araligi icin), yoksa
+    PLATFORM_UNMASKED_SHARE'den okunur. layers: birbirinden bagimsiz maskeleme
+    katmani sayisi. Aktif-aktif iki site (M4 / X4) yerel kumenin maskeleyemedigi
+    kesintiyi ikinci sitede de maskeler: u^2 [ASSUME, iki tarafta ayni kural]."""
+    if not clustered:
+        return interrupting * per_server_hours
+    u = PLATFORM_UNMASKED_SHARE_RANGE[level] if level else PLATFORM_UNMASKED_SHARE
+    return interrupting * per_server_hours * u ** layers
+
+
 # ==============================================================================
 # 3. PERSONEL UCRETLERI VE TABAN EKIP
 # ==============================================================================

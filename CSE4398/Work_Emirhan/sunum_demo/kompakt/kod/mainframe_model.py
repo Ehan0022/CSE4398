@@ -479,8 +479,11 @@ RECOVERY_MINUTES = {
           # IPL, ag yonlendirme); ortak elle gecis karar suresi (45 / 90 / 180 dk,
           # common_model) eklenir -> toplam 60 / 120 / 240 dk [SG24-6374 T1-1:
           # depolama replikasyonuyla "one or more hours"; SG24-8446: <2 saat GDPS ister]
-    "M3": {"low": 2.0, "mid": 30.0, "high": 60.0},      # [GDPS-2026] GDPS Metro / MGM:
-          # cok-siteli is yukunde ~2 dk, tek siteli is yukunde <1 saat
+    "M3": {"low": 1.0, "mid": 2.0, "high": 5.0},        # [GDPS-2026] GDPS Metro / MGM:
+          # cok-siteli is yukunde ~2 dk, tek siteli is yukunde <1 saat. M3 cok-siteli
+          # is yuku olarak modellenir (sysplex iki siteye yayilir, HyperSwap): x86 X3
+          # (iki sitede etkin kume, otomatik gecis, 1 / 2 / 5 dk) ile esitlik
+          # (Degerlendirme #10; onceki surum tek siteli 2 / 30 / 60 dk kullaniyordu).
     "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-2026] GDPS CA: 20-30 sn;
           # portfoy slaydi <60 sn
 }
@@ -489,7 +492,8 @@ PLANNED_EVENTS_PER_YEAR = {"low": 0.25, "mid": 0.5, "high": 1.0}   # [ASSUME] ke
 PLANNED_OUTAGE_MINUTES = {                                        # olay basina kesinti
     "M1": {"low": 120.0, "mid": 240.0, "high": 480.0},  # [ASSUME] tek CPC durur
     "M2": {"low": 15.0, "mid": 30.0, "high": 60.0},     # [ASSUME] planli, elle gecis
-    "M3": {"low": 2.0, "mid": 10.0, "high": 30.0},      # [ASSUME] GDPS planli site gecisi
+    "M3": {"low": 0.5, "mid": 2.0, "high": 10.0},       # [ASSUME] GDPS planli site gecisi,
+          # cok-siteli is yuku; x86 X3-X4 "multi" grubuyla ayni aralik (Deg. #10)
     "M4": {"low": 20 / 60, "mid": 0.5, "high": 1.0},    # [GDPS-CA-2021] planli kesinti
           # "4 saatten 30 saniyenin altina" (banka ornegi)
 }
@@ -546,23 +550,28 @@ class Topology:
         r = self.recovery_minutes()
         return 72 * 60.0 if r == float("inf") else r
 
-    def annual_downtime_hours(self, site=None, recovery=None, planned=None):
+    def annual_downtime_hours(self, site=None, recovery=None, planned=None, platform=None):
         """Yillik beklenen hizmet kesintisi (saat), olay tabanli."""
         t_rec = self.recovery_minutes(recovery) / 60.0
         unplanned = cm.site_downtime_hours(t_rec, site)
         p = planned or PLANNED_LEVEL
         planned_h = PLANNED_EVENTS_PER_YEAR[p] * PLANNED_OUTAGE_MINUTES[self.code][p] / 60.0
-        hw = (CPC_HW_DOWNTIME_SECONDS[site or cm.SITE_EVENT_LEVEL] / 3600.0
-              if self.n_frames == 1 else 0.0)
+        # Platform kesintisi: ortak formul (common_model, Deg. #10). Tek CPC'de
+        # maskelenmez (u = 1); cok-CPC'li topolojide ortak maskelenemeyen pay.
+        hw = cm.platform_downtime_hours(
+            CPC_HW_DOWNTIME_SECONDS[site or cm.SITE_EVENT_LEVEL] / 3600.0,
+            interrupting=1, clustered=self.n_frames > 1, level=platform,
+            layers=2 if self.code == "M4" else 1)
         return unplanned + planned_h + hw
 
-    def availability(self, site=None, recovery=None, planned=None):
-        return 1.0 - self.annual_downtime_hours(site, recovery, planned) / cm.HOURS_PER_YEAR
+    def availability(self, site=None, recovery=None, planned=None, platform=None):
+        return (1.0 - self.annual_downtime_hours(site, recovery, planned, platform)
+                / cm.HOURS_PER_YEAR)
 
     def availability_range(self):
         """(en kotu, en iyi): tum availability parametreleri high / low ucunda."""
-        return (self.availability("high", "high", "high"),
-                self.availability("low", "low", "low"))
+        return (self.availability("high", "high", "high", "high"),
+                self.availability("low", "low", "low", "low"))
 
     def __repr__(self):
         return f"{self.code}: {self.name}"
@@ -604,7 +613,8 @@ TOPOLOGIES = [
         rpo_seconds=0.0,          # [GDPS-2026] tek site kaybinda Metro Mirror: RPO 0
                                   # (bolgesel felakette Global Mirror bacagi 2-5 sn)
         description="Birincil CPC + DR CPC (CBU) + GDPS Metro Global otomasyonu "
-                    "ve HyperSwap. RTO dakikalar - <1 saat.",
+                    "ve HyperSwap; sysplex iki siteye yayilir (cok-siteli is yuku). "
+                    "RTO ~2 dk.",
         storage_copies=4, sync_replication=True,    # H1+H2 (Metro) + H3+J3 (Global Mirror) [GDPS]
     ),
     Topology(
@@ -810,7 +820,10 @@ def staff_pci_equivalent(tps, workload=DEFAULT_WORKLOAD):
     """Is yukunun surekli PCI esdegeri (personel egrisinin girdisi, KB-13)."""
     w = get_workload(workload)
     with bridge_reference():
-        return (tps * w.cpu_weight() * (1.0 - ziip_fraction(w)) / TPS_PER_PCI
+        # zIIP'e kayan is de yonetilen istir: personel girdisi toplam CPU isi
+        # (GP + zIIP). Onceki surum (1 - f) ile carpiyordu; bu, ortak personel
+        # egrisini bir mainframe faturalama ayrintisina bagliyordu (Deg. #10).
+        return (tps * w.cpu_weight() / TPS_PER_PCI
                 / DEFAULT_UTILIZATION_CEILING)
 
 
@@ -2189,6 +2202,7 @@ RANGE_PARAMETERS = [
     ("SITE_EVENT_LEVEL", "low", "mid", "high", "Saha olayi sikligi ve suresi"),
     ("RECOVERY_LEVEL", "low", "mid", "high", "Kurtarma suresi (RTO)"),
     ("PLANNED_LEVEL", "low", "mid", "high", "Planli kesinti sikligi ve suresi"),
+    ("PLATFORM_UNMASKED_SHARE", 0.05, 0.10, 0.20, "Gecisle maskelenemeyen platform kesintisi payi (ortak)"),
     ("BACKUP_RETENTION_WEEKS", 2, 4, 8, "Yedek saklama suresi, hafta"),
     ("BACKUP_COMPRESSION", 3.0, 2.0, 1.5, "TS7770 sikistirma orani"),
     ("BACKUP_CACHE_LIST_USD_PER_TB", 1000.0, 2000.0, 4000.0, "TS7770 cache liste fiyati, USD/TB"),
@@ -2737,10 +2751,6 @@ Ornekler:
                              "ts7770, cos_onprem (on-prem nesne depolama), aws_s3 (hibrit)")
 
     # Yardimci moDlar
-    parser.add_argument("--input", type=str, default=None, metavar="JSON",
-        help="girdileri JSON case dosyasindan oku (sunum kopyasi)")
-    parser.add_argument("--kosu", type=int, default=None, metavar="N",
-        help="--input dosyasindaki N. kosu (1'den baslar)")
     parser.add_argument("--prices", type=str, default=None, metavar="DOSYA",
                         help="kullanici fiyat dosyasi (JSON, kismi gecersiz kilma); "
                              "verilen fiyatlar aralik analizinde sabit tutulur")
@@ -2761,6 +2771,10 @@ Ornekler:
     parser.add_argument("--years", type=int, default=None,
                         help=f"(NPV) ufuk, yil (varsayilan {cm.NPV_YEARS})")
 
+    parser.add_argument("--input", type=str, default=None, metavar="JSON",
+        help="girdileri JSON case dosyasindan oku (sunum kopyasi)")
+    parser.add_argument("--kosu", type=int, default=None, metavar="N",
+        help="--input dosyasindaki N. kosu (1'den baslar)")
     # Sunum kopyasi: --input DOSYA [--kosu N] ile girdiler JSON dosyasindan okunur.
     args = parser.parse_args(cm.girdi_argv_genislet(sys.argv[1:], model="mainframe"))
     if args.tps is not None and args.tps <= 0:
